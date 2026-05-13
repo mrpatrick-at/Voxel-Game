@@ -15,15 +15,25 @@ var uvs:Array = [0,0,0,0,0,0]
 ## built-in override methods
 ## public methods
 
+func _ready() -> void:
+	setup(Vector2i.ZERO,32,20,FastNoiseLite.new())
+
 func setup(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> void:
-	print("VoxelChunk setup called")
-	global_position = Vector3(chunk_coord.x << 6, 0, chunk_coord.y << 6)
+	var start_time := Time.get_ticks_usec()
+	print("Voxel_Chunk- Setup Called")
+	
+	global_position = Vector3(chunk_coord.x << 4, 0, chunk_coord.y << 4)
 	
 	voxels = make_chunk(chunk_coord, chunk_size, world_height, noise)
 	
 	generate_mesh()
+	
+	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	print("Voxel_Chunk- Chunk Made in: %s msec"%time_taken)
 
 func make_chunk(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> Array:
+	var start_time := Time.get_ticks_usec()
+	
 	var voxel_array:Array = []
 	voxel_array.resize(chunk_size)
 	
@@ -46,9 +56,12 @@ func make_chunk(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:Fa
 					continue
 				voxel_array[x][y][z] = 0
 	
+	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	print("Voxel_Chunk- Chunk Data Made in: %s msec"%time_taken)
 	return voxel_array
 
 func generate_mesh() -> void:
+	var start_time := Time.get_ticks_usec()
 	var faces:Array = []
 	
 	var horizontal_bitmap:BitMap = BitMap.new()
@@ -59,37 +72,48 @@ func generate_mesh() -> void:
 			for z in range(voxels[x][y].size()):
 				pass
 	
-	var visited:Dictionary = {}
+	var visited_x:Dictionary = {}
 	
 	for x in range(voxels.size()):
 		for y in range(voxels[x].size()):
 			for z in range(voxels[x][y].size()):
-				if visited.has(Vector3(x,y,z)) or voxels[x][y][z] == 0:
+				if voxels[x][y][z] == 0:
 					continue
 				
-				visited[Vector3(x,y,z)] = true
+				var starting_position:Vector3 = Vector3(x, y, z) * cube_size
 				
-				var position_starting:Vector3 = Vector3(x, y, z) * cube_size
+				var ending_position:Vector3 = Vector3(x, y, z) * cube_size
 				
-				var position_ending:Vector3 = Vector3(x, y, z) * cube_size
+				#var x_offset:int = x
+				
+				#while x_offset < 15 and !visited_x.has(Vector3(x, y, z)):
+					#visited_x[Vector3(x + x_offset, y, z)] = true
+					#
+					#
+					#if  x == 0 or voxels[x_offset][y][z] == 0:
+						#ending_position = Vector3(x + x_offset, y, z) * cube_size
+						#faces.append(create_face(Vector3.FORWARD, starting_position, ending_position, uvs))
+					#
+					#x_offset += 1
+					
 				
 				if x == 0 or voxels[x - 1][y][z] == 0:
-					faces.append(create_face(Vector3.LEFT, position_starting, position_ending, uvs))
+					faces.append(create_face(Vector3.LEFT, starting_position, ending_position, uvs))
 				
 				if x == voxels.size() - 1 or voxels[x + 1][y][z] == 0:
-					faces.append(create_face(Vector3.RIGHT, position_starting, position_ending, uvs))
+					faces.append(create_face(Vector3.RIGHT, starting_position, ending_position, uvs))
 				
 				if y == 0 or voxels[x][y - 1][z] == 0:
-					faces.append(create_face(Vector3.DOWN, position_starting, position_ending, uvs))
+					faces.append(create_face(Vector3.DOWN, starting_position, ending_position, uvs))
 				
 				if y == voxels[x].size() - 1 or voxels[x][y + 1][z] == 0:
-					faces.append(create_face(Vector3.UP, position_starting, position_ending, uvs))
+					faces.append(create_face(Vector3.UP, starting_position, ending_position, uvs))
 				
 				if z == 0 or voxels[x][y][z - 1] == 0:
-					faces.append(create_face(Vector3.FORWARD, position_starting, position_ending, uvs))
+					faces.append(create_face(Vector3.FORWARD, starting_position, ending_position, uvs))
 				
 				if z == voxels.size() - 1 or voxels[x][y][z + 1] == 0:
-					faces.append(create_face(Vector3.BACK, position_starting, position_ending, uvs))
+					faces.append(create_face(Vector3.BACK, starting_position, ending_position, uvs))
 	
 	var vertices:Array = []
 	var normals:Array = []
@@ -113,88 +137,107 @@ func generate_mesh() -> void:
 	cube_mesh = ArrayMesh.new()
 	cube_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	self.mesh = cube_mesh
+	
+	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
 
-func create_face(direction:Vector3, position_starting:Vector3, position_ending:Vector3, uv_coords:Array) -> Dictionary:
-	var vertices:Array = []
+func create_face(direction:Vector3, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary:
+	var starting_vertices:Array = []
+	var ending_vertices:Array = []
 	var normals:Array = []
 	var uvs:Array = []
 	
 	normals.resize(4)
 	
-	for num in 1:
-		var position:Vector3 = Vector3.ZERO
+	match direction:
+		Vector3.UP:
+			starting_vertices = [
+				starting_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
+				starting_position + Vector3( 0.5,  0.5, -0.5) * cube_size,
+				starting_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
+			]
+			ending_vertices = [
+				ending_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
+				ending_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
+				ending_position + Vector3(-0.5,  0.5,  0.5) * cube_size
+			]
+			normals.fill(Vector3.UP)
+			uvs = uv_coords
 		
-		if 0:
-			position = position_starting
+		Vector3.DOWN:
+			starting_vertices = [
+				starting_position + Vector3(-0.5, -0.5,  0.5) * cube_size,
+				starting_position + Vector3( 0.5, -0.5,  0.5) * cube_size,
+				starting_position + Vector3( 0.5, -0.5, -0.5) * cube_size,
+			]
+			ending_vertices = [
+				ending_position + Vector3(-0.5, -0.5,  0.5) * cube_size,
+				ending_position + Vector3( 0.5, -0.5, -0.5) * cube_size,
+				ending_position + Vector3(-0.5, -0.5, -0.5) * cube_size
+			]
+			normals.fill(Vector3.DOWN)
+			uvs = uv_coords
 		
-		else:
-			position = position_ending
+		Vector3.LEFT:
+			starting_vertices = [
+				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size,
+				starting_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
+				starting_position + Vector3(-0.5,  0.5,  0.5) * cube_size,
+			]
+			ending_vertices = [
+				ending_position + Vector3(-0.5, -0.5, -0.5) * cube_size,
+				ending_position + Vector3(-0.5,  0.5,  0.5) * cube_size,
+				ending_position + Vector3(-0.5, -0.5,  0.5) * cube_size
+			]
+			normals.fill(Vector3.LEFT)
+			uvs = uv_coords
 		
-		match direction:
-			Vector3.UP:
-				vertices = [
-					position + Vector3(-0.5,  0.5, -0.5) * cube_size,
-					position + Vector3( 0.5,  0.5, -0.5) * cube_size,
-					position + Vector3( 0.5,  0.5,  0.5) * cube_size,
-					position + Vector3(-0.5,  0.5,  0.5) * cube_size
-				]
-				normals.fill(Vector3.UP)
-				uvs = uv_coords
-			
-			Vector3.DOWN:
-				vertices = [
-					position + Vector3(-0.5, -0.5,  0.5) * cube_size,
-					position + Vector3( 0.5, -0.5,  0.5) * cube_size,
-					position + Vector3( 0.5, -0.5, -0.5) * cube_size,
-					position + Vector3(-0.5, -0.5, -0.5) * cube_size
-				]
-				normals.fill(Vector3.DOWN)
-				uvs = uv_coords
-			
-			Vector3.LEFT:
-				vertices = [
-					position + Vector3(-0.5, -0.5, -0.5) * cube_size,
-					position + Vector3(-0.5,  0.5, -0.5) * cube_size,
-					position + Vector3(-0.5,  0.5,  0.5) * cube_size,
-					position + Vector3(-0.5, -0.5,  0.5) * cube_size
-				]
-				normals.fill(Vector3.LEFT)
-				uvs = uv_coords
-			
-			Vector3.RIGHT:
-				vertices = [
-					position + Vector3( 0.5, -0.5,  0.5) * cube_size,
-					position + Vector3( 0.5,  0.5,  0.5) * cube_size,
-					position + Vector3( 0.5,  0.5, -0.5) * cube_size,
-					position + Vector3( 0.5, -0.5, -0.5) * cube_size
-				]
-				normals.fill(Vector3.RIGHT)
-				uvs = uv_coords
-			
-			Vector3.FORWARD:
-				vertices = [
-					position + Vector3(-0.5, -0.5, -0.5) * cube_size,
-					position + Vector3( 0.5, -0.5, -0.5) * cube_size,
-					position + Vector3( 0.5,  0.5, -0.5) * cube_size,
-					position + Vector3(-0.5,  0.5, -0.5) * cube_size
-				]
-				normals.fill(Vector3.FORWARD)
-				uvs = uv_coords
-			
-			Vector3.BACK:
-				vertices = [
-					position + Vector3(-0.5,  0.5,  0.5) * cube_size,
-					position + Vector3( 0.5,  0.5,  0.5) * cube_size,
-					position + Vector3( 0.5, -0.5,  0.5) * cube_size,
-					position + Vector3(-0.5, -0.5,  0.5) * cube_size
-				]
-				normals.fill(Vector3.BACK)
-				uvs = uv_coords
+		Vector3.RIGHT:
+			starting_vertices = [
+				starting_position + Vector3( 0.5, -0.5,  0.5) * cube_size,
+				starting_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
+				starting_position + Vector3( 0.5,  0.5, -0.5) * cube_size,
+			]
+			ending_vertices = [
+				ending_position + Vector3( 0.5, -0.5,  0.5) * cube_size,
+				ending_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
+				ending_position + Vector3( 0.5,  0.5, -0.5) * cube_size,
+			]
+			normals.fill(Vector3.RIGHT)
+			uvs = uv_coords
+		
+		Vector3.FORWARD:
+			starting_vertices = [
+				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size,
+				starting_position + Vector3( 0.5, -0.5, -0.5) * cube_size,
+				starting_position + Vector3( 0.5,  0.5, -0.5) * cube_size,
+			]
+			ending_vertices = [
+				ending_position + Vector3(-0.5, -0.5, -0.5) * cube_size,
+				ending_position + Vector3( 0.5,  0.5, -0.5) * cube_size,
+				ending_position + Vector3(-0.5,  0.5, -0.5) * cube_size
+			]
+			normals.fill(Vector3.FORWARD)
+			uvs = uv_coords
+		
+		Vector3.BACK:
+			starting_vertices = [
+				starting_position + Vector3(-0.5,  0.5,  0.5) * cube_size,
+				starting_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
+				starting_position + Vector3( 0.5, -0.5,  0.5) * cube_size,
+			]
+			ending_vertices = [
+				ending_position + Vector3(-0.5,  0.5,  0.5) * cube_size,
+				ending_position + Vector3( 0.5, -0.5,  0.5) * cube_size,
+				ending_position + Vector3(-0.5, -0.5,  0.5) * cube_size
+			]
+			normals.fill(Vector3.BACK)
+			uvs = uv_coords
 	
 	return {
 		"vertices" : [
-			vertices[0], vertices[1], vertices[2],
-			vertices[0], vertices[2], vertices[3],
+			starting_vertices[0], starting_vertices[1], starting_vertices[2],
+			ending_vertices[0], ending_vertices[1], ending_vertices[2],
 		],
 		"normals" : [
 			normals[0], normals[1], normals[2],
