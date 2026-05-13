@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://mtbmflmdxudr"]
+
+[ext_resource type="ArrayMesh" uid="uid://c8ggp8d2t2evy" path="res://scenes/mesh_library/Squares/1 Road/mesh.tres" id="1_er4ey"]
+[ext_resource type="Shape3D" uid="uid://crhcnrg7udoo0" path="res://scenes/mesh_library/Squares/1 Road/collision_mesh.tres" id="2_qe5yq"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0y478"]
+albedo_color = Color(0.10980392, 0.10980392, 0.10980392, 1)
+
+[node name="Road" type="MeshInstance3D" unique_id=942671774]
+mesh = ExtResource("1_er4ey")
+surface_material_override/0 = SubResource("StandardMaterial3D_0y478")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=541956049]
+
+[node name="CSGBakedCollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=681234660]
+shape = ExtResource("2_qe5yq")

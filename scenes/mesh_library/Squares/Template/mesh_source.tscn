@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://bn3d2akmd2m6m"]
+
+[ext_resource type="Shape3D" uid="uid://ddk11jhgfwtwf" path="res://scenes/mesh_library/Squares/Template/collision_mesh.tres" id="1_fawio"]
+[ext_resource type="ArrayMesh" uid="uid://dhmfqqmbyj657" path="res://scenes/mesh_library/Squares/Template/mesh.tres" id="2_c5m6g"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_hjnip"]
+size = Vector3(2, 2, 2)
+
+[node name="Node3D" type="Node3D" unique_id=414211953]
+
+[node name="CSGMesh3D" type="CSGMesh3D" parent="." unique_id=1090228403]
+mesh = SubResource("BoxMesh_hjnip")
+
+[node name="CSGBakedCollisionShape3D" type="CollisionShape3D" parent="." unique_id=1219452737]
+shape = ExtResource("1_fawio")
+
+[node name="CSGBakedMeshInstance3D" type="MeshInstance3D" parent="." unique_id=1381751654]
+mesh = ExtResource("2_c5m6g")

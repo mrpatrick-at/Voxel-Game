@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://cofwn5aeearil"]
+
+[ext_resource type="Shape3D" uid="uid://bnahmmtnrr86a" path="res://scenes/mesh_library/Squares/0 Grass/collision_mesh.tres" id="1_ahapd"]
+[ext_resource type="ArrayMesh" uid="uid://bkklbx0fuyq42" path="res://scenes/mesh_library/Squares/0 Grass/mesh.tres" id="2_l610g"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_8vx3q"]
+size = Vector3(2, 2, 2)
+
+[node name="Node3D" type="Node3D" unique_id=1084714470]
+
+[node name="CSGMesh3D" type="CSGMesh3D" parent="." unique_id=846781169]
+mesh = SubResource("BoxMesh_8vx3q")
+
+[node name="CSGBakedCollisionShape3D" type="CollisionShape3D" parent="." unique_id=1369190594]
+shape = ExtResource("1_ahapd")
+
+[node name="CSGBakedMeshInstance3D" type="MeshInstance3D" parent="." unique_id=1238592697]
+mesh = ExtResource("2_l610g")

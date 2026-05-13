@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://vxpggibhxa88"]
+
+[ext_resource type="PackedScene" uid="uid://bp8uump1pl7po" path="res://scenes/mesh_library/Squares/0 Grass/main.tscn" id="1_mfjxi"]
+[ext_resource type="PackedScene" uid="uid://mtbmflmdxudr" path="res://scenes/mesh_library/Squares/1 Road/main.tscn" id="2_dmxoo"]
+[ext_resource type="PackedScene" uid="uid://bdbtqe3v8v48x" path="res://scenes/mesh_library/Squares/2 Water/main.tscn" id="3_ekwdu"]
+
+[node name="Library" type="Node3D" unique_id=402748133]
+
+[node name="Grass" parent="." unique_id=942671774 instance=ExtResource("1_mfjxi")]
+visible = false
+
+[node name="RoadTile" parent="." unique_id=1748505726 instance=ExtResource("2_dmxoo")]
+visible = false
+
+[node name="Water" parent="." unique_id=173855101 instance=ExtResource("3_ekwdu")]
+visible = false

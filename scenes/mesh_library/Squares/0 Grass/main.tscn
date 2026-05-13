@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://bp8uump1pl7po"]
+
+[ext_resource type="ArrayMesh" uid="uid://bkklbx0fuyq42" path="res://scenes/mesh_library/Squares/0 Grass/mesh.tres" id="1_0y478"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0y478"]
+albedo_color = Color(0, 0.23529412, 0, 1)
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_y8iam"]
+data = PackedVector3Array(-1, 1, -1, -1, -1, -1, 1, -1, -1, -1, 1, 1, -1, -1, 1, -1, -1, -1, -1, -1, 1, 1, -1, 1, -1, -1, -1, -1, 1, -1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, 1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, -1, -1, 1, 1, -1, 1, 1, -1, -1, -1, -1, -1, 1, 1, -1, 1, -1, -1, 1, -1, 1, 1, 1, 1, 1, -1, 1, -1, -1, 1, 1, 1, -1, -1, 1, -1, 1, -1, -1, 1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1, 1, 1, 1, -1, 1, -1, 1)
+
+[node name="Grass" type="MeshInstance3D" unique_id=942671774]
+mesh = ExtResource("1_0y478")
+surface_material_override/0 = SubResource("StandardMaterial3D_0y478")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=541956049]
+
+[node name="CSGBakedCollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=681234660]
+shape = SubResource("ConcavePolygonShape3D_y8iam")

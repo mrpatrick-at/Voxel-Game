@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://bdbtqe3v8v48x"]
+
+[ext_resource type="ArrayMesh" uid="uid://betrkxp3s2v81" path="res://scenes/mesh_library/Squares/2 Water/mesh.tres" id="1_40rg3"]
+[ext_resource type="Shape3D" uid="uid://bu7cqd6x2v3ur" path="res://scenes/mesh_library/Squares/2 Water/collision_mesh.tres" id="2_4t4rj"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jluou"]
+transparency = 1
+albedo_color = Color(0.10980392, 0.10980392, 0.39215687, 0.39215687)
+
+[node name="Water" type="MeshInstance3D" unique_id=942671774]
+mesh = ExtResource("1_40rg3")
+surface_material_override/0 = SubResource("StandardMaterial3D_jluou")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=541956049]
+
+[node name="CSGBakedCollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=681234660]
+shape = ExtResource("2_4t4rj")

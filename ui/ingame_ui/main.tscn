@@ -1,0 +1,61 @@
+[gd_scene format=3 uid="uid://seb4ltvn7jae"]
+
+[ext_resource type="StyleBox" uid="uid://bwpcrwipigr1s" path="res://ui/ingame_ui/styles/box_noise.tres" id="1_1eur2"]
+[ext_resource type="LabelSettings" uid="uid://sipfuq5yhkrl" path="res://ui/ingame_ui/styles/label_seed.tres" id="1_bwru8"]
+[ext_resource type="StyleBox" uid="uid://4kr6lxjv1wi0" path="res://ui/ingame_ui/styles/box_seed.tres" id="2_1eur2"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_l3cfh"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_1eur2"]
+frequency = 0.0025
+fractal_type = 2
+fractal_octaves = 1
+domain_warp_fractal_octaves = 10
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_6q06x"]
+width = 640
+height = 640
+generate_mipmaps = false
+noise = SubResource("FastNoiseLite_1eur2")
+invert = true
+
+[node name="Control" type="Control" unique_id=1885786181]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="." unique_id=1629074791]
+material = SubResource("CanvasItemMaterial_l3cfh")
+layout_mode = 0
+offset_right = 650.0
+offset_bottom = 731.0
+scale = Vector2(0.5, 0.5)
+theme_override_styles/panel = ExtResource("1_1eur2")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer" unique_id=1146308720]
+layout_mode = 2
+
+[node name="NoiseViewer" type="TextureRect" parent="PanelContainer/VBoxContainer" unique_id=1648510799]
+layout_mode = 2
+texture = SubResource("NoiseTexture2D_6q06x")
+
+[node name="PanelContainer" type="PanelContainer" parent="PanelContainer/VBoxContainer" unique_id=360862199]
+layout_mode = 2
+theme_override_styles/panel = ExtResource("2_1eur2")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/VBoxContainer/PanelContainer" unique_id=332678482]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer" unique_id=1309165204]
+layout_mode = 2
+text = "Seed: "
+label_settings = ExtResource("1_bwru8")
+
+[node name="SeedLabel" type="Label" parent="PanelContainer/VBoxContainer/PanelContainer/HBoxContainer" unique_id=1738462090]
+layout_mode = 2
+text = "null"
+label_settings = ExtResource("1_bwru8")
+vertical_alignment = 2

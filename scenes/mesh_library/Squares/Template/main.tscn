@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://dvevaf0rghxdd"]
+
+[ext_resource type="ArrayMesh" uid="uid://dhmfqqmbyj657" path="res://scenes/mesh_library/Squares/Template/mesh.tres" id="1_bxf54"]
+[ext_resource type="Shape3D" uid="uid://ddk11jhgfwtwf" path="res://scenes/mesh_library/Squares/Template/collision_mesh.tres" id="2_ckjus"]
+
+[node name="MeshInstance3D" type="MeshInstance3D" unique_id=942671774]
+mesh = ExtResource("1_bxf54")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=541956049]
+
+[node name="CSGBakedCollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=681234660]
+shape = ExtResource("2_ckjus")
