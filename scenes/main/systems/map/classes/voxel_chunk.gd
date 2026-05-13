@@ -40,14 +40,8 @@ func make_chunk(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:Fa
 			var pixel_data:float = -noise.get_noise_2d(x + chunk_coord.x * chunk_size, z + chunk_coord.y * chunk_size)
 			var tile_height:int = snappedi(pixel_data*10,1) + 10
 			
-			#for y in world_height:
-				#if y != tile_height:
-					#voxel_array[x][y][z] = 0
-				#else:
-					#voxel_array[x][tile_height][z] = 1
-			
 			for y in world_height:
-				if y < tile_height:
+				if y - 1 < tile_height: # CAUTION Temp fix: y + 1. Fixes Tiles at height 0 not exisitng. Improve later (or maybe this is best solution idk)
 					voxel_array[x][y][z] = 1
 					continue
 				voxel_array[x][y][z] = 0
