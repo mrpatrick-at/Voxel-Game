@@ -132,6 +132,7 @@ mesh = SubResource("ArrayMesh_a8run")
 script = ExtResource("4_a8run")
 
 [connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonNew" to="Map" method="_on_button_new_pressed"]
+[connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonLoad" to="Map" method="_on_button_load_pressed"]
 [connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonCloseMenu" to="Player" method="_on_button_close_menu_pressed"]
 [connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonSwitchCam" to="Player" method="_on_button_switch_cam_pressed"]
 [connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonQuit" to="." method="_on_button_quit_pressed"]

@@ -43,7 +43,7 @@ func _process(_delta: float) -> void:
 	
 	var collision_ray:Dictionary = get_mouse_collision_pos()
 	if !collision_ray.is_empty():
-		if collision_ray.collider == GridMap:
+		if collision_ray.collider == MeshInstance3D:
 			grid_info = get_grid_info(collision_ray)
 			return
 	
@@ -75,13 +75,15 @@ func get_grid_info(collision_ray:Dictionary) -> Array:
 	var collision_pos:= Vector3(snappedf(collision_ray.position.x,0.01),snappedf(collision_ray.position.y,0.01),snappedf(collision_ray.position.z,0.01))
 	var adjusted_pos:Vector3 = Vector3(collision_pos.x,collision_pos.y - 0.01,collision_pos.z)
 	
-	var gridmap:GridMap = collision_ray.collider
+	var mesh_instance:MeshInstance3D = collision_ray.collider
 	
-	var map_pos:Vector3i = gridmap.local_to_map(gridmap.to_local(adjusted_pos))
+	var map_pos:Vector3 = mesh_instance.to_local(collision_pos)
 	
-	var cell_item:int = gridmap.get_cell_item(map_pos)
+	#var map_pos:Vector3i = gridmap.local_to_map(gridmap.to_local(adjusted_pos))
+	#
+	#var cell_item:int = gridmap.get_cell_item(map_pos)
 	
-	return [collision_pos,map_pos,cell_item]
+	return [collision_pos,map_pos]
 
 ## private methods
 
@@ -169,20 +171,6 @@ func _update_cam_pos() -> void:
 			)
 		)
 		global_rotation.y += cam_rotation
-	
-	elif cam == body_cam:
-		var gravity = 0
-		player_body.contact_monitor = true
-		if !player_body.get_colliding_bodies().is_empty():
-			gravity = player_body.get_gravity().y
-		
-		player_body.translate_object_local(Vector3(
-			cam_movement.x * cam_speed_mod,
-			cam_movement.y + gravity,
-			cam_movement.z * cam_speed_mod,
-		))
-		player_body.global_rotation.y -= cam_rotation
-	
 	
 	cam_movement = Vector3.ZERO
 	cam_zoom = 0

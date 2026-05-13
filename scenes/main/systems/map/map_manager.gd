@@ -8,6 +8,8 @@ const chunk_size:int = 64
 const mesh_library = preload("res://scenes/main/mesh_library.meshlib")
 ## exports
 ## public vars
+static var seed:int
+static var noise:FastNoiseLite
 ## private vars
 ## onready vars
 @onready var noise_viewer: TextureRect = $"../IngameUI/PanelContainer/VBoxContainer/NoiseViewer"
@@ -16,6 +18,7 @@ const mesh_library = preload("res://scenes/main/mesh_library.meshlib")
 ## built-in override methods
 
 func _ready() -> void:
+	randomize()
 	pass
 
 func _process(_delta: float) -> void:
@@ -55,15 +58,12 @@ func _make_map(is_generating:bool) -> void:
 		child.queue_free()
 	print("_MAKE_MAP- Deleted %s children"%children.size())
 	
-	if is_generating:
+	#if is_generating:
 		## Delete Old Saved Data
 		#Scripts.MAP_DATA.delete_data()
 		#DirAccess.remove_absolute("user://gamedata/chunkdata/")
 		#
 		## Make New Noise Texture
-		randomize()
-		Scripts.MAP_DATA.seed = randi()
-		Scripts.MAP_DATA.noise = _make_noise()
 	
 	#else:
 		#Scripts.MAP_DATA.load_data()
@@ -71,12 +71,15 @@ func _make_map(is_generating:bool) -> void:
 	#if not DirAccess.dir_exists_absolute("user://gamedata/"):
 		#DirAccess.make_dir_absolute("user://gamedata/")
 	
+	seed = randi()
+	_make_noise()
+	
 	var noise_texture:NoiseTexture2D = NoiseTexture2D.new()
 	noise_texture.width = world_chunk_width * chunk_size
 	noise_texture.height = world_chunk_length * chunk_size
 	noise_texture.generate_mipmaps = false
 	noise_texture.invert = true
-	noise_texture.noise = Scripts.MAP_DATA.noise
+	noise_texture.noise = noise
 	noise_viewer.texture = noise_texture
 	
 	for chunk_x in world_chunk_length:
@@ -85,53 +88,17 @@ func _make_map(is_generating:bool) -> void:
 			
 			var new_chunk:= VoxelChunk.new()
 			add_child(new_chunk)
-			new_chunk.setup(chunk_coord, chunk_size, world_height, Scripts.MAP_DATA.noise)
+			new_chunk.setup(chunk_coord, chunk_size, world_height, noise)
 			Scripts.MAP_DATA.chunks[chunk_coord] = new_chunk
-			
-			#_make_chunk(new_chunk, chunk_coord, is_generating)
 	
 	#Scripts.MAP_DATA.save_data()
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	print("MAP_MANAGER- Map Made in: %s msec"%time_taken)
 
-static func _make_noise(seed:int = Scripts.MAP_DATA.seed) -> FastNoiseLite:
-	var noise:FastNoiseLite = FastNoiseLite.new()
+static func _make_noise() -> void:
+	noise = FastNoiseLite.new()
 	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	noise.fractal_type = FastNoiseLite.FRACTAL_RIDGED
 	noise.fractal_octaves = 1
 	noise.seed = seed
 	noise.frequency = 0.0025
-	
-	return noise
-
-func _make_chunk(chunk:VoxelChunk, chunk_coord:Vector2i, is_generating:bool) -> void: # Called for Every Chunk
-	#if is_generating:
-		#Scripts.CHUNK_MANAGER.delete_chunk(chunk_coord.x,chunk_coord.y)
-	
-	#var data_res:ChunkData = Scripts.CHUNK_MANAGER.load_chunk(chunk_coord.x, chunk_coord.y)
-	
-	for local_x:int in chunk_size:
-		for local_y:int in chunk_size:
-			var pixel_data:float = -Scripts.MAP_DATA.noise.get_noise_2d(local_x + chunk_coord.x * chunk_size, local_y + chunk_coord.y * chunk_size)
-			var tile_height:int = snappedi(pixel_data*10,1) + 10
-			
-			
-			if abs(tile_height) % 2 == 1:
-				chunk.set_tile(local_x,tile_height,local_y,0)
-			else:
-				chunk.set_tile(local_x,tile_height,local_y,1)
-			
-			var water_height:int = tile_height + 1
-			while water_height <= 4:
-				chunk.set_tile(local_x,water_height,local_y,2)
-				water_height += 1
-			
-			for height:int in tile_height + 1:
-				var index:int = (local_x + local_y * chunk_size) * 20 + height
-				
-				if index >= 81920:
-					print("_MAKE_CHUNK- Over Index. Index: %s, Chunk: %s"%[index,chunk_coord])
-				#data_res.tile_data[index] = 1 # TODO: Fix this sometimes being to large for Array
-	
-	#if is_generating:
-		#Scripts.CHUNK_MANAGER.save_chunk(data_res)
