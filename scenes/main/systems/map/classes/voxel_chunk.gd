@@ -162,63 +162,62 @@ func build_vert() -> Dictionary:
 	}
 	var visited:Dictionary = {}
 	
-	var x:int = 0
-	var y:int = 0
-	var z:int = 0
-	
-	var is_building:bool = true
-	
-	while is_building:
+	for y in voxels[0].size():
+		var x:int = 0
+		var z:int = 0
+		var is_building:bool = true
 		
-		if x >= voxels.size():
-			x = 0
-			z += 1
+		while is_building:
+			
+			if x >= voxels.size():
+				x = 0
+				z += 1
 			if z >= voxels[x][y].size():
 				is_building = false
 				break
-		
-		if voxels[x][y][z] == 1 and !visited.has(Vector3(x, y, z)):
-			visited[Vector3(x, y, z)] = true
 			
-			var x_ending:int = x
+			if voxels[x][y][z] == 1 and voxels[x][y + 1][z] == 0 and !visited.has(Vector3(x, y, z)): # UP
+				visited[Vector3(x, y, z)] = true
+				
+				var x_ending:int = x
+				
+				while min(voxels.size(),15) >= x_ending:
+					visited[Vector3(x_ending, y, z)] = true
+					
+					if voxels[min(x_ending + 1,15)][y][z] == 0 or !voxels[min(x_ending + 1,15)][y + 1][z] == 0:
+						break
+					x_ending += 1
+				
+				var z_ending:int = z
+				
+				while voxels[x][y].size() - 1 >= z_ending:
+					var can_shift:bool = true
+					var visited_buffer:Dictionary = {}
+					
+					for x_tile:int in x_ending - x:
+						visited_buffer[Vector3(x_tile + x, y, z_ending)] = true
+						if voxels[x_tile + x][y][z_ending] == 0:
+							can_shift = false
+							break
+					
+					if !can_shift:
+						visited_buffer.clear()
+						break
+					
+					z_ending += 1
+					
+				
+				var starting_position:Vector3 = Vector3(x, y, z) * cube_size
+				var ending_position:Vector3 = Vector3(x_ending, y, z_ending) * cube_size
+				
+				positions_dict[Vector3.DOWN].set(starting_position,ending_position)
+				positions_dict[Vector3.UP].set(starting_position,ending_position)
+				#x = x_ending
+				#z = z_ending
 			
-			while voxels.size() - 1 >= x_ending:
-				visited[Vector3(x_ending, y, z)] = true
-				
-				if voxels[x_ending][y][z] == 0:
-					print("cant grow")
-					break
-				
-				x_ending += 1
-				print("ending ran ",x_ending," times")
+			x += 1
 			
-			var z_ending:int = z
-			
-			while voxels[x][y].size() - 1 >= z_ending:
-				var can_shift:bool = true
-				
-				for x_tile in x_ending - x:
-					visited[Vector3(x_tile + x, y, z_ending)] = true
-					if voxels[x_tile + x][y][z_ending] == 0:
-						print("cant shift")
-						can_shift = false
-				
-				if !can_shift:
-					break
-				
-				z_ending += 1
-				
-			
-			var starting_position:Vector3 = Vector3(x, y, z) * cube_size
-			var ending_position:Vector3 = Vector3(x_ending, y, z_ending) * cube_size
-			print("is appending")
-			
-			positions_dict[Vector3.DOWN].assign({starting_position : ending_position})
-			positions_dict[Vector3.UP].assign({starting_position : ending_position})
-		
-		x += 1
-		
-		print("ran ",x," times")
+		print("y = ",y)
 	return positions_dict
 
 func create_face(direction:Vector3, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary:
