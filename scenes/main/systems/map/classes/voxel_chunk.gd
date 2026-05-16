@@ -185,6 +185,7 @@ func build_vert() -> Dictionary:
 					visited[Vector3(x_ending, y, z)] = true
 					
 					if voxels[min(x_ending + 1,15)][y][z] == 0 or !voxels[min(x_ending + 1,15)][y + 1][z] == 0:
+						print("cuh")
 						break
 					x_ending += 1
 				
@@ -212,8 +213,7 @@ func build_vert() -> Dictionary:
 				
 				positions_dict[Vector3.DOWN].set(starting_position,ending_position)
 				positions_dict[Vector3.UP].set(starting_position,ending_position)
-				#x = x_ending
-				#z = z_ending
+				x = x_ending
 			
 			x += 1
 			
