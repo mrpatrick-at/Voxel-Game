@@ -16,7 +16,7 @@ var uvs:Array = [0,0,0,0,0,0]
 ## public methods
 
 func _ready() -> void:
-	setup(Vector2i.ZERO,32,20,FastNoiseLite.new())
+	setup(Vector2i.ZERO,16,20,FastNoiseLite.new())
 
 func setup(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> void:
 	var start_time := Time.get_ticks_usec()
@@ -67,53 +67,103 @@ func generate_mesh() -> void:
 	var horizontal_bitmap:BitMap = BitMap.new()
 	horizontal_bitmap.resize(Vector2i(64,64))
 	
+	#var bitmap:BitMap = BitMap.new()
+	#bitmap.resize(Vector2i(15,15))
+	
 	for x in range(voxels.size()):
 		for y in range(voxels[x].size()):
+			
+			#if voxels[x][y][0] == 1:
+				#bitmap.set_bit(x,y,true)
+			#else:
+				#bitmap.set_bit(x,y,false)
+			
 			for z in range(voxels[x][y].size()):
 				pass
 	
-	var visited_x:Dictionary = {}
+	var x_visited:Dictionary = {}
+	var visited_y:Dictionary = {}
+	var visited_z:Dictionary = {}
 	
-	for x in range(voxels.size()):
-		for y in range(voxels[x].size()):
-			for z in range(voxels[x][y].size()):
-				if voxels[x][y][z] == 0:
-					continue
-				
-				var starting_position:Vector3 = Vector3(x, y, z) * cube_size
-				
-				var ending_position:Vector3 = Vector3(x, y, z) * cube_size
-				
-				#var x_offset:int = x
-				
-				#while x_offset < 15 and !visited_x.has(Vector3(x, y, z)):
-					#visited_x[Vector3(x + x_offset, y, z)] = true
+	var x:int = 0
+	var y:int = 0
+	var z:int = 0
+	
+	var y_ending_position:Vector3 = Vector3(x, y, z) * cube_size
+	var z_ending_position:Vector3 = Vector3(x, y, z) * cube_size
+	
+	var y_offset:int = y
+	var z_offset:int = z
+	
+	var is_building:bool = true
+	
+	while is_building:
+		
+		if x >= 15:
+			is_building = false
+		
+		if voxels[x][y][z] == 1 and !x_visited.has(Vector3(x, y, z)):
+			x_visited[Vector3(x, y, z)] = true
+			
+			var x_ending:int = x
+			
+			while voxels.size() >= x_ending:
+				x_visited[Vector3(x_ending, y, z)] = true
+				x_ending += 1
+				print("ending ran ",x_ending," times")
+			
+			var starting_position:Vector3 = Vector3(x, y, z) * cube_size
+			var x_ending_position:Vector3 = Vector3(x_ending, y, z) * cube_size
+			print("is appending")
+			
+			faces.append(create_face(Vector3.DOWN, starting_position, x_ending_position, uvs))
+		
+		x += 1
+		
+		print("ran ",x," times")
+	
+	#for x in range(voxels.size()):
+		#for y in range(voxels[x].size()):
+			#for z in range(voxels[x][y].size()):
+				#if voxels[x][y][z] == 0:
+					#continue
+				#
+				#var starting_position:Vector3 = Vector3(x, y, z) * cube_size
+				#
+				#var ending_position:Vector3 = Vector3(x, y, z) * cube_size
+				#
+				#var z_ending_position:Vector3 = Vector3(x, y, z) * cube_size
+				#var z_offset:int = z
+				#
+				#while z_offset < 15 and !visited_z.has(Vector3(x, y, z_offset)):
+					#visited_z[Vector3(x, y, z_offset)] = true
 					#
+					#if voxels[x][y][z] == 1:
+						#
+						#if  voxels[x][y][z_offset] == 0:
+							#z_ending_position = Vector3(x, y, z_offset) * cube_size
+							#faces.append(create_face(Vector3.DOWN, starting_position, z_ending_position, uvs))
+						#
+					#z_offset += 1
 					#
-					#if  x == 0 or voxels[x_offset][y][z] == 0:
-						#ending_position = Vector3(x + x_offset, y, z) * cube_size
-						#faces.append(create_face(Vector3.FORWARD, starting_position, ending_position, uvs))
-					#
-					#x_offset += 1
-					
-				
-				if x == 0 or voxels[x - 1][y][z] == 0:
-					faces.append(create_face(Vector3.LEFT, starting_position, ending_position, uvs))
-				
-				if x == voxels.size() - 1 or voxels[x + 1][y][z] == 0:
-					faces.append(create_face(Vector3.RIGHT, starting_position, ending_position, uvs))
-				
-				if y == 0 or voxels[x][y - 1][z] == 0:
-					faces.append(create_face(Vector3.DOWN, starting_position, ending_position, uvs))
-				
-				if y == voxels[x].size() - 1 or voxels[x][y + 1][z] == 0:
-					faces.append(create_face(Vector3.UP, starting_position, ending_position, uvs))
-				
-				if z == 0 or voxels[x][y][z - 1] == 0:
-					faces.append(create_face(Vector3.FORWARD, starting_position, ending_position, uvs))
-				
-				if z == voxels.size() - 1 or voxels[x][y][z + 1] == 0:
-					faces.append(create_face(Vector3.BACK, starting_position, ending_position, uvs))
+				#
+				#if x == 0 or voxels[x - 1][y][z] == 0:
+					#faces.append(create_face(Vector3.LEFT, starting_position, ending_position, uvs))
+				#
+				#if x == voxels.size() - 1 or voxels[x + 1][y][z] == 0:
+					#faces.append(create_face(Vector3.RIGHT, starting_position, ending_position, uvs))
+				#
+				##if y == 0 or voxels[x][y - 1][z] == 0:
+					##faces.append(create_face(Vector3.DOWN, starting_position, ending_position, uvs))
+				#
+				#if y == voxels[x].size() - 1 or voxels[x][y + 1][z] == 0:
+					#faces.append(create_face(Vector3.UP, starting_position, ending_position, uvs))
+				#
+				#if z == 0 or voxels[x][y][z - 1] == 0:
+					#faces.append(create_face(Vector3.FORWARD, starting_position, ending_position, uvs))
+				#
+				#if z == voxels.size() - 1 or voxels[x][y][z + 1] == 0:
+					#faces.append(create_face(Vector3.BACK, starting_position, ending_position, uvs))
 	
 	var vertices:Array = []
 	var normals:Array = []
