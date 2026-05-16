@@ -78,70 +78,14 @@ func generate_mesh() -> void:
 				#else:
 					#bitmap.set_bit(x,z,false)
 				#pass
+	var vert_positions = build_vert()
+	for direction:Vector3 in vert_positions:
+		for pos in vert_positions[direction].keys():
+			print("helly eah",pos,vert_positions[direction][pos])
+			faces.append(create_face(direction, pos, vert_positions[direction][pos], uvs))
 	
-	var x_visited:Dictionary = {}
-	var visited_y:Dictionary = {}
-	var visited_z:Dictionary = {}
-	
-	var x:int = 0
-	var y:int = 0
-	var z:int = 0
-	
-	var y_ending_position:Vector3 = Vector3(x, y, z) * cube_size
-	var z_ending_position:Vector3 = Vector3(x, y, z) * cube_size
-	
-	var y_offset:int = y
-	var z_offset:int = z
-	
-	var is_building:bool = true
-	
-	while is_building:
-		
-		if x >= voxels.size():
-			x = 0
-			z += 1
-			if z >= voxels[x][y].size():
-				is_building = false
-				break
-		
-		if voxels[x][y][z] == 1 and !x_visited.has(Vector3(x, y, z)):
-			x_visited[Vector3(x, y, z)] = true
-			
-			var x_ending:int = x
-			
-			while voxels.size() - 1 >= x_ending:
-				x_visited[Vector3(x_ending, y, z)] = true
-				x_ending += 1
-				print("ending ran ",x_ending," times")
-			
-			var z_ending:int = z
-			
-			while voxels[x][y].size() - 1 >= z_ending:
-				var can_shift:bool = true
-				
-				for x_tile in x_ending - x:
-					x_visited[Vector3(x_tile + x, y, z_ending)] = true
-					if voxels[x_tile + x][y][z_ending] == 0:
-						print("cant shift")
-						can_shift = false
-				
-				if !can_shift:
-					break
-				
-				z_ending += 1
-				
-			
-			var starting_position:Vector3 = Vector3(x, y, z) * cube_size
-			var x_ending_position:Vector3 = Vector3(x_ending, y, z_ending) * cube_size
-			print("is appending")
-			
-			faces.append(create_face(Vector3.DOWN, starting_position, x_ending_position, uvs))
-			faces.append(create_face(Vector3.UP, starting_position, x_ending_position, uvs))
-		
-		x += 1
-		
-		print("ran ",x," times")
-	
+	#faces.append(create_face(Vector3.DOWN, positions_dict, ending_position, uvs))
+	#faces.append(create_face(Vector3.UP, starting_position, ending_position, uvs))
 	#for x in range(voxels.size()):
 		#for y in range(voxels[x].size()):
 			#for z in range(voxels[x][y].size()):
@@ -211,6 +155,72 @@ func generate_mesh() -> void:
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
 
+func build_vert() -> Dictionary:
+	var positions_dict:Dictionary = {
+		Vector3.DOWN : {},
+		Vector3.UP : {},
+	}
+	var visited:Dictionary = {}
+	
+	var x:int = 0
+	var y:int = 0
+	var z:int = 0
+	
+	var is_building:bool = true
+	
+	while is_building:
+		
+		if x >= voxels.size():
+			x = 0
+			z += 1
+			if z >= voxels[x][y].size():
+				is_building = false
+				break
+		
+		if voxels[x][y][z] == 1 and !visited.has(Vector3(x, y, z)):
+			visited[Vector3(x, y, z)] = true
+			
+			var x_ending:int = x
+			
+			while voxels.size() - 1 >= x_ending:
+				visited[Vector3(x_ending, y, z)] = true
+				
+				if voxels[x_ending][y][z] == 0:
+					print("cant grow")
+					break
+				
+				x_ending += 1
+				print("ending ran ",x_ending," times")
+			
+			var z_ending:int = z
+			
+			while voxels[x][y].size() - 1 >= z_ending:
+				var can_shift:bool = true
+				
+				for x_tile in x_ending - x:
+					visited[Vector3(x_tile + x, y, z_ending)] = true
+					if voxels[x_tile + x][y][z_ending] == 0:
+						print("cant shift")
+						can_shift = false
+				
+				if !can_shift:
+					break
+				
+				z_ending += 1
+				
+			
+			var starting_position:Vector3 = Vector3(x, y, z) * cube_size
+			var ending_position:Vector3 = Vector3(x_ending, y, z_ending) * cube_size
+			print("is appending")
+			
+			positions_dict[Vector3.DOWN].assign({starting_position : ending_position})
+			positions_dict[Vector3.UP].assign({starting_position : ending_position})
+		
+		x += 1
+		
+		print("ran ",x," times")
+	return positions_dict
+
 func create_face(direction:Vector3, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary:
 	var starting_vertices:Array = []
 	var ending_vertices:Array = []
@@ -245,10 +255,10 @@ func create_face(direction:Vector3, starting_position:Vector3, ending_position:V
 		
 		Vector3.DOWN:
 			vertices = [
-				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5, -0.5,  0.5) * cube_size,
-				ending_position + Vector3( 0.5, -0.5,  0.5) * cube_size,
-				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3( 0.5, -0.5, -0.5) * cube_size,
-				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size
+				starting_position + Vector3(-0.5, -0.5,  -0.5) * cube_size,
+				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3( -0.5, -0.5,  0.5) * cube_size,
+				ending_position + Vector3( 0.5, -0.5, 0.5) * cube_size,
+				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5, -0.5, -0.5) * cube_size
 			]
 			
 			starting_vertices = [
