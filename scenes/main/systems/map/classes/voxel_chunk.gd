@@ -117,6 +117,7 @@ func generate_mesh() -> void:
 			print("is appending")
 			
 			faces.append(create_face(Vector3.DOWN, starting_position, x_ending_position, uvs))
+			faces.append(create_face(Vector3.UP, starting_position, x_ending_position, uvs))
 		
 		x += 1
 		
@@ -199,8 +200,17 @@ func create_face(direction:Vector3, starting_position:Vector3, ending_position:V
 	
 	normals.resize(4)
 	
+	var vertices:Array = []
+	
 	match direction:
 		Vector3.UP:
+			vertices = [
+				starting_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
+				ending_position + Vector3( 0.5,  0.5, -0.5) * cube_size,
+				ending_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
+				starting_position + Vector3(-0.5,  0.5,  0.5) * cube_size
+			]
+			
 			starting_vertices = [
 				starting_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
 				starting_position + Vector3( 0.5,  0.5, -0.5) * cube_size,
@@ -215,15 +225,22 @@ func create_face(direction:Vector3, starting_position:Vector3, ending_position:V
 			uvs = uv_coords
 		
 		Vector3.DOWN:
+			vertices = [
+				starting_position + Vector3(-0.5, -0.5,  0.5) * cube_size, # shared 1
+				ending_position + Vector3( 0.5, -0.5,  0.5) * cube_size, # starting unique
+				ending_position + Vector3( 0.5, -0.5, -0.5) * cube_size, # shared 2
+				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size # ending unique
+			]
+			
 			starting_vertices = [
-				starting_position + Vector3(-0.5, -0.5,  0.5) * cube_size,
-				starting_position + Vector3( 0.5, -0.5,  0.5) * cube_size,
-				starting_position + Vector3( 0.5, -0.5, -0.5) * cube_size,
+				starting_position + Vector3(-0.5, -0.5,  0.5) * cube_size, # shared 1
+				starting_position + Vector3( 0.5, -0.5,  0.5) * cube_size, # unique
+				starting_position + Vector3( 0.5, -0.5, -0.5) * cube_size, # shared 2
 			]
 			ending_vertices = [
-				ending_position + Vector3(-0.5, -0.5,  0.5) * cube_size,
-				ending_position + Vector3( 0.5, -0.5, -0.5) * cube_size,
-				ending_position + Vector3(-0.5, -0.5, -0.5) * cube_size
+				ending_position + Vector3(-0.5, -0.5,  0.5) * cube_size, # shared 1
+				ending_position + Vector3( 0.5, -0.5, -0.5) * cube_size, # shared 2
+				ending_position + Vector3(-0.5, -0.5, -0.5) * cube_size # unique
 			]
 			normals.fill(Vector3.DOWN)
 			uvs = uv_coords
@@ -286,8 +303,8 @@ func create_face(direction:Vector3, starting_position:Vector3, ending_position:V
 	
 	return {
 		"vertices" : [
-			starting_vertices[0], starting_vertices[1], starting_vertices[2],
-			ending_vertices[0], ending_vertices[1], ending_vertices[2],
+			vertices[0], vertices[1], vertices[2],
+			vertices[0], vertices[2], vertices[3],
 		],
 		"normals" : [
 			normals[0], normals[1], normals[2],
