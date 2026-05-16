@@ -69,17 +69,15 @@ func generate_mesh() -> void:
 	
 	#var bitmap:BitMap = BitMap.new()
 	#bitmap.resize(Vector2i(15,15))
-	
-	for x in range(voxels.size()):
-		for y in range(voxels[x].size()):
-			
-			#if voxels[x][y][0] == 1:
-				#bitmap.set_bit(x,y,true)
-			#else:
-				#bitmap.set_bit(x,y,false)
-			
-			for z in range(voxels[x][y].size()):
-				pass
+	#
+	#for x in range(voxels.size()):
+		#for y in range(voxels[x].size()):
+			#for z in range(voxels[x][y].size()):
+				#if voxels[x][0][z] == 1:
+					#bitmap.set_bit(x,z,true)
+				#else:
+					#bitmap.set_bit(x,z,false)
+				#pass
 	
 	var x_visited:Dictionary = {}
 	var visited_y:Dictionary = {}
@@ -99,21 +97,42 @@ func generate_mesh() -> void:
 	
 	while is_building:
 		
-		if x >= 15:
-			is_building = false
+		if x >= voxels.size():
+			x = 0
+			z += 1
+			if z >= voxels[x][y].size():
+				is_building = false
+				break
 		
 		if voxels[x][y][z] == 1 and !x_visited.has(Vector3(x, y, z)):
 			x_visited[Vector3(x, y, z)] = true
 			
 			var x_ending:int = x
 			
-			while voxels.size() >= x_ending:
+			while voxels.size() - 1 >= x_ending:
 				x_visited[Vector3(x_ending, y, z)] = true
 				x_ending += 1
 				print("ending ran ",x_ending," times")
 			
+			var z_ending:int = z
+			
+			while voxels[x][y].size() - 1 >= z_ending:
+				var can_shift:bool = true
+				
+				for x_tile in x_ending - x:
+					x_visited[Vector3(x_tile + x, y, z_ending)] = true
+					if voxels[x_tile + x][y][z_ending] == 0:
+						print("cant shift")
+						can_shift = false
+				
+				if !can_shift:
+					break
+				
+				z_ending += 1
+				
+			
 			var starting_position:Vector3 = Vector3(x, y, z) * cube_size
-			var x_ending_position:Vector3 = Vector3(x_ending, y, z) * cube_size
+			var x_ending_position:Vector3 = Vector3(x_ending, y, z_ending) * cube_size
 			print("is appending")
 			
 			faces.append(create_face(Vector3.DOWN, starting_position, x_ending_position, uvs))
@@ -154,8 +173,8 @@ func generate_mesh() -> void:
 				#if x == voxels.size() - 1 or voxels[x + 1][y][z] == 0:
 					#faces.append(create_face(Vector3.RIGHT, starting_position, ending_position, uvs))
 				#
-				##if y == 0 or voxels[x][y - 1][z] == 0:
-					##faces.append(create_face(Vector3.DOWN, starting_position, ending_position, uvs))
+				#if y == 0 or voxels[x][y - 1][z] == 0:
+					#faces.append(create_face(Vector3.DOWN, starting_position, ending_position, uvs))
 				#
 				#if y == voxels[x].size() - 1 or voxels[x][y + 1][z] == 0:
 					#faces.append(create_face(Vector3.UP, starting_position, ending_position, uvs))
@@ -206,9 +225,9 @@ func create_face(direction:Vector3, starting_position:Vector3, ending_position:V
 		Vector3.UP:
 			vertices = [
 				starting_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
-				ending_position + Vector3( 0.5,  0.5, -0.5) * cube_size,
+				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3( 0.5,  0.5, -0.5) * cube_size,
 				ending_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
-				starting_position + Vector3(-0.5,  0.5,  0.5) * cube_size
+				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5,  0.5,  0.5) * cube_size
 			]
 			
 			starting_vertices = [
@@ -226,10 +245,10 @@ func create_face(direction:Vector3, starting_position:Vector3, ending_position:V
 		
 		Vector3.DOWN:
 			vertices = [
-				starting_position + Vector3(-0.5, -0.5,  0.5) * cube_size, # shared 1
-				ending_position + Vector3( 0.5, -0.5,  0.5) * cube_size, # starting unique
-				ending_position + Vector3( 0.5, -0.5, -0.5) * cube_size, # shared 2
-				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size # ending unique
+				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5, -0.5,  0.5) * cube_size,
+				ending_position + Vector3( 0.5, -0.5,  0.5) * cube_size,
+				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3( 0.5, -0.5, -0.5) * cube_size,
+				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size
 			]
 			
 			starting_vertices = [
