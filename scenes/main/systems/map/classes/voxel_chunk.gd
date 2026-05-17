@@ -16,7 +16,7 @@ var uvs:Array = [0,0,0,0,0,0]
 ## public methods
 
 func _ready() -> void:
-	setup(Vector2i.ZERO,16,20,FastNoiseLite.new())
+	setup(Vector2i.ZERO,32,20,FastNoiseLite.new())
 
 func setup(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> void:
 	var start_time := Time.get_ticks_usec()
@@ -162,7 +162,7 @@ func build_vert() -> Dictionary:
 	}
 	var visited:Dictionary = {}
 	
-	for y in voxels[0].size():
+	for y:int in voxels[0].size():
 		var x:int = 0
 		var z:int = 0
 		var is_building:bool = true
@@ -176,46 +176,50 @@ func build_vert() -> Dictionary:
 				is_building = false
 				break
 			
-			if voxels[x][y][z] == 1 and voxels[x][y + 1][z] == 0 and !visited.has(Vector3(x, y, z)): # UP
-				visited[Vector3(x, y, z)] = true
-				
-				var x_ending:int = x
-				
-				while min(voxels.size(),15) >= x_ending:
-					visited[Vector3(x_ending, y, z)] = true
-					
-					if voxels[min(x_ending + 1,15)][y][z] == 0 or !voxels[min(x_ending + 1,15)][y + 1][z] == 0:
-						print("cuh")
-						break
-					x_ending += 1
-				
-				var z_ending:int = z
-				
-				while voxels[x][y].size() - 1 >= z_ending:
-					var can_shift:bool = true
-					var visited_buffer:Dictionary = {}
-					
-					for x_tile:int in x_ending - x:
-						visited_buffer[Vector3(x_tile + x, y, z_ending)] = true
-						if voxels[x_tile + x][y][z_ending] == 0:
-							can_shift = false
-							break
-					
-					if !can_shift:
-						visited_buffer.clear()
-						break
-					
-					z_ending += 1
-					
-				
-				var starting_position:Vector3 = Vector3(x, y, z) * cube_size
-				var ending_position:Vector3 = Vector3(x_ending, y, z_ending) * cube_size
-				
-				positions_dict[Vector3.DOWN].set(starting_position,ending_position)
-				positions_dict[Vector3.UP].set(starting_position,ending_position)
-				x = x_ending
+			if !voxels[x][y][z] == 1 or !voxels[x][y + 1][z] == 0 or visited.has(Vector3(x, y, z)): # UP
+				x += 1
+				continue
 			
-			x += 1
+			var x_ending:int = x
+			var x_step_amount:int = 1
+			
+			while voxels.size() - 1 >= x_ending:
+				if visited.has(Vector3(x_ending, y, z)):
+					print("OH GOD WHY")
+					break
+				visited[Vector3(x_ending, y, z)] = true
+				
+				if voxels[min(x_ending + 1,15)][y][z] == 0 or !voxels[min(x_ending + 1,15)][y + 1][z] == 0: # TODO: Inter Chunk Meshing
+					break
+				x_ending += 1
+				x_step_amount += 1
+			
+			var z_ending:int = z
+			var can_shift:bool = true
+			
+			while voxels[x][y].size() - 1 >= z_ending:
+				var visited_buffer:Dictionary = {}
+				
+				for x_step:int in x_step_amount:
+					visited_buffer[Vector3(x_step - 1 + x, y, z_ending)] = true
+					
+					if voxels[x_step - 1 + x][y][min(z_ending +1,15)] == 0 or visited.has(Vector3(x_step - 1 + x, y, min(z_ending +1,15))) or voxels[x_step - 1 + x][y + 1][min(z_ending +1,15)] == 1:
+						can_shift = false
+						print("CANNOT SHIFT BRUV")
+						break
+				
+				if !can_shift:
+					break
+				
+				visited.merge(visited_buffer)
+				z_ending += 1
+			
+			var starting_position:Vector3 = Vector3(x, y, z) * cube_size
+			var ending_position:Vector3 = Vector3(x_ending, y, z_ending) * cube_size
+			
+			positions_dict[Vector3.DOWN].set(starting_position,ending_position)
+			positions_dict[Vector3.UP].set(starting_position,ending_position)
+			x = x_ending
 			
 		print("y = ",y)
 	return positions_dict
