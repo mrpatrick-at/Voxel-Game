@@ -16,7 +16,7 @@ var uvs:Array = [0,0,0,0,0,0]
 ## public methods
 
 func _ready() -> void:
-	setup(Vector2i.ZERO,32,20,FastNoiseLite.new())
+	setup(Vector2i.ZERO,16,20,FastNoiseLite.new())
 
 func setup(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> void:
 	var start_time := Time.get_ticks_usec()
@@ -160,6 +160,8 @@ func build_vert() -> Dictionary:
 		Vector3.DOWN : {},
 		Vector3.UP : {},
 	}
+	var voxel_array:Array = voxels.duplicate(true)
+	print(voxel_array)
 	var visited:Dictionary = {}
 	
 	for y:int in voxels[0].size():
@@ -176,7 +178,7 @@ func build_vert() -> Dictionary:
 				is_building = false
 				break
 			
-			if !voxels[x][y][z] == 1 or !voxels[x][y + 1][z] == 0 or visited.has(Vector3(x, y, z)): # UP
+			if voxel_array[x][y][z] == 0 or !voxels[x][y + 1][z] == 0: # UP
 				x += 1
 				continue
 			
@@ -184,10 +186,12 @@ func build_vert() -> Dictionary:
 			var x_step_amount:int = 1
 			
 			while voxels.size() - 1 >= x_ending:
-				if visited.has(Vector3(x_ending, y, z)):
+				if voxel_array[x_ending][y][z] == 0:
+					x_ending -= 1
 					print("OH GOD WHY")
 					break
-				visited[Vector3(x_ending, y, z)] = true
+				
+				voxel_array[x_ending][y][z] = 0
 				
 				if voxels[min(x_ending + 1,15)][y][z] == 0 or !voxels[min(x_ending + 1,15)][y + 1][z] == 0: # TODO: Inter Chunk Meshing
 					break
@@ -198,20 +202,17 @@ func build_vert() -> Dictionary:
 			var can_shift:bool = true
 			
 			while voxels[x][y].size() - 1 >= z_ending:
-				var visited_buffer:Dictionary = {}
-				
 				for x_step:int in x_step_amount:
-					visited_buffer[Vector3(x_step - 1 + x, y, z_ending)] = true
-					
-					if voxels[x_step - 1 + x][y][min(z_ending +1,15)] == 0 or visited.has(Vector3(x_step - 1 + x, y, min(z_ending +1,15))) or voxels[x_step - 1 + x][y + 1][min(z_ending +1,15)] == 1:
+					if voxel_array[min(x_step + x,15)][y][min(z_ending + 1, 15)] == 0 or voxels[x_step - 1 + x][y + 1][min(z_ending + 1, 15)] == 1:
 						can_shift = false
 						print("CANNOT SHIFT BRUV")
 						break
 				
 				if !can_shift:
 					break
-				
-				visited.merge(visited_buffer)
+				for x_step in x_step_amount:
+					voxel_array[min(x_step + x,15)][y][min(z_ending + 1, 15)] = 0
+					
 				z_ending += 1
 			
 			var starting_position:Vector3 = Vector3(x, y, z) * cube_size
