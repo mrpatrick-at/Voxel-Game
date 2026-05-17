@@ -2,8 +2,8 @@ extends Node3D
 ## enums
 ## consts
 const world_height:int = 20
-const world_chunk_width:int = 8
-const world_chunk_length:int = 8
+const world_chunk_width:int = 16
+const world_chunk_length:int = 16
 const chunk_size:int = 16
 const mesh_library = preload("res://scenes/main/mesh_library.meshlib")
 ## exports

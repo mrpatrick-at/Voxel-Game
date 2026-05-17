@@ -81,7 +81,7 @@ func generate_mesh() -> void:
 	var vert_positions = build_vert()
 	for direction:Vector3 in vert_positions:
 		for pos in vert_positions[direction].keys():
-			print("helly eah",pos,vert_positions[direction][pos])
+			#print("helly eah",pos,vert_positions[direction][pos])
 			faces.append(create_face(direction, pos, vert_positions[direction][pos], uvs))
 	
 	#faces.append(create_face(Vector3.DOWN, positions_dict, ending_position, uvs))
@@ -161,8 +161,6 @@ func build_vert() -> Dictionary:
 		Vector3.UP : {},
 	}
 	var voxel_array:Array = voxels.duplicate(true)
-	print(voxel_array)
-	var visited:Dictionary = {}
 	
 	for y:int in voxels[0].size():
 		var x:int = 0
@@ -186,14 +184,10 @@ func build_vert() -> Dictionary:
 			var x_step_amount:int = 1
 			
 			while voxels.size() - 1 >= x_ending:
-				if voxel_array[x_ending][y][z] == 0:
-					x_ending -= 1
-					print("OH GOD WHY")
-					break
-				
 				voxel_array[x_ending][y][z] = 0
 				
-				if voxels[min(x_ending + 1,15)][y][z] == 0 or !voxels[min(x_ending + 1,15)][y + 1][z] == 0: # TODO: Inter Chunk Meshing
+				if voxel_array[min(x_ending + 1,voxels.size() - 1)][y][z] == 0 or !voxels[min(x_ending + 1,voxels.size() - 1)][y + 1][z] == 0: # TODO: Inter Chunk Meshing
+					#print("OH GOD WHY")
 					break
 				x_ending += 1
 				x_step_amount += 1
@@ -203,15 +197,15 @@ func build_vert() -> Dictionary:
 			
 			while voxels[x][y].size() - 1 >= z_ending:
 				for x_step:int in x_step_amount:
-					if voxel_array[min(x_step + x,15)][y][min(z_ending + 1, 15)] == 0 or voxels[x_step - 1 + x][y + 1][min(z_ending + 1, 15)] == 1:
+					if voxel_array[min(x_step + x,voxels.size() - 1)][y][min(z_ending + 1, voxels.size() - 1)] == 0 or voxels[x_step - 1 + x][y + 1][min(z_ending + 1, voxels.size() - 1)] == 1:
 						can_shift = false
-						print("CANNOT SHIFT BRUV")
+						#print("CANNOT SHIFT BRUV")
 						break
 				
 				if !can_shift:
 					break
 				for x_step in x_step_amount:
-					voxel_array[min(x_step + x,15)][y][min(z_ending + 1, 15)] = 0
+					voxel_array[min(x_step + x,voxels.size() - 1)][y][min(z_ending + 1, voxels.size() - 1)] = 0
 					
 				z_ending += 1
 			
@@ -220,9 +214,8 @@ func build_vert() -> Dictionary:
 			
 			positions_dict[Vector3.DOWN].set(starting_position,ending_position)
 			positions_dict[Vector3.UP].set(starting_position,ending_position)
-			x = x_ending
 			
-		print("y = ",y)
+		#print("y = ",y)
 	return positions_dict
 
 func create_face(direction:Vector3, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary:
