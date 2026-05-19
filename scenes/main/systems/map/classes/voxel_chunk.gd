@@ -217,9 +217,9 @@ func _x_build() -> Dictionary:
 			var is_building:bool = true
 			
 			var direction_x:int = clampi(x + direction_int,0,voxels.size() - 1)
-			var is_chunk_border:bool = false
-			if x == 1 and direction_int == -1 or x == voxels.size() - 2 and direction_int == 1:
-				is_chunk_border = true
+			#var is_chunk_border:bool = false
+			#if x == 1 and direction_int == -1 or x == voxels.size() - 2 and direction_int == 1:
+				#is_chunk_border = true
 				#print("True slayy man x + direction is: ",direction_x)
 			
 			while is_building:
@@ -255,7 +255,7 @@ func _x_build() -> Dictionary:
 				
 				while voxels[x][y].size() - 1 > z_ending:
 					for y_step:int in y_step_amount:
-						if voxel_array[x][min(y_step + y,voxels[x].size() - 1)][min(z_ending + 1, voxels.size() - 2)] == 0 or voxels[direction_x][y_step - 1 + y][min(z_ending + 1, voxels.size() - 2)] == 1 and !is_chunk_border:
+						if voxel_array[x][min(y_step + y,voxels[x].size() - 1)][min(z_ending + 1, voxels.size() - 2)] == 0 or voxels[direction_x][y_step - 1 + y][min(z_ending + 1, voxels.size() - 2)] == 1:
 							can_shift = false
 							#print("CANNOT SHIFT BRUV")
 							break
@@ -296,9 +296,9 @@ func _y_build() -> Dictionary:
 			var is_building:bool = true
 			
 			var direction_y:int = clampi(y + direction_int,0,voxels[x].size() - 1)
-			var is_chunk_border:bool = false
-			if y == 0 and direction_int == -1 or y >= voxels[x].size() - 1 and direction_int == 1:
-				is_chunk_border = true
+			#var is_chunk_border:bool = false
+			#if y == 0 and direction_int == -1 or y >= voxels[x].size() - 1 and direction_int == 1:
+				#is_chunk_border = true
 				#print("True slayy man x + direction is: ",direction_y)
 			
 			while is_building:
@@ -332,7 +332,7 @@ func _y_build() -> Dictionary:
 				
 				while voxels[x][y].size() - 1 >= z_ending:
 					for x_step:int in x_step_amount:
-						if voxel_array[min(x_step + x,voxels.size() - 2)][y][min(z_ending + 1, voxels.size() - 2)] == 0 or !voxels[x_step - 1 + x][direction_y][min(z_ending + 1, voxels.size() - 2)] == 0 and !is_chunk_border:
+						if voxel_array[min(x_step + x,voxels.size() - 2)][y][min(z_ending + 1, voxels.size() - 2)] == 0 or !voxels[x_step - 1 + x][direction_y][min(z_ending + 1, voxels.size() - 2)] == 0:
 							can_shift = false
 							#print("CANNOT SHIFT BRUV")
 							break
@@ -349,7 +349,7 @@ func _y_build() -> Dictionary:
 				var ending_position:Vector3 = Vector3(x_ending, y, z_ending) * cube_size
 				
 				positions_dict[direction].set(starting_position,ending_position)
-
+			
 			y += 1
 			#print("y = ",y)
 	return positions_dict
@@ -373,9 +373,9 @@ func _z_build() -> Dictionary:
 			var is_building:bool = true
 			
 			var direction_z:int = clampi(z + direction_int,0,voxels[x][y].size() - 1)
-			var is_chunk_border:bool = false
-			if z == 1 and direction_int == -1 or z == voxels[x][y].size() - 2 and direction_int == 1:
-				is_chunk_border = true
+			#var is_chunk_border:bool = false
+			#if z == 1 and direction_int == -1 or z == voxels[x][y].size() - 2 and direction_int == 1:
+				#is_chunk_border = true
 				#print("True slayy man x + direction is: ",direction_z)
 			
 			while is_building:
@@ -411,7 +411,7 @@ func _z_build() -> Dictionary:
 				
 				while voxels.size() -1 > x_ending:
 					for y_step:int in y_step_amount:
-						if voxel_array[min(x_ending + 1, voxels.size() - 2)][min(y_step + y,voxels[x].size() - 1)][z] == 0 or voxels[min(x_ending + 1, voxels.size() - 2)][y_step - 1 + y][direction_z] == 1 and !is_chunk_border:
+						if voxel_array[min(x_ending + 1, voxels.size() - 2)][min(y_step + y,voxels[x].size() - 1)][z] == 0 or voxels[min(x_ending + 1, voxels.size() - 2)][y_step - 1 + y][direction_z] == 1:
 							can_shift = false
 							#print("CANNOT SHIFT BRUV")
 							break

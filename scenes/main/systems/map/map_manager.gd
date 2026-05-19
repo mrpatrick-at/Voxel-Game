@@ -3,8 +3,8 @@ extends Node3D
 ## enums
 ## consts
 static var world_height:int = 20
-static var world_chunk_width:int = 4
-static var world_chunk_length:int = 4
+static var world_chunk_width:int = 16
+static var world_chunk_length:int = 16
 static var chunk_size:int = 16
 const mesh_library = preload("res://scenes/main/mesh_library.meshlib")
 ## exports
