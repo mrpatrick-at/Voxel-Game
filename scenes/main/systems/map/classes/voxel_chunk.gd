@@ -84,13 +84,17 @@ func generate_mesh() -> void:
 			#print("helly eah x",pos,x_positions[direction][pos])
 			faces.append(create_face(direction, pos, x_positions[direction][pos], uvs))
 	
-	
 	var y_positions:Dictionary = _y_build()
 	for direction:Vector3 in y_positions:
 		for pos:Vector3 in y_positions[direction].keys():
 			#print("helly eah y",pos,y_positions[direction][pos])
 			faces.append(create_face(direction, pos, y_positions[direction][pos], uvs))
 	
+	var z_positions:Dictionary = _z_build()
+	for direction:Vector3 in z_positions:
+		for pos:Vector3 in z_positions[direction].keys():
+			#print("helly eah y",pos,y_positions[direction][pos])
+			faces.append(create_face(direction, pos, z_positions[direction][pos], uvs))
 	#for x in range(voxels.size()):
 		#for y in range(voxels[x].size()):
 			#for z in range(voxels[x][y].size()):
@@ -162,8 +166,8 @@ func generate_mesh() -> void:
 
 func _x_build() -> Dictionary:
 	var positions_dict:Dictionary = {
-		Vector3.LEFT : {},
 		Vector3.RIGHT : {},
+		Vector3.LEFT : {},
 	}
 	for direction:Vector3 in positions_dict:
 		var direction_int:int = 1
@@ -200,10 +204,11 @@ func _x_build() -> Dictionary:
 				var y_ending:int = y
 				var y_step_amount:int = 1
 				
-				while voxels.size() > y_ending:
+				while voxels[x].size() > y_ending:
 					voxel_array[x][y_ending][z] = 0
-					
-					if voxel_array[x][min(y_ending + 1,voxels[x].size() - 1)][z] == 0 or !voxels[direction_x][min(y_ending + 1,voxels[x].size() - 1)][z] == 0 and !is_chunk_border: # TODO: Inter Chunk Meshing
+					var next_y_ending:int = min(y_ending + 1, voxels[x].size() - 1)
+						
+					if voxel_array[x][next_y_ending][z] == 0 or !voxels[direction_x][next_y_ending][z] == 0 and !is_chunk_border: # TODO: Inter Chunk Meshing
 						#print("OH GOD WHY")
 						break
 					
@@ -238,8 +243,8 @@ func _x_build() -> Dictionary:
 
 func _y_build() -> Dictionary:
 	var positions_dict:Dictionary = {
-		Vector3.DOWN : {},
 		Vector3.UP : {},
+		Vector3.DOWN : {},
 	}
 	for direction:Vector3 in positions_dict:
 		var direction_int:int = 1
@@ -253,26 +258,33 @@ func _y_build() -> Dictionary:
 			var z:int = 0
 			var is_building:bool = true
 			
+			var direction_y:int = clampi(y + direction_int,0,voxels.size() - 1)
+			var is_chunk_border:bool = false
+			if y == 0 and direction_int == -1 or y == voxels[x].size() - 1 and direction_int == 1:
+				is_chunk_border = true
+				print("True slayy man x + direction is: ",direction_y)
+			
 			while is_building:
 				
-				if x >= voxels.size():
+				if x == voxels.size():
 					x = 0
 					z += 1
-				if z >= voxels[x][y].size():
+				if z == voxels[x][y].size():
 					is_building = false
 					break
 				
-				if voxel_array[x][y][z] == 0 or !voxels[x][y + direction_int][z] == 0:
+				if voxel_array[x][y][z] == 0 or !voxels[x][direction_y][z] == 0 and !is_chunk_border:
 					x += 1
 					continue
 				
 				var x_ending:int = x
 				var x_step_amount:int = 1
 				
-				while voxels.size() - 1 >= x_ending:
+				while voxels.size() > x_ending:
 					voxel_array[x_ending][y][z] = 0
+					var next_x_ending:int = min(x_ending + 1,voxels.size() -1)
 					
-					if voxel_array[min(x_ending + 1,voxels.size() - 1)][y][z] == 0 or !voxels[min(x_ending + 1,voxels.size() - 1)][y + direction_int][z] == 0: # TODO: Inter Chunk Meshing
+					if voxel_array[next_x_ending][y][z] == 0 or !voxels[next_x_ending][direction_y][z] == 0 and !is_chunk_border: # TODO: Inter Chunk Meshing
 						#print("OH GOD WHY")
 						break
 					x_ending += 1
@@ -283,13 +295,14 @@ func _y_build() -> Dictionary:
 				
 				while voxels[x][y].size() - 1 >= z_ending:
 					for x_step:int in x_step_amount:
-						if voxel_array[min(x_step + x,voxels.size() - 1)][y][min(z_ending + 1, voxels.size() - 1)] == 0 or voxels[x_step - 1 + x][y + direction_int][min(z_ending + 1, voxels.size() - 1)] == 1:
+						if voxel_array[min(x_step + x,voxels.size() - 1)][y][min(z_ending + 1, voxels.size() - 1)] == 0 or !voxels[x_step - 1 + x][direction_y][min(z_ending + 1, voxels.size() - 1)] == 0 and !is_chunk_border:
 							can_shift = false
 							#print("CANNOT SHIFT BRUV")
 							break
 					
 					if !can_shift:
 						break
+					
 					for x_step in x_step_amount:
 						voxel_array[min(x_step + x,voxels.size() - 1)][y][min(z_ending + 1, voxels.size() - 1)] = 0
 						
@@ -305,69 +318,79 @@ func _y_build() -> Dictionary:
 
 func _z_build() -> Dictionary:
 	var positions_dict:Dictionary = {
-		Vector3.LEFT : {},
-		Vector3.RIGHT : {},
+		Vector3.BACK : {},
+		Vector3.FORWARD : {},
 	}
-	for direction in positions_dict:
+	for direction:Vector3 in positions_dict:
 		var direction_int:int = 1
-		if direction == Vector3.LEFT:
+		if direction == Vector3.FORWARD:
 			direction_int = -1
 		
 		var voxel_array:Array = voxels.duplicate(true)
 		
-		for h:int in voxels[0].size():
-			var j:int = 0
-			var z:int = 0
+		for z:int in range(voxels.size()):
+			var x:int = 0
+			var y:int = 0
 			var is_building:bool = true
+			
+			var direction_z:int = clampi(z + direction_int,0,voxels[x][y].size() - 1)
+			var is_chunk_border:bool = false
+			if z == 0 and direction_int == -1 or z == voxels[x][y].size() - 1 and direction_int == 1:
+				is_chunk_border = true
+				print("True slayy man x + direction is: ",direction_z)
 			
 			while is_building:
 				
-				if j >= voxels.size():
-					j = 0
-					z += 1
-				if z >= voxels[j][h].size():
+				if x >= voxels.size():
+					x = 0
+					y += 1
+				if y >= voxels[x].size():
 					is_building = false
 					break
 				
-				if voxel_array[j][h][z] == 0 or !voxels[j][h + direction_int][z] == 0: # UP
-					j += 1
+				if voxel_array[x][y][z] == 0 or !voxels[x][y][direction_z] == 0 and !is_chunk_border:
+					#print("EMPTY: ",x," , ",y," , ",z)
+					x += 1
 					continue
 				
-				var x_ending:int = j
-				var x_step_amount:int = 1
+				var y_ending:int = y
+				var y_step_amount:int = 1
 				
-				while voxels.size() - 1 >= x_ending:
-					voxel_array[x_ending][h][z] = 0
-					
-					if voxel_array[min(x_ending + 1,voxels.size() - 1)][h][z] == 0 or !voxels[min(x_ending + 1,voxels.size() - 1)][h + direction_int][z] == 0: # TODO: Inter Chunk Meshing
+				while voxels[x].size() > y_ending:
+					voxel_array[x][y_ending][z] = 0
+					var next_y_ending:int = min(y_ending + 1, voxels[x].size() - 1)
+						
+					if voxel_array[x][next_y_ending][z] == 0 or !voxels[x][next_y_ending][direction_z] == 0 and !is_chunk_border: # TODO: Inter Chunk Meshing
 						#print("OH GOD WHY")
 						break
-					x_ending += 1
-					x_step_amount += 1
+					
+					y_ending += 1
+					y_step_amount += 1
 				
-				var z_ending:int = z
+				var x_ending:int = x
 				var can_shift:bool = true
 				
-				while voxels[j][h].size() - 1 >= z_ending:
-					for x_step:int in x_step_amount:
-						if voxel_array[min(x_step + j,voxels.size() - 1)][h][min(z_ending + 1, voxels.size() - 1)] == 0 or voxels[x_step - 1 + j][h + direction_int][min(z_ending + 1, voxels.size() - 1)] == 1:
+				while voxels.size() > x_ending:
+					for y_step:int in y_step_amount:
+						if voxel_array[min(x_ending + 1, voxels.size() - 1)][min(y_step + y,voxels[x].size() - 1)][z] == 0 or voxels[min(x_ending + 1, voxels.size() - 1)][y_step - 1 + y][direction_z] == 1 and !is_chunk_border:
 							can_shift = false
 							#print("CANNOT SHIFT BRUV")
 							break
 					
 					if !can_shift:
 						break
-					for x_step in x_step_amount:
-						voxel_array[min(x_step + j,voxels.size() - 1)][h][min(z_ending + 1, voxels.size() - 1)] = 0
-						
-					z_ending += 1
+					
+					for y_step in y_step_amount:
+						voxel_array[min(x_ending + 1, voxels.size() - 1)][min(y_step + y,voxels[x].size() - 1)][z] = 0
+					
+					x_ending += 1
 				
-				var starting_position:Vector3 = Vector3(j, h, z) * cube_size
-				var ending_position:Vector3 = Vector3(x_ending, h, z_ending) * cube_size
+				var starting_position:Vector3 = Vector3(x, y, z) * cube_size
+				var ending_position:Vector3 = Vector3(x_ending, y_ending, z) * cube_size
 				
 				positions_dict[direction].set(starting_position,ending_position)
 				
-			#print("h = ",h)
+			#print("x = ",x)
 	return positions_dict
 
 func create_face(direction:Vector3, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary:
@@ -388,17 +411,6 @@ func create_face(direction:Vector3, starting_position:Vector3, ending_position:V
 				ending_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
 				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5,  0.5,  0.5) * cube_size
 			]
-			
-			starting_vertices = [
-				starting_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
-				starting_position + Vector3( 0.5,  0.5, -0.5) * cube_size,
-				starting_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
-			]
-			ending_vertices = [
-				ending_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
-				ending_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
-				ending_position + Vector3(-0.5,  0.5,  0.5) * cube_size
-			]
 			normals.fill(Vector3.UP)
 			uvs = uv_coords
 		
@@ -409,39 +421,7 @@ func create_face(direction:Vector3, starting_position:Vector3, ending_position:V
 				ending_position + Vector3( 0.5, -0.5, 0.5) * cube_size,
 				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5, -0.5, -0.5) * cube_size
 			]
-			
-			starting_vertices = [
-				starting_position + Vector3(-0.5, -0.5,  0.5) * cube_size, # shared 1
-				starting_position + Vector3( 0.5, -0.5,  0.5) * cube_size, # unique
-				starting_position + Vector3( 0.5, -0.5, -0.5) * cube_size, # shared 2
-			]
-			ending_vertices = [
-				ending_position + Vector3(-0.5, -0.5,  0.5) * cube_size, # shared 1
-				ending_position + Vector3( 0.5, -0.5, -0.5) * cube_size, # shared 2
-				ending_position + Vector3(-0.5, -0.5, -0.5) * cube_size # unique
-			]
 			normals.fill(Vector3.DOWN)
-			uvs = uv_coords
-		
-		Vector3.LEFT:
-			vertices = [
-				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size, # Bottom Left
-				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * cube_size, # Top Left
-				ending_position + Vector3(-0.5,  0.5,  0.5) * cube_size, # Top Right
-				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5, -0.5,  0.5) * cube_size # Bottom Right
-			]
-			
-			starting_vertices = [
-				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size,
-				starting_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
-				starting_position + Vector3(-0.5,  0.5,  0.5) * cube_size,
-			]
-			ending_vertices = [
-				ending_position + Vector3(-0.5, -0.5, -0.5) * cube_size,
-				ending_position + Vector3(-0.5,  0.5,  0.5) * cube_size,
-				ending_position + Vector3(-0.5, -0.5,  0.5) * cube_size
-			]
-			normals.fill(Vector3.LEFT)
 			uvs = uv_coords
 		
 		Vector3.RIGHT:
@@ -451,46 +431,37 @@ func create_face(direction:Vector3, starting_position:Vector3, ending_position:V
 				ending_position + Vector3(0.5,  0.5,  0.5) * cube_size, # Top Right
 				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5,  0.5, -0.5) * cube_size, # Top Left
 			]
-			
-			starting_vertices = [
-				starting_position + Vector3( 0.5, -0.5,  0.5) * cube_size,
-				starting_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
-				starting_position + Vector3( 0.5,  0.5, -0.5) * cube_size,
-			]
-			ending_vertices = [
-				ending_position + Vector3( 0.5, -0.5,  0.5) * cube_size,
-				ending_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
-				ending_position + Vector3( 0.5,  0.5, -0.5) * cube_size,
-			]
 			normals.fill(Vector3.RIGHT)
 			uvs = uv_coords
-		
-		Vector3.FORWARD:
-			starting_vertices = [
-				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size,
-				starting_position + Vector3( 0.5, -0.5, -0.5) * cube_size,
-				starting_position + Vector3( 0.5,  0.5, -0.5) * cube_size,
+			
+		Vector3.LEFT:
+			vertices = [
+				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size, # Bottom Left
+				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * cube_size, # Top Left
+				ending_position + Vector3(-0.5,  0.5,  0.5) * cube_size, # Top Right
+				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5, -0.5,  0.5) * cube_size # Bottom Right
 			]
-			ending_vertices = [
-				ending_position + Vector3(-0.5, -0.5, -0.5) * cube_size,
-				ending_position + Vector3( 0.5,  0.5, -0.5) * cube_size,
-				ending_position + Vector3(-0.5,  0.5, -0.5) * cube_size
-			]
-			normals.fill(Vector3.FORWARD)
+			normals.fill(Vector3.LEFT)
 			uvs = uv_coords
 		
 		Vector3.BACK:
-			starting_vertices = [
-				starting_position + Vector3(-0.5,  0.5,  0.5) * cube_size,
-				starting_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
-				starting_position + Vector3( 0.5, -0.5,  0.5) * cube_size,
-			]
-			ending_vertices = [
-				ending_position + Vector3(-0.5,  0.5,  0.5) * cube_size,
-				ending_position + Vector3( 0.5, -0.5,  0.5) * cube_size,
-				ending_position + Vector3(-0.5, -0.5,  0.5) * cube_size
+			vertices = [
+				starting_position + Vector3(-0.5, -0.5, 0.5) * cube_size, # Bottom Left
+				Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, 0.5) * cube_size, # Top Left
+				ending_position + Vector3(0.5,  0.5,  0.5) * cube_size, # Top Right
+				Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  0.5) * cube_size # Bottom Right
 			]
 			normals.fill(Vector3.BACK)
+			uvs = uv_coords
+		
+		Vector3.FORWARD:
+			vertices = [
+				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size, # Bottom Left
+				Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  -0.5) * cube_size, # Bottom Right
+				ending_position + Vector3(0.5,  0.5,  -0.5) * cube_size, # Top Right
+				Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * cube_size, # Top Left
+			]
+			normals.fill(Vector3.FORWARD)
 			uvs = uv_coords
 	
 	return {
