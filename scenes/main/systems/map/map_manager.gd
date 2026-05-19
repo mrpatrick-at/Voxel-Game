@@ -1,10 +1,10 @@
 extends Node3D
 ## enums
 ## consts
-const world_height:int = 20
-const world_chunk_width:int = 16
-const world_chunk_length:int = 16
-const chunk_size:int = 16
+static var world_height:int = 20
+static var world_chunk_width:int = 16
+static var world_chunk_length:int = 16
+static var chunk_size:int = 16
 const mesh_library = preload("res://scenes/main/mesh_library.meshlib")
 ## exports
 ## public vars
@@ -58,7 +58,9 @@ func _make_map(is_generating:bool) -> void:
 		child.queue_free()
 	print("_MAKE_MAP- Deleted %s children"%children.size())
 	
-	#if is_generating:
+	if is_generating:
+		seed = randi()
+		_make_noise()
 		## Delete Old Saved Data
 		#Scripts.MAP_DATA.delete_data()
 		#DirAccess.remove_absolute("user://gamedata/chunkdata/")
@@ -70,9 +72,6 @@ func _make_map(is_generating:bool) -> void:
 	
 	#if not DirAccess.dir_exists_absolute("user://gamedata/"):
 		#DirAccess.make_dir_absolute("user://gamedata/")
-	
-	seed = randi()
-	_make_noise()
 	
 	var noise_texture:NoiseTexture2D = NoiseTexture2D.new()
 	noise_texture.width = world_chunk_width * chunk_size

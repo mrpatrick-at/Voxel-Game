@@ -8,16 +8,16 @@ class_name VoxelChunk
 ## public vars
 var cube_mesh: ArrayMesh
 var voxels:Array = []
-var uvs:Array = [0,0,0,0,0,0]
+var placeholder_uvs:Array = [0,0,0,0,0,0]
 ## private vars
 ## onready vars
 # obj_ for node refrences
 ## built-in override methods
 ## public methods
 
-func _ready() -> void:
-	if Engine.is_editor_hint():
-		setup(Vector2i.ZERO,16,20,FastNoiseLite.new())
+#func _ready() -> void:
+	#if Engine.is_editor_hint():
+		#setup(Vector2i.ZERO,16,20,FastNoiseLite.new())
 
 func setup(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> void:
 	var start_time := Time.get_ticks_usec()
@@ -49,11 +49,10 @@ func make_chunk(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:Fa
 	for x:int in chunk_size:
 		for z:int in chunk_size:
 			var pixel_data:float = -noise.get_noise_2d(x + chunk_coord.x * chunk_size, z + chunk_coord.y * chunk_size)
-			var tile_height:int = snappedi((pixel_data + 1) * 0.5 * world_height,1)
-			int()
+			var tile_height:int = int((pixel_data + 1) * 0.5 * world_height + 1)
 			
 			for y in world_height:
-				if y - 1 < tile_height: # CAUTION Temp fix: y + 1. Fixes Tiles at height 0 not exisitng. Improve later (or maybe this is best solution idk)
+				if y < tile_height:
 					voxel_array[x][y][z] = 1
 					continue
 				voxel_array[x][y][z] = 0
@@ -69,34 +68,23 @@ func generate_mesh() -> void:
 	var horizontal_bitmap:BitMap = BitMap.new()
 	horizontal_bitmap.resize(Vector2i(64,64))
 	
-	#var bitmap:BitMap = BitMap.new()
-	#bitmap.resize(Vector2i(15,15))
-	#
-	#for x in range(voxels.size()):
-		#for y in range(voxels[x].size()):
-			#for z in range(voxels[x][y].size()):
-				#if voxels[x][0][z] == 1:
-					#bitmap.set_bit(x,z,true)
-				#else:
-					#bitmap.set_bit(x,z,false)
-				#pass
 	var x_positions:Dictionary = _x_build()
 	for direction:Vector3 in x_positions:
 		for pos:Vector3 in x_positions[direction].keys():
 			#print("helly eah x",pos,x_positions[direction][pos])
-			faces.append(create_face(direction, pos, x_positions[direction][pos], uvs))
+			faces.append(create_face(direction, pos, x_positions[direction][pos], placeholder_uvs))
 	
 	var y_positions:Dictionary = _y_build()
 	for direction:Vector3 in y_positions:
 		for pos:Vector3 in y_positions[direction].keys():
 			#print("helly eah y",pos,y_positions[direction][pos])
-			faces.append(create_face(direction, pos, y_positions[direction][pos], uvs))
+			faces.append(create_face(direction, pos, y_positions[direction][pos], placeholder_uvs))
 	
 	var z_positions:Dictionary = _z_build()
 	for direction:Vector3 in z_positions:
 		for pos:Vector3 in z_positions[direction].keys():
 			#print("helly eah y",pos,y_positions[direction][pos])
-			faces.append(create_face(direction, pos, z_positions[direction][pos], uvs))
+			faces.append(create_face(direction, pos, z_positions[direction][pos], placeholder_uvs))
 	
 	var vertices:Array = []
 	var normals:Array = []
@@ -120,9 +108,95 @@ func generate_mesh() -> void:
 	cube_mesh = ArrayMesh.new()
 	cube_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	self.mesh = cube_mesh
-	
+
 	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	#print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
+
+func create_face(direction:Vector3, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary:
+	var normals:Array = []
+	var uvs:Array = []
+	
+	normals.resize(4)
+	
+	var vertices:Array = []
+	
+	match direction:
+		Vector3.UP:
+			vertices = [
+				starting_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
+				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3( 0.5,  0.5, -0.5) * cube_size,
+				ending_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
+				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5,  0.5,  0.5) * cube_size
+			]
+			normals.fill(Vector3.UP)
+			uvs = uv_coords
+		
+		Vector3.DOWN:
+			vertices = [
+				starting_position + Vector3(-0.5, -0.5,  -0.5) * cube_size,
+				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3( -0.5, -0.5,  0.5) * cube_size,
+				ending_position + Vector3( 0.5, -0.5, 0.5) * cube_size,
+				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5, -0.5, -0.5) * cube_size
+			]
+			normals.fill(Vector3.DOWN)
+			uvs = uv_coords
+		
+		Vector3.RIGHT:
+			vertices = [
+				starting_position + Vector3(0.5, -0.5, -0.5) * cube_size, # Bottom Left
+				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  0.5) * cube_size, # Bottom Right
+				ending_position + Vector3(0.5,  0.5,  0.5) * cube_size, # Top Right
+				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5,  0.5, -0.5) * cube_size, # Top Left
+			]
+			normals.fill(Vector3.RIGHT)
+			uvs = uv_coords
+			
+		Vector3.LEFT:
+			vertices = [
+				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size, # Bottom Left
+				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * cube_size, # Top Left
+				ending_position + Vector3(-0.5,  0.5,  0.5) * cube_size, # Top Right
+				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5, -0.5,  0.5) * cube_size # Bottom Right
+			]
+			normals.fill(Vector3.LEFT)
+			uvs = uv_coords
+		
+		Vector3.BACK:
+			vertices = [
+				starting_position + Vector3(-0.5, -0.5, 0.5) * cube_size, # Bottom Left
+				Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, 0.5) * cube_size, # Top Left
+				ending_position + Vector3(0.5,  0.5,  0.5) * cube_size, # Top Right
+				Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  0.5) * cube_size # Bottom Right
+			]
+			normals.fill(Vector3.BACK)
+			uvs = uv_coords
+		
+		Vector3.FORWARD:
+			vertices = [
+				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size, # Bottom Left
+				Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  -0.5) * cube_size, # Bottom Right
+				ending_position + Vector3(0.5,  0.5,  -0.5) * cube_size, # Top Right
+				Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * cube_size, # Top Left
+			]
+			normals.fill(Vector3.FORWARD)
+			uvs = uv_coords
+	
+	return {
+		"vertices" : [
+			vertices[0], vertices[1], vertices[2],
+			vertices[0], vertices[2], vertices[3],
+		],
+		"normals" : [
+			normals[0], normals[1], normals[2],
+			normals[0], normals[2], normals[3],
+		],
+		"uvs" : [
+			uvs[0], uvs[1], uvs[2],
+			uvs[0], uvs[2], uvs[3],
+		]
+	}
+
+## private methods
 
 func _x_build() -> Dictionary:
 	var positions_dict:Dictionary = {
@@ -352,90 +426,3 @@ func _z_build() -> Dictionary:
 				
 			#print("x = ",x)
 	return positions_dict
-
-func create_face(direction:Vector3, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary:
-	var starting_vertices:Array = []
-	var ending_vertices:Array = []
-	var normals:Array = []
-	var uvs:Array = []
-	
-	normals.resize(4)
-	
-	var vertices:Array = []
-	
-	match direction:
-		Vector3.UP:
-			vertices = [
-				starting_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
-				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3( 0.5,  0.5, -0.5) * cube_size,
-				ending_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
-				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5,  0.5,  0.5) * cube_size
-			]
-			normals.fill(Vector3.UP)
-			uvs = uv_coords
-		
-		Vector3.DOWN:
-			vertices = [
-				starting_position + Vector3(-0.5, -0.5,  -0.5) * cube_size,
-				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3( -0.5, -0.5,  0.5) * cube_size,
-				ending_position + Vector3( 0.5, -0.5, 0.5) * cube_size,
-				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5, -0.5, -0.5) * cube_size
-			]
-			normals.fill(Vector3.DOWN)
-			uvs = uv_coords
-		
-		Vector3.RIGHT:
-			vertices = [
-				starting_position + Vector3(0.5, -0.5, -0.5) * cube_size, # Bottom Left
-				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  0.5) * cube_size, # Bottom Right
-				ending_position + Vector3(0.5,  0.5,  0.5) * cube_size, # Top Right
-				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5,  0.5, -0.5) * cube_size, # Top Left
-			]
-			normals.fill(Vector3.RIGHT)
-			uvs = uv_coords
-			
-		Vector3.LEFT:
-			vertices = [
-				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size, # Bottom Left
-				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * cube_size, # Top Left
-				ending_position + Vector3(-0.5,  0.5,  0.5) * cube_size, # Top Right
-				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5, -0.5,  0.5) * cube_size # Bottom Right
-			]
-			normals.fill(Vector3.LEFT)
-			uvs = uv_coords
-		
-		Vector3.BACK:
-			vertices = [
-				starting_position + Vector3(-0.5, -0.5, 0.5) * cube_size, # Bottom Left
-				Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, 0.5) * cube_size, # Top Left
-				ending_position + Vector3(0.5,  0.5,  0.5) * cube_size, # Top Right
-				Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  0.5) * cube_size # Bottom Right
-			]
-			normals.fill(Vector3.BACK)
-			uvs = uv_coords
-		
-		Vector3.FORWARD:
-			vertices = [
-				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size, # Bottom Left
-				Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  -0.5) * cube_size, # Bottom Right
-				ending_position + Vector3(0.5,  0.5,  -0.5) * cube_size, # Top Right
-				Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * cube_size, # Top Left
-			]
-			normals.fill(Vector3.FORWARD)
-			uvs = uv_coords
-	
-	return {
-		"vertices" : [
-			vertices[0], vertices[1], vertices[2],
-			vertices[0], vertices[2], vertices[3],
-		],
-		"normals" : [
-			normals[0], normals[1], normals[2],
-			normals[0], normals[2], normals[3],
-		],
-		"uvs" : [
-			uvs[0], uvs[1], uvs[2],
-			uvs[0], uvs[2], uvs[3],
-		]
-	}
-## private methods
