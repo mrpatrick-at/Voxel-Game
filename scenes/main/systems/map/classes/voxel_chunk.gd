@@ -16,11 +16,12 @@ var uvs:Array = [0,0,0,0,0,0]
 ## public methods
 
 func _ready() -> void:
-	setup(Vector2i.ZERO,16,20,FastNoiseLite.new())
+	if Engine.is_editor_hint():
+		setup(Vector2i.ZERO,16,20,FastNoiseLite.new())
 
 func setup(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> void:
 	var start_time := Time.get_ticks_usec()
-	print("Voxel_Chunk- Setup Called")
+	print("Voxel_Chunk- Chunk %s Called Setup"%chunk_coord)
 	
 	global_position = Vector3(chunk_coord.x << 4, 0, chunk_coord.y << 4)
 	
@@ -29,10 +30,10 @@ func setup(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:FastNoi
 	generate_mesh()
 	
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
-	print("Voxel_Chunk- Chunk Made in: %s msec"%time_taken)
+	print("Voxel_Chunk- Chunk %s Made in: %s msec"%[chunk_coord,time_taken])
 
 func make_chunk(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> Array:
-	var start_time := Time.get_ticks_usec()
+	#var start_time := Time.get_ticks_usec()
 	
 	var voxel_array:Array = []
 	voxel_array.resize(chunk_size)
@@ -48,7 +49,8 @@ func make_chunk(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:Fa
 	for x:int in chunk_size:
 		for z:int in chunk_size:
 			var pixel_data:float = -noise.get_noise_2d(x + chunk_coord.x * chunk_size, z + chunk_coord.y * chunk_size)
-			var tile_height:int = snappedi(pixel_data*10,1) + 10
+			var tile_height:int = snappedi((pixel_data + 1) * 0.5 * world_height,1)
+			int()
 			
 			for y in world_height:
 				if y - 1 < tile_height: # CAUTION Temp fix: y + 1. Fixes Tiles at height 0 not exisitng. Improve later (or maybe this is best solution idk)
@@ -56,12 +58,12 @@ func make_chunk(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:Fa
 					continue
 				voxel_array[x][y][z] = 0
 	
-	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
-	print("Voxel_Chunk- Chunk Data Made in: %s msec"%time_taken)
+	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	#print("Voxel_Chunk- Chunk Data Made in: %s msec"%time_taken)
 	return voxel_array
 
 func generate_mesh() -> void:
-	var start_time := Time.get_ticks_usec()
+	#var start_time := Time.get_ticks_usec()
 	var faces:Array = []
 	
 	var horizontal_bitmap:BitMap = BitMap.new()
@@ -95,48 +97,6 @@ func generate_mesh() -> void:
 		for pos:Vector3 in z_positions[direction].keys():
 			#print("helly eah y",pos,y_positions[direction][pos])
 			faces.append(create_face(direction, pos, z_positions[direction][pos], uvs))
-	#for x in range(voxels.size()):
-		#for y in range(voxels[x].size()):
-			#for z in range(voxels[x][y].size()):
-				#if voxels[x][y][z] == 0:
-					#continue
-				#
-				#var starting_position:Vector3 = Vector3(x, y, z) * cube_size
-				#
-				#var ending_position:Vector3 = Vector3(x, y, z) * cube_size
-				#
-				#var z_ending_position:Vector3 = Vector3(x, y, z) * cube_size
-				#var z_offset:int = z
-				#
-				#while z_offset < 15 and !visited_z.has(Vector3(x, y, z_offset)):
-					#visited_z[Vector3(x, y, z_offset)] = true
-					#
-					#if voxels[x][y][z] == 1:
-						#
-						#if  voxels[x][y][z_offset] == 0:
-							#z_ending_position = Vector3(x, y, z_offset) * cube_size
-							#faces.append(create_face(Vector3.DOWN, starting_position, z_ending_position, uvs))
-						#
-					#z_offset += 1
-					#
-				#
-				#if x == 0 or voxels[x - 1][y][z] == 0:
-					#faces.append(create_face(Vector3.LEFT, starting_position, ending_position, uvs))
-				#
-				#if x == voxels.size() - 1 or voxels[x + 1][y][z] == 0:
-					#faces.append(create_face(Vector3.RIGHT, starting_position, ending_position, uvs))
-				#
-				#if y == 0 or voxels[x][y - 1][z] == 0:
-					#faces.append(create_face(Vector3.DOWN, starting_position, ending_position, uvs))
-				#
-				#if y == voxels[x].size() - 1 or voxels[x][y + 1][z] == 0:
-					#faces.append(create_face(Vector3.UP, starting_position, ending_position, uvs))
-				#
-				#if z == 0 or voxels[x][y][z - 1] == 0:
-					#faces.append(create_face(Vector3.FORWARD, starting_position, ending_position, uvs))
-				#
-				#if z == voxels.size() - 1 or voxels[x][y][z + 1] == 0:
-					#faces.append(create_face(Vector3.BACK, starting_position, ending_position, uvs))
 	
 	var vertices:Array = []
 	var normals:Array = []
@@ -161,8 +121,8 @@ func generate_mesh() -> void:
 	cube_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	self.mesh = cube_mesh
 	
-	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
-	print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
+	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	#print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
 
 func _x_build() -> Dictionary:
 	var positions_dict:Dictionary = {
@@ -185,7 +145,7 @@ func _x_build() -> Dictionary:
 			var is_chunk_border:bool = false
 			if x == 0 and direction_int == -1 or x == voxels.size() - 1 and direction_int == 1:
 				is_chunk_border = true
-				print("True slayy man x + direction is: ",direction_x)
+				#print("True slayy man x + direction is: ",direction_x)
 			
 			while is_building:
 				
@@ -253,16 +213,16 @@ func _y_build() -> Dictionary:
 		
 		var voxel_array:Array = voxels.duplicate(true)
 		
-		for y:int in range(voxels[0].size()):
+		for y:int in voxels[0].size():
 			var x:int = 0
 			var z:int = 0
 			var is_building:bool = true
 			
-			var direction_y:int = clampi(y + direction_int,0,voxels.size() - 1)
+			var direction_y:int = clampi(y + direction_int,0,voxels[x].size() - 1)
 			var is_chunk_border:bool = false
-			if y == 0 and direction_int == -1 or y == voxels[x].size() - 1 and direction_int == 1:
+			if y == 0 and direction_int == -1 or y >= voxels[x].size() - 1 and direction_int == 1:
 				is_chunk_border = true
-				print("True slayy man x + direction is: ",direction_y)
+				#print("True slayy man x + direction is: ",direction_y)
 			
 			while is_building:
 				
@@ -337,7 +297,7 @@ func _z_build() -> Dictionary:
 			var is_chunk_border:bool = false
 			if z == 0 and direction_int == -1 or z == voxels[x][y].size() - 1 and direction_int == 1:
 				is_chunk_border = true
-				print("True slayy man x + direction is: ",direction_z)
+				#print("True slayy man x + direction is: ",direction_z)
 			
 			while is_building:
 				
