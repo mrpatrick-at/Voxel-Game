@@ -3,8 +3,8 @@ extends Node3D
 ## enums
 ## consts
 static var world_height:int = 20
-static var world_chunk_width:int = 16
-static var world_chunk_length:int = 16
+static var world_chunk_width:int = 64
+static var world_chunk_length:int = 64
 static var chunk_size:int = 16
 const mesh_library = preload("res://scenes/main/mesh_library.meshlib")
 ## exports
@@ -34,19 +34,17 @@ func _on_button_load_pressed() -> void:
 
 ## public methods
 
-static func get_chunk_coords(global_pos: Vector3i) -> Vector2i:
-	# Shift right by 7 is equivalent to dividing by 128 (128 cuz each tile is 2 so 2*64)..
-	return Vector2i(global_pos.x >> 7, global_pos.y >> 7)
+static func get_chunk_coords(global_pos: Vector3i) -> Vector3i:
+	return Vector3i(global_pos.x * chunk_size, 0, global_pos.z * chunk_size)
 
-static func get_local_coords(global_pos: Vector3i) -> Vector2i:
-	return Vector2i(global_pos.x & 127, global_pos.y & 127)
+static func get_local_coords(global_pos: Vector3i) -> Vector3i:
+	return Vector3i(global_pos.x & chunk_size, 0, global_pos.z & chunk_size)
 
-static func local_to_global_coords(chunk_pos:Vector2i,local_pos:Vector2i) -> Vector3i:
-	# Shift left by 7 is equivalent to multiplying by 128 (128 cuz each tile is 2 so 2*64).
-	var global_x := (chunk_pos.x << 7) | local_pos.x
-	var global_y := (chunk_pos.y << 7) | local_pos.y
+static func local_to_global_coords(chunk_pos:Vector2i,local_pos:Vector3i) -> Vector3i:
+	var global_x := (chunk_pos.x * chunk_size) | local_pos.x
+	var global_z := (chunk_pos.y * chunk_size) | local_pos.z
 	
-	return Vector3i(global_x, global_y, 0)
+	return Vector3i(global_x, 0, global_z)
 
 ## private methods
 
