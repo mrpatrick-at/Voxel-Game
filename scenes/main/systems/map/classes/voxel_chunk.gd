@@ -74,7 +74,7 @@ func check_faces() -> Dictionary:
 		Vector3.FORWARD : [],
 	}
 	
-	for x:int in range(voxels.size() - 1):
+	for x:int in range(voxels.size() - 2):
 		for y:int in range(voxels.size() - 1):
 			for z:int in range(voxels.size() - 1):
 				if voxels[x][y][z] == 0:
@@ -103,9 +103,62 @@ func check_faces() -> Dictionary:
 	#print("Voxel_Chunk- Checked Faces in: %s msec"%time_taken)
 	return faces_dict
 
-func greedy_mesher() -> Dictionary:
+func greedy_mesher(faces_dict:Dictionary) -> Dictionary:
+	var positions:Dictionary = {}
 	
-	return {}
+	for direction:Vector3 in faces_dict:
+		positions[direction] = {}
+		
+		var first_next_tile:Vector3
+		var second_next_tile:Vector3
+		
+		if direction == Vector3.RIGHT or direction == Vector3.LEFT:
+			first_next_tile = Vector3.UP
+			second_next_tile = Vector3.BACK
+		
+		if direction == Vector3.UP or direction == Vector3.DOWN:
+			first_next_tile = Vector3.RIGHT
+			second_next_tile = Vector3.BACK
+		
+		if direction == Vector3.BACK or direction == Vector3.FORWARD:
+			first_next_tile = Vector3.UP
+			second_next_tile = Vector3.RIGHT
+		
+		for pos:Vector3 in faces_dict[direction]:
+			var ending_pos:Vector3 = pos
+			
+			var next_tile_array:Array = [pos]
+			
+			while faces_dict[direction].has(ending_pos + first_next_tile):
+				ending_pos += first_next_tile
+				next_tile_array.append(ending_pos)
+				faces_dict[direction].erase(ending_pos)
+			
+			var can_shift:bool = true
+			var next_shift:Vector3 = second_next_tile
+			
+			while faces_dict[direction].has(ending_pos + second_next_tile):
+				for tile:Vector3 in next_tile_array:
+					
+					if faces_dict[direction].has(tile + next_shift):
+						continue
+					
+					can_shift = false
+					break
+				
+				if !can_shift:
+					break
+				
+				for tile:Vector3 in next_tile_array:
+					faces_dict[direction].erase(tile + next_shift)
+				
+				ending_pos += second_next_tile
+				next_shift += second_next_tile
+			
+			positions[direction].set(pos,ending_pos)
+	
+	print(faces_dict)
+	return positions
 
 func generate_mesh(faces_dict:Dictionary) -> void:
 	#var start_time := Time.get_ticks_usec()
@@ -114,10 +167,11 @@ func generate_mesh(faces_dict:Dictionary) -> void:
 	var horizontal_bitmap:BitMap = BitMap.new()
 	horizontal_bitmap.resize(Vector2i(64,64))
 	
-	for direction:Vector3 in faces_dict:
-		for pos:Vector3 in faces_dict[direction]:
+	var positions:Dictionary = greedy_mesher(faces_dict)
+	for direction:Vector3 in positions:
+		for pos:Vector3 in positions[direction]:
 			#print("helly eah x",pos,x_positions[direction][pos])
-			faces.append(create_face(direction, pos, pos, placeholder_uvs))
+			faces.append(create_face(direction, pos, positions[direction][pos], placeholder_uvs))
 	
 	#var x_positions:Dictionary = _x_build()
 	#for direction:Vector3 in x_positions:
