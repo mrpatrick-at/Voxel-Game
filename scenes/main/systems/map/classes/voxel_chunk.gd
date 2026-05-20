@@ -27,7 +27,9 @@ func setup(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:FastNoi
 	
 	voxels = make_chunk(chunk_coord, chunk_size, world_height, noise)
 	
-	generate_mesh()
+	var faces_dict:Dictionary = check_faces()
+	
+	generate_mesh(faces_dict)
 	
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	print("Voxel_Chunk- Chunk %s Made in: %s msec"%[chunk_coord,time_taken])
@@ -61,30 +63,79 @@ func make_chunk(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:Fa
 	#print("Voxel_Chunk- Chunk Data Made in: %s msec"%time_taken)
 	return voxel_array
 
-func generate_mesh() -> void:
+func check_faces() -> Dictionary:
+	#var start_time := Time.get_ticks_usec()
+	var faces_dict:Dictionary = {
+		Vector3.RIGHT : [],
+		Vector3.LEFT : [],
+		Vector3.UP : [],
+		Vector3.DOWN : [],
+		Vector3.BACK : [],
+		Vector3.FORWARD : [],
+	}
+	
+	for x:int in range(voxels.size() - 1):
+		for y:int in range(voxels.size() - 1):
+			for z:int in range(voxels.size() - 1):
+				if voxels[x][y][z] == 0:
+					
+					if voxels[x + 1][y][z] != 0:
+						faces_dict[Vector3.LEFT].append(Vector3(x + 1,y,z))
+				
+					if voxels[x][y + 1][z] != 0:
+						faces_dict[Vector3.DOWN].append(Vector3(x,y + 1,z))
+					
+					if voxels[x][y][z + 1] != 0:
+						faces_dict[Vector3.FORWARD].append(Vector3(x,y,z + 1))
+					
+					continue
+				
+				if voxels[x + 1][y][z] == 0:
+					faces_dict[Vector3.RIGHT].append(Vector3(x, y, z))
+				
+				if voxels[x][y + 1][z] == 0:
+					faces_dict[Vector3.UP].append(Vector3(x, y, z))
+				
+				if voxels[x][y][z + 1] == 0:
+					faces_dict[Vector3.BACK].append(Vector3(x, y, z))
+	
+	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	#print("Voxel_Chunk- Checked Faces in: %s msec"%time_taken)
+	return faces_dict
+
+func greedy_mesher() -> Dictionary:
+	
+	return {}
+
+func generate_mesh(faces_dict:Dictionary) -> void:
 	#var start_time := Time.get_ticks_usec()
 	var faces:Array = []
 	
 	var horizontal_bitmap:BitMap = BitMap.new()
 	horizontal_bitmap.resize(Vector2i(64,64))
 	
-	var x_positions:Dictionary = _x_build()
-	for direction:Vector3 in x_positions:
-		for pos:Vector3 in x_positions[direction].keys():
+	for direction:Vector3 in faces_dict:
+		for pos:Vector3 in faces_dict[direction]:
 			#print("helly eah x",pos,x_positions[direction][pos])
-			faces.append(create_face(direction, pos, x_positions[direction][pos], placeholder_uvs))
+			faces.append(create_face(direction, pos, pos, placeholder_uvs))
 	
-	var y_positions:Dictionary = _y_build()
-	for direction:Vector3 in y_positions:
-		for pos:Vector3 in y_positions[direction].keys():
-			#print("helly eah y",pos,y_positions[direction][pos])
-			faces.append(create_face(direction, pos, y_positions[direction][pos], placeholder_uvs))
-	
-	var z_positions:Dictionary = _z_build()
-	for direction:Vector3 in z_positions:
-		for pos:Vector3 in z_positions[direction].keys():
-			#print("helly eah y",pos,y_positions[direction][pos])
-			faces.append(create_face(direction, pos, z_positions[direction][pos], placeholder_uvs))
+	#var x_positions:Dictionary = _x_build()
+	#for direction:Vector3 in x_positions:
+		#for pos:Vector3 in x_positions[direction].keys():
+			##print("helly eah x",pos,x_positions[direction][pos])
+			#faces.append(create_face(direction, pos, x_positions[direction][pos], placeholder_uvs))
+	#
+	#var y_positions:Dictionary = _y_build()
+	#for direction:Vector3 in y_positions:
+		#for pos:Vector3 in y_positions[direction].keys():
+			##print("helly eah y",pos,y_positions[direction][pos])
+			#faces.append(create_face(direction, pos, y_positions[direction][pos], placeholder_uvs))
+	#
+	#var z_positions:Dictionary = _z_build()
+	#for direction:Vector3 in z_positions:
+		#for pos:Vector3 in z_positions[direction].keys():
+			##print("helly eah y",pos,y_positions[direction][pos])
+			#faces.append(create_face(direction, pos, z_positions[direction][pos], placeholder_uvs))
 	
 	var vertices:Array = []
 	var normals:Array = []
