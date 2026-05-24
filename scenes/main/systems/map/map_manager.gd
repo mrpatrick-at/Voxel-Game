@@ -2,15 +2,16 @@
 extends Node3D
 ## enums
 ## consts
-static var world_height:int = 20
-static var world_chunk_width:int = 64
-static var world_chunk_length:int = 64
-static var chunk_size:int = 16
+const world_height:int = 20
+const world_width_in_chunks:int = 1
+const world_length_in_chunks:int = 1
+const chunk_size:int = 16
 const mesh_library = preload("res://scenes/main/mesh_library.meshlib")
 ## exports
 ## public vars
 static var seed:int
 static var noise:FastNoiseLite
+static var chunks:Dictionary
 ## private vars
 ## onready vars
 @onready var noise_viewer: TextureRect = $"../IngameUI/PanelContainer/VBoxContainer/NoiseViewer"
@@ -74,21 +75,21 @@ func _make_map(is_generating:bool) -> void:
 		#DirAccess.make_dir_absolute("user://gamedata/")
 	
 	var noise_texture:NoiseTexture2D = NoiseTexture2D.new()
-	noise_texture.width = world_chunk_width * chunk_size
-	noise_texture.height = world_chunk_length * chunk_size
+	noise_texture.width = world_width_in_chunks * chunk_size
+	noise_texture.height = world_length_in_chunks * chunk_size
 	noise_texture.generate_mipmaps = false
 	noise_texture.invert = true
 	noise_texture.noise = noise
 	noise_viewer.texture = noise_texture
 	
-	for chunk_x in world_chunk_length:
-		for chunk_y in world_chunk_width:
+	for chunk_x in world_length_in_chunks:
+		for chunk_y in world_width_in_chunks:
 			var chunk_coord := Vector2i(chunk_x, chunk_y)
 			
-			var new_chunk:= VoxelChunk.new()
-			add_child(new_chunk)
-			new_chunk.setup(chunk_coord, chunk_size, world_height, noise)
-			Scripts.MAP_DATA.chunks[chunk_coord] = new_chunk
+			var chunk_res:= VoxelChunk.new()
+			add_child(chunk_res)
+			chunk_res.setup(chunk_coord, chunk_size, world_height, noise)
+			chunks[chunk_coord] = chunk_res
 	
 	#Scripts.MAP_DATA.save_data()
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0

@@ -77,7 +77,7 @@ func check_faces() -> Dictionary:
 	
 	for x:int in range(voxels.size() - 2):
 		for y:int in range(voxels[x].size() - 1):
-			for z:int in range(voxels[x][y].size() - 1):
+			for z:int in range(voxels[x][y].size() - 2):
 				if voxels[x][y][z] == 0:
 					
 					if voxels[x + 1][y][z] != 0:
