@@ -2,9 +2,10 @@
 extends Node3D
 ## enums
 ## consts
-const world_height:int = 20
-const world_width_in_chunks:int = 1
-const world_length_in_chunks:int = 1
+const world_width_in_chunks:int = 16
+const world_heighth_in_chunks:int = 5
+const world_length_in_chunks:int = 16
+
 const chunk_size:int = 16
 const mesh_library = preload("res://scenes/main/mesh_library.meshlib")
 ## exports
@@ -82,14 +83,17 @@ func _make_map(is_generating:bool) -> void:
 	noise_texture.noise = noise
 	noise_viewer.texture = noise_texture
 	
+	var world_height:int = world_heighth_in_chunks * chunk_size
+	
 	for chunk_x in world_length_in_chunks:
-		for chunk_y in world_width_in_chunks:
-			var chunk_coord := Vector2i(chunk_x, chunk_y)
-			
-			var chunk_res:= VoxelChunk.new()
-			add_child(chunk_res)
-			chunk_res.setup(chunk_coord, chunk_size, world_height, noise)
-			chunks[chunk_coord] = chunk_res
+		for chunk_y in world_heighth_in_chunks:
+			for chunk_z in world_width_in_chunks:
+				var chunk_coord := Vector3i(chunk_x, chunk_y, chunk_z)
+				
+				var chunk_res:= VoxelChunk.new()
+				add_child(chunk_res)
+				chunk_res.setup(chunk_coord, chunk_size, world_height, noise)
+				chunks[chunk_coord] = chunk_res
 	
 	#Scripts.MAP_DATA.save_data()
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0

@@ -16,26 +16,30 @@ var placeholder_uvs:Array = [0,0,0,0,0,0]
 ## built-in override methods
 ## public methods
 
-#func _ready() -> void:
-	#if Engine.is_editor_hint():
-		#setup(Vector2i.ZERO,16,20,FastNoiseLite.new())
-
-func setup(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> void:
+func setup(chunk_coord:Vector3i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> void:
 	var start_time := Time.get_ticks_usec()
 	print("Voxel_Chunk- Chunk %s Called Setup"%chunk_coord)
 	
-	global_position = Vector3(chunk_coord.x * chunk_size, 0, chunk_coord.y * chunk_size)
+	global_position = Vector3(chunk_coord.x * chunk_size, chunk_coord.y * chunk_size, chunk_coord.z * chunk_size)
 	
 	voxels = make_chunk(chunk_coord, chunk_size, world_height, noise)
 	
 	face_data = check_faces()
 	
-	generate_mesh()
+	var has_faces:bool = false
+	
+	for direction:Vector3 in face_data:
+		if !face_data[direction].is_empty():
+			has_faces = true
+			break
+	
+	if has_faces:
+		generate_mesh()
 	
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	print("Voxel_Chunk- Chunk %s Made in: %s msec"%[chunk_coord,time_taken])
 
-func make_chunk(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> Array:
+func make_chunk(chunk_coord:Vector3i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> Array:
 	#var start_time := Time.get_ticks_usec()
 	
 	var voxel_array:Array = []
@@ -51,8 +55,8 @@ func make_chunk(chunk_coord:Vector2i, chunk_size:int, world_height:int, noise:Fa
 	
 	for x:int in chunk_size + 2:
 		for z:int in chunk_size + 2:
-			var pixel_data:float = -noise.get_noise_2d(x + chunk_coord.x * chunk_size, z + chunk_coord.y * chunk_size)
-			var tile_height:int = int((pixel_data + 1) * 0.5 * (world_height - 1) + 1)
+			var pixel_data:float = -noise.get_noise_2d(x + chunk_coord.x * chunk_size, z + chunk_coord.z * chunk_size)
+			var tile_height:int = int((pixel_data + 1) * 0.5 * (world_height - 1) + 1) - chunk_coord.y * chunk_size
 			
 			for y in world_height:
 				if y < tile_height:
@@ -163,9 +167,6 @@ func greedy_mesher() -> Dictionary:
 func generate_mesh() -> void:
 	#var start_time := Time.get_ticks_usec()
 	var faces:Array = []
-	
-	var horizontal_bitmap:BitMap = BitMap.new()
-	horizontal_bitmap.resize(Vector2i(64,64))
 	
 	var positions:Dictionary = greedy_mesher()
 	for direction:Vector3 in positions:
