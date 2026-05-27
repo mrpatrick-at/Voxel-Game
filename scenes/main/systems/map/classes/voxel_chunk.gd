@@ -8,7 +8,7 @@ class_name VoxelChunk
 ## public vars
 var cube_mesh: ArrayMesh
 var voxels:Array = []
-var face_data:Dictionary = {}
+var face_data:Dictionary[Vector3,PackedVector3Array] = {}
 var placeholder_uvs:Array = [0,0,0,0,0,0]
 ## private vars
 ## onready vars
@@ -70,7 +70,7 @@ func make_chunk(chunk_coord:Vector3i, chunk_size:int, world_height:int, noise:Fa
 
 func check_faces() -> Dictionary:
 	#var start_time := Time.get_ticks_usec()
-	var face_data:Dictionary = {
+	var face_data:Dictionary[Vector3,PackedVector3Array] = {
 		Vector3.RIGHT : [],
 		Vector3.LEFT : [],
 		Vector3.UP : [],
