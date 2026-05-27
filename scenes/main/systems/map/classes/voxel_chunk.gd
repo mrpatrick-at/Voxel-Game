@@ -8,7 +8,6 @@ class_name VoxelChunk
 ## public vars
 var cube_mesh: ArrayMesh
 var voxels:PackedByteArray = []
-var byte_voxel_array:PackedByteArray = []
 var faces:Dictionary[int,PackedVector3Array] = {}
 var placeholder_uvs:Array = [0,0,0,0,0,0]
 
@@ -29,9 +28,10 @@ func setup(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> 
 	
 	voxels = make_voxels(chunk_coord, chunk_size, height_map)
 	
-	faces = check_faces(chunk_size)
-	
 	if !is_empty and !is_full:
+		
+		faces = check_faces(chunk_size)
+		
 		for direction in faces:
 			if !faces[direction].is_empty():
 				has_faces = true
@@ -43,7 +43,7 @@ func setup(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> 
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	print("Voxel_Chunk- Chunk %s Made in: %s msec"%[chunk_coord,time_taken])
 
-func make_voxels(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> Array:
+func make_voxels(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> PackedByteArray:
 	#var start_time := Time.get_ticks_usec()
 	
 	var voxel_array:PackedByteArray = []
