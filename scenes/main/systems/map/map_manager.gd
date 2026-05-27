@@ -86,13 +86,15 @@ func _make_map(is_generating:bool) -> void:
 	var world_height:int = world_heighth_in_chunks * chunk_size
 	
 	for chunk_x in world_length_in_chunks:
-		for chunk_y in world_heighth_in_chunks:
-			for chunk_z in world_width_in_chunks:
+		for chunk_z in world_width_in_chunks:
+			var height_map: PackedByteArray = _get_height_map(Vector2i(chunk_x, chunk_z), world_height)
+			
+			for chunk_y in world_heighth_in_chunks:
 				var chunk_coord := Vector3i(chunk_x, chunk_y, chunk_z)
 				
 				var chunk_res:= VoxelChunk.new()
 				add_child(chunk_res)
-				chunk_res.setup(chunk_coord, chunk_size, world_height, noise)
+				chunk_res.setup(chunk_coord, chunk_size, world_height, height_map)
 				chunks[chunk_coord] = chunk_res
 	
 	#Scripts.MAP_DATA.save_data()
@@ -106,3 +108,13 @@ static func _make_noise() -> void:
 	noise.fractal_octaves = 1
 	noise.seed = seed
 	noise.frequency = 0.0025
+
+static func _get_height_map(chunk_coord_2D:Vector2i, world_height:int) -> PackedByteArray:
+	var height_map:PackedByteArray = []
+	height_map.resize((chunk_size + 2) * (chunk_size + 2))
+	for x:int in chunk_size + 2:
+		for z:int in chunk_size + 2:
+			var pixel_data:float = -noise.get_noise_2d(x + chunk_coord_2D.x * chunk_size, z + chunk_coord_2D.y * chunk_size)
+			var tile_height:int = int((pixel_data + 1) * 0.5 * (world_height - 1) + 1)
+			height_map[x + z * (chunk_size + 2)] = tile_height
+	return height_map

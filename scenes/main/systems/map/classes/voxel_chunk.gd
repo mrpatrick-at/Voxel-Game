@@ -20,13 +20,13 @@ var has_faces:bool = false
 ## built-in override methods
 ## public methods
 
-func setup(chunk_coord:Vector3i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> void:
+func setup(chunk_coord:Vector3i, chunk_size:int, world_height:int, height_map:PackedByteArray) -> void:
 	var start_time := Time.get_ticks_usec()
 	print("Voxel_Chunk- Chunk %s Called Setup"%chunk_coord)
 	
 	global_position = Vector3(chunk_coord.x * chunk_size, chunk_coord.y * chunk_size, chunk_coord.z * chunk_size)
 	
-	voxels = make_voxels(chunk_coord, chunk_size, world_height, noise)
+	voxels = make_voxels(chunk_coord, chunk_size, world_height, height_map)
 	
 	if !is_empty and !is_full:
 		
@@ -38,7 +38,7 @@ func setup(chunk_coord:Vector3i, chunk_size:int, world_height:int, noise:FastNoi
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	print("Voxel_Chunk- Chunk %s Made in: %s msec"%[chunk_coord,time_taken])
 
-func make_voxels(chunk_coord:Vector3i, chunk_size:int, world_height:int, noise:FastNoiseLite) -> Array:
+func make_voxels(chunk_coord:Vector3i, chunk_size:int, world_height:int, height_map:PackedByteArray) -> Array:
 	#var start_time := Time.get_ticks_usec()
 	
 	var voxel_array:Array = []
@@ -56,11 +56,8 @@ func make_voxels(chunk_coord:Vector3i, chunk_size:int, world_height:int, noise:F
 	
 	for x:int in chunk_size + 2:
 		for z:int in chunk_size + 2:
-			var pixel_data:float = -noise.get_noise_2d(x + chunk_coord.x * chunk_size, z + chunk_coord.z * chunk_size)
-			var tile_height:int = int((pixel_data + 1) * 0.5 * (world_height - 1) + 1) - chunk_coord.y * chunk_size
-			
 			for y in chunk_size + 2:
-				if y < tile_height:
+				if y < height_map[x + z * (chunk_size + 2)] - chunk_coord.y * chunk_size:
 					bit_voxel_array[x + (z * (chunk_size + 2)) + (y * (chunk_size + 2) * (chunk_size + 2))] = 1
 					voxel_array[x][y][z] = 1
 					is_empty = false
