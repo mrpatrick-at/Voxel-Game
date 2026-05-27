@@ -34,7 +34,7 @@ func setup(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> 
 		faces = check_faces(chunk_size)
 		
 		if has_faces:
-			generate_mesh()
+			generate_mesh(chunk_size)
 	
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	print("Voxel_Chunk- Chunk %s Made in: %s msec"%[chunk_coord,time_taken])
@@ -71,58 +71,56 @@ func check_faces(chunk_size:int) -> Dictionary:
 		Constants.DIRECTION.FORWARD : [],
 	}
 	
-	var coord_array:PackedByteArray = []
-	
 	for x:int in range(chunk_size):
 		for y:int in range(chunk_size):
 			for z:int in range(chunk_size):
-				var coord:int = x + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))
 				if voxels[x + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == 0:
 					
 					if voxels[(x + 1) + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] != 0:
-						face_data[Constants.DIRECTION.LEFT].append(Vector3(x + 1,y,z))
+						face_data[Constants.DIRECTION.LEFT].append(Vector3i(x + 1, y, z))
 						has_faces = true
 				
 					if voxels[x + ((y + 1) * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] != 0:
-						face_data[Constants.DIRECTION.DOWN].append(Vector3(x,y + 1,z))
+						face_data[Constants.DIRECTION.DOWN].append(Vector3i(x, y + 1, z))
 						has_faces = true
 					
 					if voxels[x + (y * (chunk_size + 2)) + ((z + 1) * (chunk_size + 2) * (chunk_size + 2))] != 0:
-						face_data[Constants.DIRECTION.FORWARD].append(Vector3(x,y,z + 1))
+						face_data[Constants.DIRECTION.FORWARD].append(Vector3i(x, y, z + 1))
 						has_faces = true
 					
 					continue
+				var coord:Vector3i = Vector3i(x, y, z)
 				
 				if voxels[(x + 1) + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == 0:
-					face_data[Constants.DIRECTION.RIGHT].append(Vector3(x, y, z))
+					face_data[Constants.DIRECTION.RIGHT].append(coord)
 					has_faces = true
 				
 				if voxels[x + ((y + 1) * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == 0:
-					face_data[Constants.DIRECTION.UP].append(Vector3(x, y, z))
+					face_data[Constants.DIRECTION.UP].append(coord)
 					has_faces = true
 				
 				if voxels[x + (y * (chunk_size + 2)) + ((z + 1) * (chunk_size + 2) * (chunk_size + 2))] == 0:
-					face_data[Constants.DIRECTION.BACK].append(Vector3(x, y, z))
+					face_data[Constants.DIRECTION.BACK].append(coord)
 					has_faces = true
 	
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	print("Voxel_Chunk- Checked Faces in: %s msec"%time_taken)
 	return face_data
 
-func greedy_mesher() -> Dictionary:
+func greedy_mesher(chunk_size:int) -> Dictionary:
 	var positions:Dictionary[int,Dictionary] = {}
 	
 	for direction:int in faces:
 		positions[direction] = {}
 		
-		var first_next_tile:Vector3 = Vector3.RIGHT
-		var second_next_tile:Vector3 = Vector3.BACK
+		var first_next_tile:Vector3i = Vector3i.RIGHT
+		var second_next_tile:Vector3i = Vector3i.BACK
 		
 		if direction == Constants.DIRECTION.RIGHT or direction == Constants.DIRECTION.LEFT:
-			first_next_tile = Vector3.UP
+			first_next_tile = Vector3i.UP
 		
-		for pos:Vector3 in faces[direction]:
-			var ending_pos:Vector3 = pos
+		for pos:Vector3i in faces[direction]:
+			var ending_pos:Vector3i = pos
 			
 			var next_tile_array:Array = [pos]
 			
@@ -132,10 +130,10 @@ func greedy_mesher() -> Dictionary:
 				faces[direction].erase(ending_pos)
 			
 			var can_shift:bool = true
-			var next_shift:Vector3 = second_next_tile
+			var next_shift:Vector3i = second_next_tile
 			
 			while faces[direction].has(ending_pos + second_next_tile):
-				for tile:Vector3 in next_tile_array:
+				for tile:Vector3i in next_tile_array:
 					
 					if faces[direction].has(tile + next_shift):
 						continue
@@ -146,7 +144,7 @@ func greedy_mesher() -> Dictionary:
 				if !can_shift:
 					break
 				
-				for tile:Vector3 in next_tile_array:
+				for tile:Vector3i in next_tile_array:
 					faces[direction].erase(tile + next_shift)
 				
 				ending_pos += second_next_tile
@@ -156,13 +154,13 @@ func greedy_mesher() -> Dictionary:
 	
 	return positions
 
-func generate_mesh() -> void:
+func generate_mesh(chunk_size:int) -> void:
 	var start_time := Time.get_ticks_usec()
 	var mesh_faces:Array = []
 	
-	var positions:Dictionary = greedy_mesher()
+	var positions:Dictionary = greedy_mesher(chunk_size)
 	for direction:int in positions:
-		for pos:Vector3 in positions[direction]:
+		for pos:Vector3i in positions[direction]:
 			#print("helly eah x", pos, positions[direction][pos])
 			mesh_faces.append(create_face(direction, pos, positions[direction][pos], placeholder_uvs))
 	
@@ -171,9 +169,9 @@ func generate_mesh() -> void:
 	var uvs:Array = []
 	
 	for face:Dictionary in mesh_faces:
-		vertices += face ["vertices"]
-		normals += face ["normals"]
-		uvs += face ["uvs"]
+		vertices += face [Constants.FACE.VERTICES]
+		normals += face [Constants.FACE.NORMALS]
+		uvs += face [Constants.FACE.UVS]
 	
 	var vertex_array:PackedVector3Array = PackedVector3Array(vertices)
 	var normal_array:PackedVector3Array = PackedVector3Array(normals)
@@ -257,15 +255,15 @@ func create_face(direction:int, starting_position:Vector3, ending_position:Vecto
 	var uvs:Array = uv_coords
 	
 	return {
-		"vertices" : [
+		Constants.FACE.VERTICES : [
 			vertices[0], vertices[1], vertices[2],
 			vertices[0], vertices[2], vertices[3],
 		],
-		"normals" : [
+		Constants.FACE.NORMALS : [
 			normals[0], normals[1], normals[2],
 			normals[0], normals[2], normals[3],
 		],
-		"uvs" : [
+		Constants.FACE.UVS : [
 			uvs[0], uvs[1], uvs[2],
 			uvs[0], uvs[2], uvs[3],
 		]

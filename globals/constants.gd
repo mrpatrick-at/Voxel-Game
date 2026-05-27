@@ -1,23 +1,28 @@
 extends Node
 ## enums
 ## consts
-enum SQUARE_DATA{
+enum SQUARE_DATA {
 	SQUARE_TYPE,
 	IS_VISIBLE,
 }
-enum SQUARE_TYPE{
+enum SQUARE_TYPE {
 	AIR,
 	GRASS,
 	ROAD,
 	WATER,
 }
-enum DIRECTION{
+enum DIRECTION {
 	RIGHT,
 	LEFT,
 	UP,
 	DOWN,
 	BACK,
 	FORWARD,
+}
+enum FACE {
+	VERTICES,
+	NORMALS,
+	UVS,
 }
 ## exports
 ## public vars
