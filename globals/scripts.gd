@@ -9,6 +9,8 @@ const DATA_MANAGER:= preload("res://scenes/main/systems/data/data_manager.gd")
 const MAP_DATA:= preload("res://scenes/main/systems/data/map_saver.gd")
 const CHUNK_MANAGER:= preload("res://scenes/main/systems/data/chunk_saver.gd")
 
+const BIT_MATH:= preload("res://scenes/main/systems/map/bit_math.gd")
+
 const PLAYER:= preload("res://scenes/main/systems/player/main.gd")
 ## exports
 ## public vars
