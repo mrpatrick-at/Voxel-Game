@@ -6,7 +6,7 @@ const cam_zoom_speed:float = 200
 const cam_rotate_speed:float = 2
 const cam_jump_speed:float = 1000
 
-const player_max_speed:int = 10
+const player_max_speed:int = 32
 ## exports
 ## public vars
 static var cam_movement:Vector3 = Vector3.ZERO
@@ -31,19 +31,12 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	if Input.is_action_just_released(&"_input_menu_esc"):
-		toggle_esc_menu()
+		_toggle_esc_menu()
 	
 	if esc_menu.is_visible_in_tree():
 		return
 	
-	if Input.is_action_pressed(&"_input_cam_mod_speed"):
-		cam_speed_mod = 10
-	_input_cam_move(_delta)
-	_input_cam_zoom(_delta)
-	_input_cam_rotate(_delta)
-	_update_cam_pos()
-	
-	_mouse_input(_delta)
+	_update_cam_pos(_delta)
 	
 	var collision_ray:Dictionary = get_mouse_collision_pos()
 	if !collision_ray.is_empty():
@@ -55,7 +48,14 @@ func _process(_delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.is_pressed():
+		
+		if Input.is_action_pressed(&"_input_cam_mod_speed"):
+			cam_speed_mod = 10
+		
 		_movement_keys(event)
+	
+	if event is InputEventMouse:
+		_mouse_input()
 
 func _on_button_close_menu_pressed() -> void:
 	esc_menu.hide()
@@ -95,48 +95,44 @@ func get_grid_info(collision_ray:Dictionary) -> Array:
 
 ## private methods
 
-func _movement_keys(event:InputEvent) -> void:
-	if Input.is_action_pressed(&"_input_cam_move_right"):
-		if player_speed.x < player_max_speed:
-			player_speed.x += 1
-		print("Right", player_speed)
-	
-	if Input.is_action_pressed(&"_input_cam_move_left"):
-		if player_speed.x > -player_max_speed:
-			player_speed.x += -1
-		print("Left", player_speed)
-	
-	if Input.is_action_just_pressed(&"_input_cam_move_up"):
-		if player_speed.y < player_max_speed:
-			player_speed.y += 1
-		print("Up", player_speed)
-	
-	if Input.is_action_just_pressed(&"_input_cam_move_down"):
-		if player_speed.y > -player_max_speed:
-			player_speed.y -= 1
-		print("Down", player_speed)
-	
-	if Input.is_action_pressed(&"_input_cam_move_backward"):
-		if player_speed.z < player_max_speed:
-			player_speed.z += 1
-		print("Backward", player_speed)
-	
-	if Input.is_action_pressed(&"_input_cam_move_forward"):
-		if player_speed.z > -player_max_speed:
-			player_speed.z += -1
-		print("Forward", player_speed)
-	
-	player_body.translate(player_speed/10)
-	#if player_speed != Vector3.ZERO:
-		#_movement_keys(event)
-
-func toggle_esc_menu() -> void:
+func _toggle_esc_menu() -> void:
 	if esc_menu.is_visible_in_tree():
 		esc_menu.hide()
 	else:
 		esc_menu.show()
 
-static func _mouse_input(_delta:float) -> void:
+func _movement_keys(event:InputEvent) -> void:
+	if Input.is_action_pressed(&"_input_cam_move_right"):
+		if player_speed.x < player_max_speed:
+			player_speed.x += 2
+		print("Right", player_speed)
+	
+	if Input.is_action_pressed(&"_input_cam_move_left"):
+		if player_speed.x > -player_max_speed:
+			player_speed.x += -2
+		print("Left", player_speed)
+	
+	if Input.is_action_just_pressed(&"_input_cam_move_up"):
+		if player_speed.y < player_max_speed:
+			player_speed.y += 32
+		print("Up", player_speed)
+	
+	if Input.is_action_just_pressed(&"_input_cam_move_down"):
+		if player_speed.y > -player_max_speed:
+			player_speed.y -= 32
+		print("Down", player_speed)
+	
+	if Input.is_action_pressed(&"_input_cam_move_backward"):
+		if player_speed.z < player_max_speed:
+			player_speed.z += 2
+		print("Backward", player_speed)
+	
+	if Input.is_action_pressed(&"_input_cam_move_forward"):
+		if player_speed.z > -player_max_speed:
+			player_speed.z += -2
+		print("Forward", player_speed)
+
+static func _mouse_input() -> void:
 	if Input.is_action_just_released(&"_input_mouse_left"):
 		if grid_info.is_empty():
 			print_rich("[color=gold]PLAYER- [color=red]Selection not inside Gridmap")
@@ -150,72 +146,22 @@ static func _mouse_input(_delta:float) -> void:
 		print("RMB pressed")
 	
 
-# Camera Movement
-static func _input_cam_move(_delta:float) -> void:
-	var direction:Vector3 = Vector3.ZERO
-	if Input.is_action_pressed(&"_input_cam_move_forward"):
-		direction.z += -1
+func _update_cam_pos(_delta:float) -> void:
+	player_body.translate(player_speed/ 2 * _delta)
+	if player_speed.x > 0:
+		player_speed.x += -0.1
 	
-	if Input.is_action_pressed(&"_input_cam_move_backward"):
-		direction.z += 1
+	if player_speed.x < 0:
+		player_speed.x += 0.1
 	
-	if Input.is_action_pressed(&"_input_cam_move_left"):
-		direction.x += -1
+	if player_speed.y > 0:
+		player_speed.y += -0.1
 	
-	if Input.is_action_pressed(&"_input_cam_move_right"):
-		direction.x += 1
+	if player_speed.y < 0:
+		player_speed.y += 0.1
 	
-	if Input.is_action_just_pressed(&"_input_cam_move_up"):
-		direction.y += 1
+	if player_speed.z > 0:
+		player_speed.z += -0.1
 	
-	if direction != Vector3.ZERO:
-		cam_movement.x = direction.x * _delta * cam_move_speed
-		cam_movement.y = direction.y * _delta * cam_jump_speed
-		cam_movement.z = direction.z * _delta * cam_move_speed
-
-# Camera Zoom
-static func _input_cam_zoom(_delta:float) -> void:
-	var zoom:float = 0
-	if Input.is_action_pressed(&"_input_cam_zoom_in") or Input.is_action_just_released(&"_input_mouse_middle_up"):
-		zoom += -1
-	
-	if Input.is_action_pressed(&"_input_cam_zoom_out") or Input.is_action_just_released(&"_input_mouse_middle_down"):
-		zoom += 1
-	
-	if zoom != 0:
-		cam_zoom = zoom * _delta * cam_zoom_speed
-
-# Camera Rotation
-static func _input_cam_rotate(_delta:float) -> void:
-	var direction:float = 0
-	if Input.is_action_pressed(&"_input_camera_rotate_left"):
-		direction += -1
-	
-	if Input.is_action_pressed(&"_input_camera_rotate_right"):
-		direction += 1
-	
-	if direction != 0:
-		cam_rotation = _delta * cam_rotate_speed * direction
-
-func _update_cam_pos() -> void:
-	var cam:Camera3D = get_viewport().get_camera_3d()
-	
-	if cam == float_cam:
-		translate_object_local(Vector3(
-			cam_movement.x * cam_speed_mod,
-			cam_movement.y * cam_jump_speed,
-			cam_movement.z * cam_speed_mod
-			)
-		)
-		float_cam.translate_object_local(Vector3(
-			0,
-			0,
-			cam_zoom * cam_speed_mod
-			)
-		)
-		global_rotation.y += cam_rotation
-	
-	cam_movement = Vector3.ZERO
-	cam_zoom = 0
-	cam_rotation = 0
-	cam_speed_mod = 1
+	if player_speed.z < 0:
+		player_speed.z += 0.1
