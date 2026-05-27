@@ -39,7 +39,7 @@ transform = Transform3D(1, 0, 0, 0, 0.49999997, 0.86602545, 0, -0.86602545, 0.49
 current = true
 
 [node name="PlayerBody" type="RigidBody3D" parent="." unique_id=107806061]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 640, 450, 1050)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 104, 300, 95)
 visible = false
 axis_lock_angular_x = true
 axis_lock_angular_z = true
@@ -53,6 +53,7 @@ mesh = SubResource("CapsuleMesh_a8run")
 surface_material_override/0 = SubResource("StandardMaterial3D_xdea8")
 
 [node name="BodyCam" type="Camera3D" parent="PlayerBody" unique_id=675006904]
+current = true
 
 [node name="IngameUI" parent="." unique_id=1629074791 instance=ExtResource("4_l3cfh")]
 

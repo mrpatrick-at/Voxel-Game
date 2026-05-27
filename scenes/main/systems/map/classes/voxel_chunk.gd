@@ -38,7 +38,12 @@ func setup(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> 
 				break
 		
 		if has_faces:
-			generate_mesh()
+			var mesh_array:Array = generate_mesh()
+			
+			cube_mesh = ArrayMesh.new()
+			cube_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, mesh_array)
+			
+			apply_mesh()
 	
 	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	#print("Voxel_Chunk- Chunk %s Made in: %s msec"%[chunk_coord,time_taken])
@@ -103,6 +108,37 @@ func check_faces(chunk_size:int) -> Dictionary:
 	#print("Voxel_Chunk- Checked Faces in: %s msec"%time_taken)
 	return face_data
 
+func generate_mesh() -> Array:
+	#var start_time := Time.get_ticks_usec()
+	var mesh_faces:Array = []
+	
+	var positions:Dictionary = greedy_mesher()
+	for direction:int in positions:
+		for pos:Vector3i in positions[direction]:
+			#print("helly eah x", pos, positions[direction][pos])
+			mesh_faces.append(create_face(direction, pos, positions[direction][pos], placeholder_uvs))
+	
+	var vertices:Array = []
+	var normals:Array = []
+	var uvs:Array = []
+	
+	for face:Dictionary in mesh_faces:
+		vertices += face [Constants.FACE.VERTICES]
+		normals += face [Constants.FACE.NORMALS]
+		uvs += face [Constants.FACE.UVS]
+	
+	var vertex_array:PackedVector3Array = PackedVector3Array(vertices)
+	var normal_array:PackedVector3Array = PackedVector3Array(normals)
+	var uv_array:PackedVector3Array = PackedVector3Array(uvs)
+	
+	var mesh_array:Array = []
+	mesh_array.resize(Mesh.ARRAY_MAX)
+	mesh_array[Mesh.ARRAY_VERTEX] = vertex_array
+	mesh_array[Mesh.ARRAY_NORMAL] = normal_array
+	mesh_array[Mesh.ARRAY_TEX_UV] =  uv_array
+	
+	return mesh_array
+
 func greedy_mesher() -> Dictionary:
 	var positions:Dictionary[int,Dictionary] = {}
 	
@@ -149,42 +185,6 @@ func greedy_mesher() -> Dictionary:
 			positions[direction].set(pos,ending_pos)
 	
 	return positions
-
-func generate_mesh() -> void:
-	#var start_time := Time.get_ticks_usec()
-	var mesh_faces:Array = []
-	
-	var positions:Dictionary = greedy_mesher()
-	for direction:int in positions:
-		for pos:Vector3i in positions[direction]:
-			#print("helly eah x", pos, positions[direction][pos])
-			mesh_faces.append(create_face(direction, pos, positions[direction][pos], placeholder_uvs))
-	
-	var vertices:Array = []
-	var normals:Array = []
-	var uvs:Array = []
-	
-	for face:Dictionary in mesh_faces:
-		vertices += face [Constants.FACE.VERTICES]
-		normals += face [Constants.FACE.NORMALS]
-		uvs += face [Constants.FACE.UVS]
-	
-	var vertex_array:PackedVector3Array = PackedVector3Array(vertices)
-	var normal_array:PackedVector3Array = PackedVector3Array(normals)
-	var uv_array:PackedVector3Array = PackedVector3Array(uvs)
-	
-	var arrays:Array = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = vertex_array
-	arrays[Mesh.ARRAY_NORMAL] = normal_array
-	arrays[Mesh.ARRAY_TEX_UV] =  uv_array
-	
-	cube_mesh = ArrayMesh.new()
-	cube_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	self.mesh = cube_mesh
-
-	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
-	#print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
 
 func create_face(direction:int, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary:
 	var face_directions:Array = [
@@ -265,4 +265,19 @@ func create_face(direction:int, starting_position:Vector3, ending_position:Vecto
 		]
 	}
 
+func apply_mesh() -> void:
+	self.mesh = cube_mesh
+	
+	var static_body = StaticBody3D.new()
+	add_child(static_body)
+	var collision_shape = CollisionShape3D.new()
+	var chunk_collision:ConvexPolygonShape3D = cube_mesh.create_convex_shape()
+	collision_shape.shape = chunk_collision
+	static_body.set_collision_layer(1)
+	static_body.set_collision_mask(0)
+	static_body.add_child(collision_shape)
+	
+	
+	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	#print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
 ## private methods
