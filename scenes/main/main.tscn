@@ -13,7 +13,6 @@
 height = 4.0
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_a8run"]
-height = 4.0
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xdea8"]
 albedo_color = Color(0.10980392, 0.10980392, 0.10980392, 1)

@@ -1,21 +1,14 @@
 extends Node3D
 ## enums
 ## consts
-const cam_move_speed:float = 40
-const cam_zoom_speed:float = 200
-const cam_rotate_speed:float = 2
-const cam_jump_speed:float = 1000
-
 const player_max_speed:int = 32
 ## exports
 ## public vars
-static var cam_movement:Vector3 = Vector3.ZERO
-static var cam_zoom:float = 0
-static var cam_rotation:float = 0
 static var grid_info:Array = []
 
 static var cam_speed_mod:float = 1
 static var player_speed:Vector3 = Vector3.ZERO
+static var player_rotation:float = 0
 ## private vars
 ## onready vars
 @onready var esc_menu: CenterContainer = $"../esc_menu"
@@ -131,6 +124,18 @@ func _movement_keys(event:InputEvent) -> void:
 		if player_speed.z > -player_max_speed:
 			player_speed.z += -2
 		print("Forward", player_speed)
+	
+	if Input.is_action_pressed(&"_input_camera_rotate_left"):
+		if player_rotation < 1.0:
+			player_rotation += 0.2
+		
+		print("Rotate Left", player_rotation)
+	
+	if Input.is_action_pressed(&"_input_camera_rotate_right"):
+		if player_rotation > -1.0:
+			player_rotation += -0.2
+		
+		print("Rotate Riight", player_rotation)
 
 static func _mouse_input() -> void:
 	if Input.is_action_just_released(&"_input_mouse_left"):
@@ -165,3 +170,9 @@ func _update_cam_pos(_delta:float) -> void:
 	
 	if player_speed.z < 0:
 		player_speed.z += 0.1
+	
+	player_body.rotate_y(player_rotation * _delta)
+	if player_rotation > 0:
+			player_rotation += -0.1
+	if player_rotation < 0:
+		player_rotation += 0.1
