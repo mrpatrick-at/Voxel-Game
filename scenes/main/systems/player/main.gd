@@ -5,6 +5,8 @@ const cam_move_speed:float = 40
 const cam_zoom_speed:float = 200
 const cam_rotate_speed:float = 2
 const cam_jump_speed:float = 1000
+
+const player_max_speed:int = 10
 ## exports
 ## public vars
 static var cam_movement:Vector3 = Vector3.ZERO
@@ -13,11 +15,13 @@ static var cam_rotation:float = 0
 static var grid_info:Array = []
 
 static var cam_speed_mod:float = 1
+static var player_speed:Vector3 = Vector3.ZERO
 ## private vars
 ## onready vars
 @onready var esc_menu: CenterContainer = $"../esc_menu"
 @onready var float_cam: Camera3D = $FloatCam
 @onready var body_cam: Camera3D = $"../PlayerBody/BodyCam"
+
 @onready var player_body: RigidBody3D = $"../PlayerBody"
 # obj_ for node refrences
 ## built-in override methods
@@ -48,6 +52,10 @@ func _process(_delta: float) -> void:
 			return
 	
 	grid_info = []
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.is_pressed():
+		_movement_keys(event)
 
 func _on_button_close_menu_pressed() -> void:
 	esc_menu.hide()
@@ -87,6 +95,41 @@ func get_grid_info(collision_ray:Dictionary) -> Array:
 
 ## private methods
 
+func _movement_keys(event:InputEvent) -> void:
+	if Input.is_action_pressed(&"_input_cam_move_right"):
+		if player_speed.x < player_max_speed:
+			player_speed.x += 1
+		print("Right", player_speed)
+	
+	if Input.is_action_pressed(&"_input_cam_move_left"):
+		if player_speed.x > -player_max_speed:
+			player_speed.x += -1
+		print("Left", player_speed)
+	
+	if Input.is_action_just_pressed(&"_input_cam_move_up"):
+		if player_speed.y < player_max_speed:
+			player_speed.y += 1
+		print("Up", player_speed)
+	
+	if Input.is_action_just_pressed(&"_input_cam_move_down"):
+		if player_speed.y > -player_max_speed:
+			player_speed.y -= 1
+		print("Down", player_speed)
+	
+	if Input.is_action_pressed(&"_input_cam_move_backward"):
+		if player_speed.z < player_max_speed:
+			player_speed.z += 1
+		print("Backward", player_speed)
+	
+	if Input.is_action_pressed(&"_input_cam_move_forward"):
+		if player_speed.z > -player_max_speed:
+			player_speed.z += -1
+		print("Forward", player_speed)
+	
+	player_body.translate(player_speed/10)
+	#if player_speed != Vector3.ZERO:
+		#_movement_keys(event)
+
 func toggle_esc_menu() -> void:
 	if esc_menu.is_visible_in_tree():
 		esc_menu.hide()
@@ -122,7 +165,7 @@ static func _input_cam_move(_delta:float) -> void:
 	if Input.is_action_pressed(&"_input_cam_move_right"):
 		direction.x += 1
 	
-	if Input.is_action_just_pressed(&"_input_cam_move_jump"):
+	if Input.is_action_just_pressed(&"_input_cam_move_up"):
 		direction.y += 1
 	
 	if direction != Vector3.ZERO:

@@ -8,7 +8,6 @@
 [ext_resource type="StyleBox" uid="uid://dp0fhi8jv6w7f" path="res://ui/esc_menu/styles/button_normal.tres" id="6_b1x3f"]
 [ext_resource type="StyleBox" uid="uid://ds7uyodmpq8xf" path="res://ui/esc_menu/styles/button_pressed.tres" id="7_a8run"]
 [ext_resource type="StyleBox" uid="uid://bybl822ygnmc8" path="res://ui/esc_menu/styles/button_hover.tres" id="8_ouso4"]
-[ext_resource type="Script" uid="uid://cemhvhe0mhp87" path="res://scenes/main/systems/player_body/main.gd" id="10_a8run"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_b1x3f"]
 height = 4.0
@@ -32,6 +31,7 @@ directional_shadow_max_distance = 200.0
 
 [node name="Player" type="Node3D" parent="." unique_id=393008323]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 640, 0, 950)
+visible = false
 script = ExtResource("1_k2fmo")
 
 [node name="FloatCam" type="Camera3D" parent="Player" unique_id=478426265]
@@ -40,10 +40,8 @@ current = true
 
 [node name="PlayerBody" type="RigidBody3D" parent="." unique_id=107806061]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 104, 300, 95)
-visible = false
 axis_lock_angular_x = true
 axis_lock_angular_z = true
-script = ExtResource("10_a8run")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="PlayerBody" unique_id=208924182]
 shape = SubResource("CylinderShape3D_b1x3f")
