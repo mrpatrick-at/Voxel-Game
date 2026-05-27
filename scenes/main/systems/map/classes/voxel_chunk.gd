@@ -23,15 +23,19 @@ var has_faces:bool = false
 
 func setup(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> void:
 	var start_time := Time.get_ticks_usec()
-	print("Voxel_Chunk- Chunk %s Called Setup"%chunk_coord)
+	#print("Voxel_Chunk- Chunk %s Called Setup"%chunk_coord)
 	
 	global_position = Vector3(chunk_coord.x * chunk_size, chunk_coord.y * chunk_size, chunk_coord.z * chunk_size)
 	
 	voxels = make_voxels(chunk_coord, chunk_size, height_map)
 	
+	faces = check_faces(chunk_size)
+	
 	if !is_empty and !is_full:
-		
-		faces = check_faces(chunk_size)
+		for direction in faces:
+			if !faces[direction].is_empty():
+				has_faces = true
+				break
 		
 		if has_faces:
 			generate_mesh(chunk_size)
@@ -49,9 +53,7 @@ func make_voxels(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArra
 		for y:int in chunk_size + 2:
 			for z:int in chunk_size + 2:
 				if y < height_map[x + z * (chunk_size + 2)] - chunk_coord.y * (chunk_size):
-					#if bitboard.get_voxel(x, y, z) == true:
-						#print("OH NOOO")
-					#bitboard.set_voxel(x, y, z, true)
+					
 					voxel_array[x + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] = 1
 					is_empty = false
 					continue
@@ -61,7 +63,7 @@ func make_voxels(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArra
 	return voxel_array
 
 func check_faces(chunk_size:int) -> Dictionary:
-	var start_time := Time.get_ticks_usec()
+	#var start_time := Time.get_ticks_usec()
 	var face_data:Dictionary[int,PackedVector3Array] = {
 		Constants.DIRECTION.RIGHT : [],
 		Constants.DIRECTION.LEFT : [],
@@ -71,40 +73,34 @@ func check_faces(chunk_size:int) -> Dictionary:
 		Constants.DIRECTION.FORWARD : [],
 	}
 	
-	for x:int in range(chunk_size):
-		for y:int in range(chunk_size):
-			for z:int in range(chunk_size):
+	for x:int in chunk_size:
+		for y:int in chunk_size:
+			for z:int in chunk_size:
 				if voxels[x + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == 0:
 					
 					if voxels[(x + 1) + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] != 0:
 						face_data[Constants.DIRECTION.LEFT].append(Vector3i(x + 1, y, z))
-						has_faces = true
 				
 					if voxels[x + ((y + 1) * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] != 0:
 						face_data[Constants.DIRECTION.DOWN].append(Vector3i(x, y + 1, z))
-						has_faces = true
 					
 					if voxels[x + (y * (chunk_size + 2)) + ((z + 1) * (chunk_size + 2) * (chunk_size + 2))] != 0:
 						face_data[Constants.DIRECTION.FORWARD].append(Vector3i(x, y, z + 1))
-						has_faces = true
 					
 					continue
 				var coord:Vector3i = Vector3i(x, y, z)
 				
 				if voxels[(x + 1) + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == 0:
 					face_data[Constants.DIRECTION.RIGHT].append(coord)
-					has_faces = true
 				
 				if voxels[x + ((y + 1) * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == 0:
 					face_data[Constants.DIRECTION.UP].append(coord)
-					has_faces = true
 				
 				if voxels[x + (y * (chunk_size + 2)) + ((z + 1) * (chunk_size + 2) * (chunk_size + 2))] == 0:
 					face_data[Constants.DIRECTION.BACK].append(coord)
-					has_faces = true
 	
-	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
-	print("Voxel_Chunk- Checked Faces in: %s msec"%time_taken)
+	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	#print("Voxel_Chunk- Checked Faces in: %s msec"%time_taken)
 	return face_data
 
 func greedy_mesher(chunk_size:int) -> Dictionary:
@@ -155,7 +151,7 @@ func greedy_mesher(chunk_size:int) -> Dictionary:
 	return positions
 
 func generate_mesh(chunk_size:int) -> void:
-	var start_time := Time.get_ticks_usec()
+	#var start_time := Time.get_ticks_usec()
 	var mesh_faces:Array = []
 	
 	var positions:Dictionary = greedy_mesher(chunk_size)
@@ -187,8 +183,8 @@ func generate_mesh(chunk_size:int) -> void:
 	cube_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	self.mesh = cube_mesh
 
-	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
-	print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
+	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	#print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
 
 func create_face(direction:int, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary:
 	var face_directions:Array = [
