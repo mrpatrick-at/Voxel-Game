@@ -22,4 +22,17 @@ func get_trailing_zeros(v: int) -> int:
 func get_trailing_ones(v: int) -> int:
 	return get_trailing_zeros(~v)
 
+func set_voxel(x: int, y: int, z: int, bitboard:PackedInt64Array):
+	var bit_index = x + (z << 4) + (y << 8)
+	
+	var array_index = bit_index >> 6
+	
+	var bit_pos = bit_index & 63
+	
+	bitboard[array_index] |= (1 << bit_pos)
+
+#func get_voxel(x: int, y: int, z: int) -> bool:
+	#var bit_idx = x + (z << 4) + (y << 8)
+	#return bool(bitboard[bit_idx >> 6] & (1 << (bit_idx & 63)))
+
 ## private methods

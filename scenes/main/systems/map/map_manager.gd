@@ -87,14 +87,14 @@ func _make_map(is_generating:bool) -> void:
 	
 	for chunk_x in world_length_in_chunks:
 		for chunk_z in world_width_in_chunks:
-			var height_map: PackedByteArray = _get_height_map(Vector2i(chunk_x, chunk_z), world_height)
-			
+			var chunk_coord_2D:Vector2i = Vector2i(chunk_x,chunk_z)
+			var chunk_heightmap:PackedByteArray = _get_height_map(chunk_coord_2D, world_height)
 			for chunk_y in world_heighth_in_chunks:
 				var chunk_coord := Vector3i(chunk_x, chunk_y, chunk_z)
 				
 				var chunk_res:= VoxelChunk.new()
 				add_child(chunk_res)
-				chunk_res.setup(chunk_coord, chunk_size, height_map)
+				chunk_res.setup(chunk_coord, chunk_size, chunk_heightmap)
 				chunks[chunk_coord] = chunk_res
 	
 	#Scripts.MAP_DATA.save_data()

@@ -11,6 +11,14 @@ enum SQUARE_TYPE{
 	ROAD,
 	WATER,
 }
+enum DIRECTION{
+	RIGHT,
+	LEFT,
+	UP,
+	DOWN,
+	BACK,
+	FORWARD,
+}
 ## exports
 ## public vars
 ## private vars
