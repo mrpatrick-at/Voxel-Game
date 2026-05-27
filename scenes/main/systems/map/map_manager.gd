@@ -94,7 +94,7 @@ func _make_map(is_generating:bool) -> void:
 				
 				var chunk_res:= VoxelChunk.new()
 				add_child(chunk_res)
-				chunk_res.setup(chunk_coord, chunk_size, world_height, height_map)
+				chunk_res.setup(chunk_coord, chunk_size, height_map)
 				chunks[chunk_coord] = chunk_res
 	
 	#Scripts.MAP_DATA.save_data()
