@@ -23,8 +23,8 @@ func setup(chunk_coord:Vector3i) -> void:
 	global_position = Vector3(chunk_coord.x << 4, chunk_coord.y << 4, chunk_coord.z << 4)
 
 func generate(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> void:
-	#var start_time := Time.get_ticks_usec()
-	#print("Voxel_Chunk- Chunk %s Called Setup"%chunk_coord)
+	var start_time := Time.get_ticks_usec()
+	print("Voxel_Chunk- Chunk %s Called Setup"%chunk_coord)
 	
 	voxels = make_voxels(chunk_coord, chunk_size, height_map)
 	
@@ -45,11 +45,11 @@ func generate(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) 
 			
 			apply_mesh()
 	
-	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
-	#print("Voxel_Chunk- Chunk %s Made in: %s msec"%[chunk_coord,time_taken])
+	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	print("Voxel_Chunk- Chunk %s Made in: %s msec"%[chunk_coord,time_taken])
 
 func make_voxels(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> PackedByteArray:
-	#var start_time := Time.get_ticks_usec()
+	var start_time := Time.get_ticks_usec()
 	
 	var voxel_array:PackedByteArray = []
 	voxel_array.resize((chunk_size + 2) * (chunk_size + 2) * (chunk_size + 2))
@@ -63,12 +63,12 @@ func make_voxels(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArra
 					is_empty = false
 					continue
 				is_full = false
-	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
-	#print("Voxel_Chunk- Chunk Data Made in: %s msec"%time_taken)
+	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	print("Voxel_Chunk- Chunk Data Made in: %s msec"%time_taken)
 	return voxel_array
 
 func check_faces(chunk_size:int) -> Dictionary:
-	#var start_time := Time.get_ticks_usec()
+	var start_time := Time.get_ticks_usec()
 	var face_data:Dictionary[Vector3,PackedVector3Array] = {
 		Vector3.RIGHT : [],
 		Vector3.LEFT : [],
@@ -78,34 +78,46 @@ func check_faces(chunk_size:int) -> Dictionary:
 		Vector3.FORWARD : [],
 	}
 	
-	for x:int in chunk_size:
+	var extended_chunk_size:int = chunk_size + 2
+	var sq_extended_chunk_size:int = extended_chunk_size * extended_chunk_size
+	
+	for z:int in chunk_size:
+		var z_offset:int = z * sq_extended_chunk_size
+		var z_next_offset:int = (z + 1) * sq_extended_chunk_size
 		for y:int in chunk_size:
-			for z:int in chunk_size:
-				if voxels[x + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == 0:
+			var y_offset:int = y * extended_chunk_size
+			var y_next_offset:int = (y + 1) * extended_chunk_size
+			for x:int in chunk_size:
+				
+				var voxel_x_offset:int = (x + 1) + y_offset + z_offset
+				var voxel_y_offset:int = x + y_next_offset + z_offset
+				var voxel_z_offset:int = x + y_offset + z_next_offset
+				
+				if voxels[x + y_offset + z_offset] == 0:
 					
-					if voxels[(x + 1) + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] != Constants.SQUARE_TYPE.AIR:
+					if voxels[voxel_x_offset] != Constants.SQUARE_TYPE.AIR:
 						face_data[Vector3.LEFT].append(Vector3i(x + 1, y, z))
 				
-					if voxels[x + ((y + 1) * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] != Constants.SQUARE_TYPE.AIR:
+					if voxels[voxel_y_offset] != Constants.SQUARE_TYPE.AIR:
 						face_data[Vector3.DOWN].append(Vector3i(x, y + 1, z))
 					
-					if voxels[x + (y * (chunk_size + 2)) + ((z + 1) * (chunk_size + 2) * (chunk_size + 2))] != Constants.SQUARE_TYPE.AIR:
+					if voxels[voxel_z_offset] != Constants.SQUARE_TYPE.AIR:
 						face_data[Vector3.FORWARD].append(Vector3i(x, y, z + 1))
 					
 					continue
 				var coord:Vector3i = Vector3i(x, y, z)
 				
-				if voxels[(x + 1) + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == Constants.SQUARE_TYPE.AIR:
+				if voxels[voxel_x_offset] == Constants.SQUARE_TYPE.AIR:
 					face_data[Vector3.RIGHT].append(coord)
 				
-				if voxels[x + ((y + 1) * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == Constants.SQUARE_TYPE.AIR:
+				if voxels[voxel_y_offset] == Constants.SQUARE_TYPE.AIR:
 					face_data[Vector3.UP].append(coord)
 				
-				if voxels[x + (y * (chunk_size + 2)) + ((z + 1) * (chunk_size + 2) * (chunk_size + 2))] == Constants.SQUARE_TYPE.AIR:
+				if voxels[voxel_z_offset] == Constants.SQUARE_TYPE.AIR:
 					face_data[Vector3.BACK].append(coord)
 	
-	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
-	#print("Voxel_Chunk- Checked Faces in: %s msec"%time_taken)
+	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	print("Voxel_Chunk- Checked Faces in: %s msec"%time_taken)
 	return face_data
 
 func generate_mesh() -> Array: # ~ upto 6msec ATTENTION: PROBLEM
@@ -169,7 +181,7 @@ func generate_mesh() -> Array: # ~ upto 6msec ATTENTION: PROBLEM
 	return mesh_array
 
 func greedy_mesher() -> Dictionary: # ~ 0.3 msec
-	#var start_time := Time.get_ticks_usec()
+	var start_time := Time.get_ticks_usec()
 	var positions:Dictionary[Vector3,Dictionary] = {}
 	
 	for direction:Vector3 in faces:
@@ -214,8 +226,8 @@ func greedy_mesher() -> Dictionary: # ~ 0.3 msec
 			
 			positions[direction].set(pos,ending_pos)
 	
-	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
-	#print("Voxel_Chunk- Greedy Meshing Done in: %s msec"%time_taken)
+	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	print("Voxel_Chunk- Greedy Meshing Done in: %s msec"%time_taken)
 	return positions
 
 func create_face(direction:Vector3, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary: # ~ 0.001 msec
