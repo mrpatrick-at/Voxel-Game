@@ -10,7 +10,6 @@
 [ext_resource type="StyleBox" uid="uid://bybl822ygnmc8" path="res://ui/esc_menu/styles/button_hover.tres" id="8_ouso4"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_b1x3f"]
-height = 4.0
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_a8run"]
 
@@ -39,6 +38,7 @@ current = true
 
 [node name="PlayerBody" type="RigidBody3D" parent="." unique_id=107806061]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 104, 300, 95)
+visible = false
 axis_lock_angular_x = true
 axis_lock_angular_z = true
 

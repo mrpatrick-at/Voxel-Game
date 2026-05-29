@@ -8,7 +8,7 @@ class_name VoxelChunk
 ## public vars
 var cube_mesh: ArrayMesh
 var voxels:PackedByteArray = []
-var faces:Dictionary[int,PackedVector3Array] = {}
+var faces:Dictionary[Vector3,PackedVector3Array] = {}
 var placeholder_uvs:Array = [0,0,0,0,0,0]
 
 var is_empty:bool = true
@@ -22,7 +22,7 @@ var has_faces:bool = false
 
 func setup(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> void:
 	#var start_time := Time.get_ticks_usec()
-	#print("Voxel_Chunk- Chunk %s Called Setup"%chunk_coord)
+	print("Voxel_Chunk- Chunk %s Called Setup"%chunk_coord)
 	
 	global_position = Vector3(chunk_coord.x << 4, chunk_coord.y << 4, chunk_coord.z << 4)
 	
@@ -59,7 +59,7 @@ func make_voxels(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArra
 			for z:int in chunk_size + 2:
 				if y < height_map[x + z * (chunk_size + 2)] - chunk_coord.y * (chunk_size):
 					
-					voxel_array[x + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] = 1
+					voxel_array[x + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] = Constants.SQUARE_TYPE.GRASS
 					is_empty = false
 					continue
 				is_full = false
@@ -69,13 +69,13 @@ func make_voxels(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArra
 
 func check_faces(chunk_size:int) -> Dictionary:
 	#var start_time := Time.get_ticks_usec()
-	var face_data:Dictionary[int,PackedVector3Array] = {
-		Constants.DIRECTION.RIGHT : [],
-		Constants.DIRECTION.LEFT : [],
-		Constants.DIRECTION.UP : [],
-		Constants.DIRECTION.DOWN : [],
-		Constants.DIRECTION.BACK : [],
-		Constants.DIRECTION.FORWARD : [],
+	var face_data:Dictionary[Vector3,PackedVector3Array] = {
+		Vector3.RIGHT : [],
+		Vector3.LEFT : [],
+		Vector3.UP : [],
+		Vector3.DOWN : [],
+		Vector3.BACK : [],
+		Vector3.FORWARD : [],
 	}
 	
 	for x:int in chunk_size:
@@ -83,53 +83,49 @@ func check_faces(chunk_size:int) -> Dictionary:
 			for z:int in chunk_size:
 				if voxels[x + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == 0:
 					
-					if voxels[(x + 1) + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] != 0:
-						face_data[Constants.DIRECTION.LEFT].append(Vector3i(x + 1, y, z))
+					if voxels[(x + 1) + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] != Constants.SQUARE_TYPE.AIR:
+						face_data[Vector3.LEFT].append(Vector3i(x + 1, y, z))
 				
-					if voxels[x + ((y + 1) * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] != 0:
-						face_data[Constants.DIRECTION.DOWN].append(Vector3i(x, y + 1, z))
+					if voxels[x + ((y + 1) * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] != Constants.SQUARE_TYPE.AIR:
+						face_data[Vector3.DOWN].append(Vector3i(x, y + 1, z))
 					
-					if voxels[x + (y * (chunk_size + 2)) + ((z + 1) * (chunk_size + 2) * (chunk_size + 2))] != 0:
-						face_data[Constants.DIRECTION.FORWARD].append(Vector3i(x, y, z + 1))
+					if voxels[x + (y * (chunk_size + 2)) + ((z + 1) * (chunk_size + 2) * (chunk_size + 2))] != Constants.SQUARE_TYPE.AIR:
+						face_data[Vector3.FORWARD].append(Vector3i(x, y, z + 1))
 					
 					continue
 				var coord:Vector3i = Vector3i(x, y, z)
 				
-				if voxels[(x + 1) + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == 0:
-					face_data[Constants.DIRECTION.RIGHT].append(coord)
+				if voxels[(x + 1) + (y * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == Constants.SQUARE_TYPE.AIR:
+					face_data[Vector3.RIGHT].append(coord)
 				
-				if voxels[x + ((y + 1) * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == 0:
-					face_data[Constants.DIRECTION.UP].append(coord)
+				if voxels[x + ((y + 1) * (chunk_size + 2)) + (z * (chunk_size + 2) * (chunk_size + 2))] == Constants.SQUARE_TYPE.AIR:
+					face_data[Vector3.UP].append(coord)
 				
-				if voxels[x + (y * (chunk_size + 2)) + ((z + 1) * (chunk_size + 2) * (chunk_size + 2))] == 0:
-					face_data[Constants.DIRECTION.BACK].append(coord)
+				if voxels[x + (y * (chunk_size + 2)) + ((z + 1) * (chunk_size + 2) * (chunk_size + 2))] == Constants.SQUARE_TYPE.AIR:
+					face_data[Vector3.BACK].append(coord)
 	
 	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	#print("Voxel_Chunk- Checked Faces in: %s msec"%time_taken)
 	return face_data
 
-func generate_mesh() -> Array:
-	#var start_time := Time.get_ticks_usec()
+func generate_mesh() -> Array: # ~ upto 6msec ATTENTION: PROBLEM
+	var start_time := Time.get_ticks_usec()
 	var mesh_faces:Array = []
 	
 	var positions:Dictionary = greedy_mesher()
-	for direction:int in positions:
+	for direction:Vector3 in positions:
 		for pos:Vector3i in positions[direction]:
 			#print("helly eah x", pos, positions[direction][pos])
 			mesh_faces.append(create_face(direction, pos, positions[direction][pos], placeholder_uvs))
 	
-	var vertices:Array = []
-	var normals:Array = []
-	var uvs:Array = []
+	var vertex_array:PackedVector3Array = []
+	var normal_array:PackedVector3Array = []
+	var uv_array:PackedVector3Array = []
 	
 	for face:Dictionary in mesh_faces:
-		vertices += face [Constants.FACE.VERTICES]
-		normals += face [Constants.FACE.NORMALS]
-		uvs += face [Constants.FACE.UVS]
-	
-	var vertex_array:PackedVector3Array = PackedVector3Array(vertices)
-	var normal_array:PackedVector3Array = PackedVector3Array(normals)
-	var uv_array:PackedVector3Array = PackedVector3Array(uvs)
+		vertex_array += face [Constants.FACE.VERTICES]
+		normal_array += face [Constants.FACE.NORMALS]
+		uv_array += face [Constants.FACE.UVS]
 	
 	var mesh_array:Array = []
 	mesh_array.resize(Mesh.ARRAY_MAX)
@@ -137,18 +133,21 @@ func generate_mesh() -> Array:
 	mesh_array[Mesh.ARRAY_NORMAL] = normal_array
 	mesh_array[Mesh.ARRAY_TEX_UV] =  uv_array
 	
+	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
 	return mesh_array
 
-func greedy_mesher() -> Dictionary:
-	var positions:Dictionary[int,Dictionary] = {}
+func greedy_mesher() -> Dictionary: # ~ 0.3 msec
+	#var start_time := Time.get_ticks_usec()
+	var positions:Dictionary[Vector3,Dictionary] = {}
 	
-	for direction:int in faces:
+	for direction:Vector3 in faces:
 		positions[direction] = {}
 		
 		var first_next_tile:Vector3i = Vector3i.RIGHT
 		var second_next_tile:Vector3i = Vector3i.BACK
 		
-		if direction == Constants.DIRECTION.RIGHT or direction == Constants.DIRECTION.LEFT:
+		if direction == Vector3.RIGHT or direction == Vector3.LEFT:
 			first_next_tile = Vector3i.UP
 		
 		for pos:Vector3i in faces[direction]:
@@ -184,73 +183,63 @@ func greedy_mesher() -> Dictionary:
 			
 			positions[direction].set(pos,ending_pos)
 	
+	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	#print("Voxel_Chunk- Greedy Meshing Done in: %s msec"%time_taken)
 	return positions
 
-func create_face(direction:int, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary:
-	var face_directions:Array = [
-		[ # Right
-			[
-				starting_position + Vector3(0.5, -0.5, -0.5) * cube_size, # Bottom Left
-				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  0.5) * cube_size, # Bottom Right
-				ending_position + Vector3(0.5,  0.5,  0.5) * cube_size, # Top Right
-				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5,  0.5, -0.5) * cube_size, # Top Left
-			],
-			Vector3.RIGHT,
+func create_face(direction:Vector3, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary: # ~ 0.001 msec
+	var vertices_array:Dictionary = {
+		Vector3.RIGHT :
+		[
+			starting_position + Vector3(0.5, -0.5, -0.5) * cube_size, # Bottom Left
+			Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  0.5) * cube_size, # Bottom Right
+			ending_position + Vector3(0.5,  0.5,  0.5) * cube_size, # Top Right
+			Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5,  0.5, -0.5) * cube_size, # Top Left
 		],
-		[ # Left
-			[
-				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size, # Bottom Left
-				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * cube_size, # Top Left
-				ending_position + Vector3(-0.5,  0.5,  0.5) * cube_size, # Top Right
-				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5, -0.5,  0.5) * cube_size # Bottom Right
-			],
-			Vector3.LEFT,
+		Vector3.LEFT :
+		[
+			starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size, # Bottom Left
+			Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * cube_size, # Top Left
+			ending_position + Vector3(-0.5,  0.5,  0.5) * cube_size, # Top Right
+			Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5, -0.5,  0.5) * cube_size # Bottom Right
 		],
-		[ # Up
-			[
-				starting_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
-				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3( 0.5,  0.5, -0.5) * cube_size,
-				ending_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
-				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5,  0.5,  0.5) * cube_size
-			],
-			Vector3.UP,
+		Vector3.UP :
+		[
+			starting_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
+			Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3( 0.5,  0.5, -0.5) * cube_size,
+			ending_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
+			Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5,  0.5,  0.5) * cube_size
 		],
-		[ # Down
-			[
-				starting_position + Vector3(-0.5, -0.5,  -0.5) * cube_size,
-				Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3( -0.5, -0.5,  0.5) * cube_size,
-				ending_position + Vector3( 0.5, -0.5, 0.5) * cube_size,
-				Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5, -0.5, -0.5) * cube_size
-			],
-			Vector3.DOWN,
+		Vector3.DOWN :
+		[
+			starting_position + Vector3(-0.5, -0.5,  -0.5) * cube_size,
+			Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3( -0.5, -0.5,  0.5) * cube_size,
+			ending_position + Vector3( 0.5, -0.5, 0.5) * cube_size,
+			Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5, -0.5, -0.5) * cube_size
 		],
-		[ # Back
-			[
-				starting_position + Vector3(-0.5, -0.5, 0.5) * cube_size, # Bottom Left
-				Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, 0.5) * cube_size, # Top Left
-				ending_position + Vector3(0.5,  0.5,  0.5) * cube_size, # Top Right
-				Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  0.5) * cube_size # Bottom Right
-			],
-			Vector3.BACK,
+		Vector3.BACK :
+		[
+			starting_position + Vector3(-0.5, -0.5, 0.5) * cube_size, # Bottom Left
+			Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, 0.5) * cube_size, # Top Left
+			ending_position + Vector3(0.5,  0.5,  0.5) * cube_size, # Top Right
+			Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  0.5) * cube_size # Bottom Right
 		],
-		[ # Forward
-			[
-				starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size, # Bottom Left
-				Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  -0.5) * cube_size, # Bottom Right
-				ending_position + Vector3(0.5,  0.5,  -0.5) * cube_size, # Top Right
-				Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * cube_size, # Top Left
-			],
-			Vector3.FORWARD,
+		Vector3.FORWARD :
+		[
+			starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size, # Bottom Left
+			Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  -0.5) * cube_size, # Bottom Right
+			ending_position + Vector3(0.5,  0.5,  -0.5) * cube_size, # Top Right
+			Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * cube_size, # Top Left
 		],
-	]
-	var direction_data:Array = face_directions[direction]
-	var vertices:Array = direction_data[0]
+	}
+	
+	var vertices:Array = vertices_array[direction]
 	var normals:Array = []
 	normals.resize(4)
-	normals.fill(direction_data[1])
+	normals.fill(direction)
 	var uvs:Array = uv_coords
 	
-	return {
+	var mesh_faces:Dictionary[int,PackedVector3Array] = {
 		Constants.FACE.VERTICES : [
 			vertices[0], vertices[1], vertices[2],
 			vertices[0], vertices[2], vertices[3],
@@ -264,6 +253,8 @@ func create_face(direction:int, starting_position:Vector3, ending_position:Vecto
 			uvs[0], uvs[2], uvs[3],
 		]
 	}
+	
+	return mesh_faces
 
 func apply_mesh() -> void:
 	self.mesh = cube_mesh
@@ -277,7 +268,4 @@ func apply_mesh() -> void:
 	static_body.set_collision_mask(0)
 	static_body.add_child(collision_shape)
 	
-	
-	#var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
-	#print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
 ## private methods

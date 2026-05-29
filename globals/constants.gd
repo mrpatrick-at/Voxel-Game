@@ -1,10 +1,6 @@
 extends Node
 ## enums
 ## consts
-enum SQUARE_DATA {
-	SQUARE_TYPE,
-	IS_VISIBLE,
-}
 enum SQUARE_TYPE {
 	AIR,
 	GRASS,

@@ -172,7 +172,7 @@ func _update_cam_pos(_delta:float) -> void:
 		player_speed.z += 0.1
 	
 	player_body.rotate_y(player_rotation * _delta)
-	if player_rotation > 0:
-			player_rotation += -0.1
-	if player_rotation < 0:
-		player_rotation += 0.1
+	#if player_rotation > 0:
+			#player_rotation += -0.1
+	#if player_rotation < 0:
+		#player_rotation += 0.1
