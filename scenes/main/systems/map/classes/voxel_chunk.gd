@@ -110,22 +110,18 @@ func check_faces(chunk_size:int) -> Dictionary:
 
 func generate_mesh() -> Array: # ~ upto 6msec ATTENTION: PROBLEM
 	var start_time := Time.get_ticks_usec()
-	var mesh_faces:Array = []
+	var vertex_array:PackedVector3Array = []
+	var normal_array:PackedVector3Array = []
+	var uv_array:PackedVector3Array = []
 	
 	var positions:Dictionary = greedy_mesher()
 	for direction:Vector3 in positions:
 		for pos:Vector3i in positions[direction]:
 			#print("helly eah x", pos, positions[direction][pos])
-			mesh_faces.append(create_face(direction, pos, positions[direction][pos], placeholder_uvs))
-	
-	var vertex_array:PackedVector3Array = []
-	var normal_array:PackedVector3Array = []
-	var uv_array:PackedVector3Array = []
-	
-	for face:Dictionary in mesh_faces:
-		vertex_array += face [Constants.FACE.VERTICES]
-		normal_array += face [Constants.FACE.NORMALS]
-		uv_array += face [Constants.FACE.UVS]
+			var mesh_face:Dictionary = create_face(direction, pos, positions[direction][pos], placeholder_uvs)
+			vertex_array += mesh_face [Constants.FACE.VERTICES]
+			normal_array += mesh_face [Constants.FACE.NORMALS]
+			uv_array += mesh_face [Constants.FACE.UVS]
 	
 	var mesh_array:Array = []
 	mesh_array.resize(Mesh.ARRAY_MAX)
@@ -239,7 +235,7 @@ func create_face(direction:Vector3, starting_position:Vector3, ending_position:V
 	normals.fill(direction)
 	var uvs:Array = uv_coords
 	
-	var mesh_faces:Dictionary[int,PackedVector3Array] = {
+	var mesh_face:Dictionary[int,PackedVector3Array] = {
 		Constants.FACE.VERTICES : [
 			vertices[0], vertices[1], vertices[2],
 			vertices[0], vertices[2], vertices[3],
@@ -254,7 +250,7 @@ func create_face(direction:Vector3, starting_position:Vector3, ending_position:V
 		]
 	}
 	
-	return mesh_faces
+	return mesh_face
 
 func apply_mesh() -> void:
 	self.mesh = cube_mesh
