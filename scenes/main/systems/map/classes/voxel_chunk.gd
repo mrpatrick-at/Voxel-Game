@@ -22,7 +22,7 @@ var has_faces:bool = false
 
 func setup(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> void:
 	#var start_time := Time.get_ticks_usec()
-	print("Voxel_Chunk- Chunk %s Called Setup"%chunk_coord)
+	#print("Voxel_Chunk- Chunk %s Called Setup"%chunk_coord)
 	
 	global_position = Vector3(chunk_coord.x << 4, chunk_coord.y << 4, chunk_coord.z << 4)
 	
@@ -110,24 +110,53 @@ func check_faces(chunk_size:int) -> Dictionary:
 
 func generate_mesh() -> Array: # ~ upto 6msec ATTENTION: PROBLEM
 	var start_time := Time.get_ticks_usec()
-	var vertex_array:PackedVector3Array = []
-	var normal_array:PackedVector3Array = []
-	var uv_array:PackedVector3Array = []
 	
 	var positions:Dictionary = greedy_mesher()
+	
+	var dir_size:int = 0
+	
+	for direction:Vector3 in positions:
+		dir_size += positions[direction].size()
+	
+	dir_size *= 6
+	
+	var vertex_array:PackedVector3Array = PackedVector3Array()
+	var normal_array:PackedVector3Array = PackedVector3Array()
+	var uv_array:PackedVector3Array = PackedVector3Array()
+	var indices:PackedInt32Array = PackedInt32Array()
+	
+	vertex_array.resize(dir_size)
+	normal_array.resize(dir_size)
+	uv_array.resize(dir_size)
+	indices.resize(dir_size)
+	
+	var index:int = 0
+	var indices_index:int = 0
+	
 	for direction:Vector3 in positions:
 		for pos:Vector3i in positions[direction]:
-			#print("helly eah x", pos, positions[direction][pos])
-			var mesh_face:Dictionary = create_face(direction, pos, positions[direction][pos], placeholder_uvs)
-			vertex_array += mesh_face [Constants.FACE.VERTICES]
-			normal_array += mesh_face [Constants.FACE.NORMALS]
-			uv_array += mesh_face [Constants.FACE.UVS]
+			var mesh_face:Dictionary[int,PackedVector3Array] = create_face(direction, pos, positions[direction][pos], placeholder_uvs)
+			for i:int in 4:
+				vertex_array[index + i] = mesh_face[Constants.FACE.VERTICES][i]
+				normal_array[index + i] = mesh_face[Constants.FACE.NORMALS][i]
+				uv_array[index + i] = mesh_face[Constants.FACE.UVS][i]
+			
+			indices[indices_index] = index
+			indices[indices_index + 1] = index + 1
+			indices[indices_index + 2] = index + 2
+			indices[indices_index + 3] = index
+			indices[indices_index + 4] = index + 2
+			indices[indices_index + 5] = index + 3
+			
+			index += 4
+			indices_index += 6
 	
 	var mesh_array:Array = []
 	mesh_array.resize(Mesh.ARRAY_MAX)
 	mesh_array[Mesh.ARRAY_VERTEX] = vertex_array
 	mesh_array[Mesh.ARRAY_NORMAL] = normal_array
 	mesh_array[Mesh.ARRAY_TEX_UV] =  uv_array
+	mesh_array[Mesh.ARRAY_INDEX] = indices
 	
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
@@ -184,7 +213,7 @@ func greedy_mesher() -> Dictionary: # ~ 0.3 msec
 	return positions
 
 func create_face(direction:Vector3, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary: # ~ 0.001 msec
-	var vertices_array:Dictionary = {
+	var vertices_array:Dictionary[Vector3,PackedVector3Array]= {
 		Vector3.RIGHT :
 		[
 			starting_position + Vector3(0.5, -0.5, -0.5) * cube_size, # Bottom Left
@@ -236,18 +265,15 @@ func create_face(direction:Vector3, starting_position:Vector3, ending_position:V
 	var uvs:Array = uv_coords
 	
 	var mesh_face:Dictionary[int,PackedVector3Array] = {
-		Constants.FACE.VERTICES : [
-			vertices[0], vertices[1], vertices[2],
-			vertices[0], vertices[2], vertices[3],
-		],
-		Constants.FACE.NORMALS : [
-			normals[0], normals[1], normals[2],
-			normals[0], normals[2], normals[3],
-		],
-		Constants.FACE.UVS : [
-			uvs[0], uvs[1], uvs[2],
-			uvs[0], uvs[2], uvs[3],
-		]
+		Constants.FACE.VERTICES : PackedVector3Array([
+			vertices[0], vertices[1], vertices[2], vertices[3],
+		]),
+		Constants.FACE.NORMALS : PackedVector3Array([
+			normals[0], normals[1], normals[2], normals[3],
+		]),
+		Constants.FACE.UVS : PackedVector3Array([
+			uvs[0], uvs[1], uvs[2], uvs[3],
+		])
 	}
 	
 	return mesh_face
@@ -255,13 +281,13 @@ func create_face(direction:Vector3, starting_position:Vector3, ending_position:V
 func apply_mesh() -> void:
 	self.mesh = cube_mesh
 	
-	var static_body = StaticBody3D.new()
-	add_child(static_body)
-	var collision_shape = CollisionShape3D.new()
-	var chunk_collision:ConvexPolygonShape3D = cube_mesh.create_convex_shape()
-	collision_shape.shape = chunk_collision
-	static_body.set_collision_layer(1)
-	static_body.set_collision_mask(0)
-	static_body.add_child(collision_shape)
+	#var static_body = StaticBody3D.new()
+	#add_child(static_body)
+	#var collision_shape = CollisionShape3D.new()
+	#var chunk_collision:ConvexPolygonShape3D = cube_mesh.create_convex_shape()
+	#collision_shape.shape = chunk_collision
+	#static_body.set_collision_layer(1)
+	#static_body.set_collision_mask(0)
+	#static_body.add_child(collision_shape)
 	
 ## private methods

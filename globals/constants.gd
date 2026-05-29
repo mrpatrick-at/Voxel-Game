@@ -19,6 +19,7 @@ enum FACE {
 	VERTICES,
 	NORMALS,
 	UVS,
+	INDICES,
 }
 ## exports
 ## public vars
