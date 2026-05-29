@@ -51,7 +51,7 @@ static func local_to_global_coords(chunk_pos:Vector2i,local_pos:Vector3i) -> Vec
 ## private methods
 
 func _make_map(is_generating:bool) -> void:
-	var start_time := Time.get_ticks_usec()
+	var start_time:int = Time.get_ticks_usec()
 	
 	# Delete Old Nodes
 	var children:Array = get_children()
@@ -91,13 +91,14 @@ func _make_map(is_generating:bool) -> void:
 			var chunk_heightmap:PackedByteArray = _get_height_map(chunk_coord_2D, world_height)
 			for chunk_y in world_heighth_in_chunks:
 				var chunk_coord := Vector3i(chunk_x, chunk_y, chunk_z)
-				
 				var chunk_res:= VoxelChunk.new()
 				add_child(chunk_res)
-				chunk_res.setup(chunk_coord, chunk_size, chunk_heightmap)
+				
+				chunk_res.setup(chunk_coord)
+				chunk_res.generate(chunk_coord, chunk_size, chunk_heightmap)
+				
 				chunks[chunk_coord] = chunk_res
 	
-	#Scripts.MAP_DATA.save_data()
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	print("MAP_MANAGER- Map Made in: %s msec"%time_taken)
 

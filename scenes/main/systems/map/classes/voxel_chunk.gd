@@ -19,12 +19,12 @@ var has_faces:bool = false
 # obj_ for node refrences
 ## built-in override methods
 ## public methods
+func setup(chunk_coord:Vector3i) -> void:
+	global_position = Vector3(chunk_coord.x << 4, chunk_coord.y << 4, chunk_coord.z << 4)
 
-func setup(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> void:
+func generate(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> void:
 	#var start_time := Time.get_ticks_usec()
 	#print("Voxel_Chunk- Chunk %s Called Setup"%chunk_coord)
-	
-	global_position = Vector3(chunk_coord.x << 4, chunk_coord.y << 4, chunk_coord.z << 4)
 	
 	voxels = make_voxels(chunk_coord, chunk_size, height_map)
 	
@@ -133,6 +133,8 @@ func generate_mesh() -> Array: # ~ upto 6msec ATTENTION: PROBLEM
 	var index:int = 0
 	var indices_index:int = 0
 	
+	var start_time_2 := Time.get_ticks_usec()
+	# ATTENTION: The Following Code Block is the Performance Killer.
 	for direction:Vector3 in positions:
 		for pos:Vector3i in positions[direction]:
 			var mesh_face:Dictionary[int,PackedVector3Array] = create_face(direction, pos, positions[direction][pos], placeholder_uvs)
@@ -150,6 +152,10 @@ func generate_mesh() -> Array: # ~ upto 6msec ATTENTION: PROBLEM
 			
 			index += 4
 			indices_index += 6
+	# ATTENTION: That was the Performance Killer.
+	
+	var time_taken_2 := (Time.get_ticks_usec() - start_time_2) / 1000.0
+	print("Voxel_Chunk- Indices Made in: %s msec"%time_taken_2)
 	
 	var mesh_array:Array = []
 	mesh_array.resize(Mesh.ARRAY_MAX)
