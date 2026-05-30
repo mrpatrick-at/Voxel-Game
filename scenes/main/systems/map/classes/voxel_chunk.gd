@@ -48,7 +48,7 @@ func generate(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) 
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	print("Voxel_Chunk- Chunk %s Made in: %s msec"%[chunk_coord,time_taken])
 
-func make_voxels(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> PackedByteArray:
+func make_voxels(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> PackedByteArray: #ATTENTION: CURRENT SPEED PROBLEM: ~0.3msec
 	var start_time := Time.get_ticks_usec()
 	
 	var voxel_array:PackedByteArray = []
@@ -67,7 +67,7 @@ func make_voxels(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArra
 	print("Voxel_Chunk- Chunk Data Made in: %s msec"%time_taken)
 	return voxel_array
 
-func check_faces(chunk_size:int) -> Dictionary:
+func check_faces(chunk_size:int) -> Dictionary: #ATTENTION: CURRENT SPEED PROBLEM: ~0.5msec
 	var start_time := Time.get_ticks_usec()
 	var face_data:Dictionary[Vector3,PackedVector3Array] = {
 		Vector3.RIGHT : [],
@@ -82,27 +82,30 @@ func check_faces(chunk_size:int) -> Dictionary:
 	var sq_extended_chunk_size:int = extended_chunk_size * extended_chunk_size
 	
 	for z:int in chunk_size:
+		var z_next:int = z + 1
 		var z_offset:int = z * sq_extended_chunk_size
-		var z_next_offset:int = (z + 1) * sq_extended_chunk_size
+		var z_next_offset:int = z_next * sq_extended_chunk_size
 		for y:int in chunk_size:
+			var y_next:int = y + 1
 			var y_offset:int = y * extended_chunk_size
-			var y_next_offset:int = (y + 1) * extended_chunk_size
+			var y_next_offset:int = y_next * extended_chunk_size
 			for x:int in chunk_size:
+				var x_next:int = x + 1
 				
-				var voxel_x_offset:int = (x + 1) + y_offset + z_offset
+				var voxel_x_offset:int = x_next + y_offset + z_offset
 				var voxel_y_offset:int = x + y_next_offset + z_offset
 				var voxel_z_offset:int = x + y_offset + z_next_offset
 				
 				if voxels[x + y_offset + z_offset] == 0:
 					
 					if voxels[voxel_x_offset] != Constants.SQUARE_TYPE.AIR:
-						face_data[Vector3.LEFT].append(Vector3i(x + 1, y, z))
+						face_data[Vector3.LEFT].append(Vector3i(x_next, y, z))
 				
 					if voxels[voxel_y_offset] != Constants.SQUARE_TYPE.AIR:
-						face_data[Vector3.DOWN].append(Vector3i(x, y + 1, z))
+						face_data[Vector3.DOWN].append(Vector3i(x, y_next, z))
 					
 					if voxels[voxel_z_offset] != Constants.SQUARE_TYPE.AIR:
-						face_data[Vector3.FORWARD].append(Vector3i(x, y, z + 1))
+						face_data[Vector3.FORWARD].append(Vector3i(x, y, z_next))
 					
 					continue
 				var coord:Vector3i = Vector3i(x, y, z)
@@ -135,12 +138,12 @@ func generate_mesh() -> Array: # ~ upto 6msec ATTENTION: PROBLEM
 	var vertex_array:PackedVector3Array = PackedVector3Array()
 	var normal_array:PackedVector3Array = PackedVector3Array()
 	var uv_array:PackedVector3Array = PackedVector3Array()
-	var indices:PackedInt32Array = PackedInt32Array()
+	var indices_array:PackedInt32Array = PackedInt32Array()
 	
 	vertex_array.resize(dir_size)
 	normal_array.resize(dir_size)
 	uv_array.resize(dir_size)
-	indices.resize(dir_size)
+	indices_array.resize(dir_size)
 	
 	var index:int = 0
 	var indices_index:int = 0
@@ -150,17 +153,25 @@ func generate_mesh() -> Array: # ~ upto 6msec ATTENTION: PROBLEM
 	for direction:Vector3 in positions:
 		for pos:Vector3i in positions[direction]:
 			var mesh_face:Dictionary[int,PackedVector3Array] = create_face(direction, pos, positions[direction][pos], placeholder_uvs)
-			for i:int in 4:
-				vertex_array[index + i] = mesh_face[Constants.FACE.VERTICES][i]
-				normal_array[index + i] = mesh_face[Constants.FACE.NORMALS][i]
-				uv_array[index + i] = mesh_face[Constants.FACE.UVS][i]
 			
-			indices[indices_index] = index
-			indices[indices_index + 1] = index + 1
-			indices[indices_index + 2] = index + 2
-			indices[indices_index + 3] = index
-			indices[indices_index + 4] = index + 2
-			indices[indices_index + 5] = index + 3
+			var i:int = index
+			
+			for vertice in mesh_face[Constants.FACE.VERTICES]:
+				vertex_array[i] = vertice
+				normal_array[i] = vertice
+				uv_array[i] = vertice
+				i += 1
+			
+			var point_1:int = index + 1
+			var point_2:int = index + 2
+			var point_3:int = index + 3
+			
+			indices_array[indices_index] = index
+			indices_array[indices_index + 1] = point_1
+			indices_array[indices_index + 2] = point_2
+			indices_array[indices_index + 3] = index
+			indices_array[indices_index + 4] = point_2
+			indices_array[indices_index + 5] = point_3
 			
 			index += 4
 			indices_index += 6
@@ -174,9 +185,9 @@ func generate_mesh() -> Array: # ~ upto 6msec ATTENTION: PROBLEM
 	mesh_array[Mesh.ARRAY_VERTEX] = vertex_array
 	mesh_array[Mesh.ARRAY_NORMAL] = normal_array
 	mesh_array[Mesh.ARRAY_TEX_UV] =  uv_array
-	mesh_array[Mesh.ARRAY_INDEX] = indices
+	mesh_array[Mesh.ARRAY_INDEX] = indices_array
 	
-	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
+	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0 - time_taken_2
 	print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
 	return mesh_array
 

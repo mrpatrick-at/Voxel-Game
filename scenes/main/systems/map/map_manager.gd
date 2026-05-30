@@ -85,6 +85,9 @@ func _make_map(is_generating:bool) -> void:
 	
 	var world_height:int = world_heighth_in_chunks * chunk_size
 	
+	var time_taken_2 := (Time.get_ticks_usec() - start_time) / 1000.0
+	print("MAP_MANAGER- Pre Chunk Operations Done in: %s msec"%time_taken_2)
+	
 	for chunk_x in world_length_in_chunks:
 		for chunk_z in world_width_in_chunks:
 			var chunk_coord_2D:Vector2i = Vector2i(chunk_x,chunk_z)
