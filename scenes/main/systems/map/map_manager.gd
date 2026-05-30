@@ -12,7 +12,7 @@ const mesh_library = preload("res://scenes/main/mesh_library.meshlib")
 ## public vars
 static var seed:int
 static var noise:FastNoiseLite
-static var chunks:Dictionary
+static var chunks:Dictionary = {}
 ## private vars
 ## onready vars
 @onready var noise_viewer: TextureRect = $"../IngameUI/PanelContainer/VBoxContainer/NoiseViewer"
@@ -56,9 +56,10 @@ func _make_map(is_generating:bool) -> void:
 	# Delete Old Nodes
 	var children:Array = get_children()
 	for child:Node3D in children:
-		remove_child(child)
-		child.queue_free()
-	print("_MAKE_MAP- Deleted %s children"%children.size())
+		if child is VoxelChunk:
+			remove_child(child)
+			child.queue_free()
+	print("_MAKE_MAP- Deleted %s children, %s children left"%[(children.size() - get_child_count()), get_child_count()])
 	
 	if is_generating:
 		seed = randi()
