@@ -10,6 +10,12 @@ enum DIRECTION {
 	BACK,
 	FORWARD,
 }
+enum MESH {
+	VERTICES,
+	NORMALS,
+	UVS,
+	INDICES,
+}
 ## consts
 ## exports
 @export var cube_size: float = 1.0
@@ -102,14 +108,8 @@ func make_voxels() -> PackedByteArray:
 
 func check_faces(chunk_size:int) -> Array: # ATTENTION: ~ 0.5 msec
 	var start_time := Time.get_ticks_usec()
-	var face_data:Array[PackedVector3Array] = [
-		[],
-		[],
-		[],
-		[],
-		[],
-		[],
-	]
+	var face_data:Array[PackedVector3Array] = []
+	face_data.resize(DIRECTION.size())
 	
 	for x:int in chunk_size:
 		var x_next:int = x + 1
@@ -238,12 +238,12 @@ func generate_mesh() -> Array:
 			var pos:Vector3i = greedy_faces[direction][greedy_face_index]
 			var ending_pos:Vector3i = greedy_faces[direction][greedy_face_index + 1]
 			
-			var mesh_face:Dictionary[int,PackedVector3Array] = create_face(direction, pos, ending_pos, placeholder_uvs)
+			var mesh_face:Array[PackedVector3Array] = create_face(direction, pos, ending_pos, placeholder_uvs)
 			
 			var index_offset:int = index << 2
 			var i:int = index_offset
 			
-			for vertice in mesh_face[Constants.FACE.VERTICES]:
+			for vertice in mesh_face[MESH.VERTICES]:
 				vertex_array[i] = vertice
 				normal_array[i] = vertice
 				uv_array[i] = vertice
@@ -280,7 +280,7 @@ func generate_mesh() -> Array:
 	print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
 	return mesh_array
 
-func create_face(direction:int, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Dictionary: # ~ 0.001 msec
+func create_face(direction:int, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Array: # ~ 0.001 msec
 	var direction_array:Array = [
 		Vector3.RIGHT,
 		Vector3.LEFT,
@@ -335,17 +335,17 @@ func create_face(direction:int, starting_position:Vector3, ending_position:Vecto
 	normals.fill(vec3_direction)
 	var uvs:Array = uv_coords
 	
-	var mesh_face:Dictionary[int,PackedVector3Array] = {
-		Constants.FACE.VERTICES : PackedVector3Array([
+	var mesh_face:Array[PackedVector3Array] = [
+		PackedVector3Array([
 			vertices[0], vertices[1], vertices[2], vertices[3],
 		]),
-		Constants.FACE.NORMALS : PackedVector3Array([
+		PackedVector3Array([
 			normals[0], normals[1], normals[2], normals[3],
 		]),
-		Constants.FACE.UVS : PackedVector3Array([
+		PackedVector3Array([
 			uvs[0], uvs[1], uvs[2], uvs[3],
 		])
-	}
+	]
 	
 	return mesh_face
 
