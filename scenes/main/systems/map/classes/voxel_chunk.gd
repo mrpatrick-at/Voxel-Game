@@ -10,6 +10,10 @@ enum DIRECTION {
 	BACK,
 	FORWARD,
 }
+enum VOXEL_TYPE {
+	AIR,
+	DIRT,
+}
 enum MESH {
 	VERTICES,
 	NORMALS,
@@ -99,7 +103,7 @@ func make_voxels() -> PackedByteArray:
 		for z:int in extended_chunk_size:
 			for y:int in local_heightmap[x + z * extended_chunk_size]:
 				
-				voxel_array[x * extended_chunk_size + y + z * sq_extended_chunk_size] = Constants.SQUARE_TYPE.GRASS
+				voxel_array[x * extended_chunk_size + y + z * sq_extended_chunk_size] = VOXEL_TYPE.DIRT
 				is_empty = false
 	
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
@@ -124,24 +128,24 @@ func check_faces(chunk_size:int) -> Array:
 				
 				var coord:Vector3i = Vector3i(x, y, z)
 				
-				if voxels[x_next_offset + y + z_offset] == Constants.SQUARE_TYPE.AIR:
+				if voxels[x_next_offset + y + z_offset] == VOXEL_TYPE.AIR:
 					face_data[DIRECTION.RIGHT].append(coord)
 				
-				if voxels[x_offset + y + 1 + z_offset] == Constants.SQUARE_TYPE.AIR:
+				if voxels[x_offset + y + 1 + z_offset] == VOXEL_TYPE.AIR:
 					face_data[DIRECTION.UP].append(coord)
 				
-				if voxels[x_offset + y + z_next_offset] == Constants.SQUARE_TYPE.AIR:
+				if voxels[x_offset + y + z_next_offset] == VOXEL_TYPE.AIR:
 					face_data[DIRECTION.BACK].append(coord)
 			
 			var y:int = height + 1
-			if voxels[x * extended_chunk_size + y + z * sq_extended_chunk_size] == Constants.SQUARE_TYPE.AIR:
-				if voxels[x_next_offset + y + z_offset] != Constants.SQUARE_TYPE.AIR:
+			if voxels[x * extended_chunk_size + y + z * sq_extended_chunk_size] == VOXEL_TYPE.AIR:
+				if voxels[x_next_offset + y + z_offset] != VOXEL_TYPE.AIR:
 					face_data[DIRECTION.LEFT].append(Vector3i(x_next, y, z))
 				
-				if voxels[x_offset + y + 1 + z_offset] != Constants.SQUARE_TYPE.AIR:
+				if voxels[x_offset + y + 1 + z_offset] != VOXEL_TYPE.AIR:
 					face_data[DIRECTION.DOWN].append(Vector3i(x, y + 1, z))
 				
-				if voxels[x_offset + y + z_next_offset] != Constants.SQUARE_TYPE.AIR:
+				if voxels[x_offset + y + z_next_offset] != VOXEL_TYPE.AIR:
 					face_data[DIRECTION.FORWARD].append(Vector3i(x, y, z_next))
 	
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0

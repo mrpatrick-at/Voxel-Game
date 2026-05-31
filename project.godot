@@ -18,7 +18,6 @@ config/icon="res://icon.svg"
 [autoload]
 
 Scripts="*uid://dk56gu8sp4iy4"
-Constants="*uid://bycdh077a3yds"
 
 [debug]
 
