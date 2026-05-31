@@ -22,8 +22,8 @@ enum MESH {
 }
 ## consts
 ## exports
-@export var cube_size: float = 1.0
 ## public vars
+var voxel_size: float = 0
 var extended_chunk_size:int
 var sq_extended_chunk_size:int
 
@@ -44,10 +44,11 @@ var has_faces:bool = false
 func setup(chunk_coord:Vector3i) -> void:
 	global_position = Vector3(chunk_coord.x << 4, chunk_coord.y << 4, chunk_coord.z << 4)
 
-func generate(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray) -> void:
+func generate(chunk_coord:Vector3i, chunk_size:int, height_map:PackedByteArray, cube_size:float) -> void:
 	var start_time := Time.get_ticks_usec()
 	print("Voxel_Chunk- Chunk %s Called Setup"%chunk_coord)
 	
+	voxel_size = cube_size
 	extended_chunk_size = chunk_size + 2
 	sq_extended_chunk_size = extended_chunk_size * extended_chunk_size
 	
@@ -224,11 +225,9 @@ func generate_mesh() -> Array:
 	uv_array.resize(dir_size)
 	indices_array.resize(dir_size)
 	
-	var index:int = 0
-	var indices_index:int = 0
-	
 	var start_time_2 := Time.get_ticks_usec()
 	
+	var index:int = 0
 	# ATTENTION: Slow af sometimes
 	for direction:int in greedy_faces.size():
 		
@@ -242,6 +241,8 @@ func generate_mesh() -> Array:
 			var mesh_face:Array[PackedVector3Array] = create_face(direction, pos, ending_pos, placeholder_uvs)
 			
 			var index_offset:int = index << 2
+			var indices_index:int = index_offset + (index << 1)
+			
 			var i:int = index_offset
 			
 			for vertice in mesh_face[MESH.VERTICES]:
@@ -261,10 +262,8 @@ func generate_mesh() -> Array:
 			indices_array[indices_index + 4] = point_2
 			indices_array[indices_index + 5] = point_3
 			
-			greedy_face_index += 2
-			
 			index += 1
-			indices_index += 6
+			greedy_face_index += 2
 	# ATTENTION: That was the Performance Killer.
 	
 	var time_taken_2 := (Time.get_ticks_usec() - start_time_2) / 1000.0
@@ -292,40 +291,40 @@ func create_face(direction:int, starting_position:Vector3, ending_position:Vecto
 	]
 	var vertices_array: Array[Array] = [
 		[
-			starting_position + Vector3(0.5, -0.5, -0.5) * cube_size, # Bottom Left
-			Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  0.5) * cube_size, # Bottom Right
-			ending_position + Vector3(0.5,  0.5,  0.5) * cube_size, # Top Right
-			Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5,  0.5, -0.5) * cube_size, # Top Left
+			starting_position + Vector3(0.5, -0.5, -0.5) * voxel_size, # Bottom Left
+			Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  0.5) * voxel_size, # Bottom Right
+			ending_position + Vector3(0.5,  0.5,  0.5) * voxel_size, # Top Right
+			Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5,  0.5, -0.5) * voxel_size, # Top Left
 		],
 		[
-			starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size, # Bottom Left
-			Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * cube_size, # Top Left
-			ending_position + Vector3(-0.5,  0.5,  0.5) * cube_size, # Top Right
-			Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5, -0.5,  0.5) * cube_size # Bottom Right
+			starting_position + Vector3(-0.5, -0.5, -0.5) * voxel_size, # Bottom Left
+			Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * voxel_size, # Top Left
+			ending_position + Vector3(-0.5,  0.5,  0.5) * voxel_size, # Top Right
+			Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5, -0.5,  0.5) * voxel_size # Bottom Right
 		],
 		[
-			starting_position + Vector3(-0.5,  0.5, -0.5) * cube_size,
-			Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3( 0.5,  0.5, -0.5) * cube_size,
-			ending_position + Vector3( 0.5,  0.5,  0.5) * cube_size,
-			Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5,  0.5,  0.5) * cube_size
+			starting_position + Vector3(-0.5,  0.5, -0.5) * voxel_size,
+			Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3( 0.5,  0.5, -0.5) * voxel_size,
+			ending_position + Vector3( 0.5,  0.5,  0.5) * voxel_size,
+			Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3(-0.5,  0.5,  0.5) * voxel_size
 		],
 		[
-			starting_position + Vector3(-0.5, -0.5,  -0.5) * cube_size,
-			Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3( -0.5, -0.5,  0.5) * cube_size,
-			ending_position + Vector3( 0.5, -0.5, 0.5) * cube_size,
-			Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5, -0.5, -0.5) * cube_size
+			starting_position + Vector3(-0.5, -0.5,  -0.5) * voxel_size,
+			Vector3(starting_position.x,starting_position.y,ending_position.z) + Vector3( -0.5, -0.5,  0.5) * voxel_size,
+			ending_position + Vector3( 0.5, -0.5, 0.5) * voxel_size,
+			Vector3(ending_position.x,ending_position.y,starting_position.z) + Vector3(0.5, -0.5, -0.5) * voxel_size
 		],
 		[
-			starting_position + Vector3(-0.5, -0.5, 0.5) * cube_size, # Bottom Left
-			Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, 0.5) * cube_size, # Top Left
-			ending_position + Vector3(0.5,  0.5,  0.5) * cube_size, # Top Right
-			Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  0.5) * cube_size # Bottom Right
+			starting_position + Vector3(-0.5, -0.5, 0.5) * voxel_size, # Bottom Left
+			Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, 0.5) * voxel_size, # Top Left
+			ending_position + Vector3(0.5,  0.5,  0.5) * voxel_size, # Top Right
+			Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  0.5) * voxel_size # Bottom Right
 		],
 		[
-			starting_position + Vector3(-0.5, -0.5, -0.5) * cube_size, # Bottom Left
-			Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  -0.5) * cube_size, # Bottom Right
-			ending_position + Vector3(0.5,  0.5,  -0.5) * cube_size, # Top Right
-			Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * cube_size, # Top Left
+			starting_position + Vector3(-0.5, -0.5, -0.5) * voxel_size, # Bottom Left
+			Vector3(ending_position.x,starting_position.y,ending_position.z) + Vector3(0.5, -0.5,  -0.5) * voxel_size, # Bottom Right
+			ending_position + Vector3(0.5,  0.5,  -0.5) * voxel_size, # Top Right
+			Vector3(starting_position.x,ending_position.y,starting_position.z) + Vector3(-0.5,  0.5, -0.5) * voxel_size, # Top Left
 		],
 	]
 	
