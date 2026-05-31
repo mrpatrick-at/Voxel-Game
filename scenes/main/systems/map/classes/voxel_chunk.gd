@@ -106,7 +106,7 @@ func make_voxels() -> PackedByteArray:
 	print("Voxel_Chunk- Chunk Data Made in: %s msec"%time_taken)
 	return voxel_array
 
-func check_faces(chunk_size:int) -> Array: # ATTENTION: ~ 0.5 msec
+func check_faces(chunk_size:int) -> Array:
 	var start_time := Time.get_ticks_usec()
 	var face_data:Array[PackedVector3Array] = []
 	face_data.resize(DIRECTION.size())
@@ -119,35 +119,30 @@ func check_faces(chunk_size:int) -> Array: # ATTENTION: ~ 0.5 msec
 			var z_next:int = z + 1
 			var z_offset:int = z * sq_extended_chunk_size
 			var z_next_offset:int = z_next * sq_extended_chunk_size
-			for y:int in local_heightmap[x + z * extended_chunk_size] + 1:
-				var y_next:int = y + 1
+			var height:int = local_heightmap[x + z * extended_chunk_size]
+			for y:int in height:
 				
-				var voxel_x_offset:int = x_next_offset + y + z_offset
-				var voxel_y_offset:int = x_offset + y_next + z_offset
-				var voxel_z_offset:int = x_offset + y + z_next_offset
-				
-				if voxels[x_offset + y + z_offset] == 0:
-					
-					if voxels[voxel_x_offset] != Constants.SQUARE_TYPE.AIR:
-						face_data[DIRECTION.LEFT].append(Vector3i(x_next, y, z))
-				
-					if voxels[voxel_y_offset] != Constants.SQUARE_TYPE.AIR:
-						face_data[DIRECTION.DOWN].append(Vector3i(x, y_next, z))
-					
-					if voxels[voxel_z_offset] != Constants.SQUARE_TYPE.AIR:
-						face_data[DIRECTION.FORWARD].append(Vector3i(x, y, z_next))
-					
-					continue
 				var coord:Vector3i = Vector3i(x, y, z)
 				
-				if voxels[voxel_x_offset] == Constants.SQUARE_TYPE.AIR:
+				if voxels[x_next_offset + y + z_offset] == Constants.SQUARE_TYPE.AIR:
 					face_data[DIRECTION.RIGHT].append(coord)
 				
-				if voxels[voxel_y_offset] == Constants.SQUARE_TYPE.AIR:
+				if voxels[x_offset + y + 1 + z_offset] == Constants.SQUARE_TYPE.AIR:
 					face_data[DIRECTION.UP].append(coord)
 				
-				if voxels[voxel_z_offset] == Constants.SQUARE_TYPE.AIR:
+				if voxels[x_offset + y + z_next_offset] == Constants.SQUARE_TYPE.AIR:
 					face_data[DIRECTION.BACK].append(coord)
+			
+			var y:int = height + 1
+			if voxels[x * extended_chunk_size + y + z * sq_extended_chunk_size] == Constants.SQUARE_TYPE.AIR:
+				if voxels[x_next_offset + y + z_offset] != Constants.SQUARE_TYPE.AIR:
+					face_data[DIRECTION.LEFT].append(Vector3i(x_next, y, z))
+				
+				if voxels[x_offset + y + 1 + z_offset] != Constants.SQUARE_TYPE.AIR:
+					face_data[DIRECTION.DOWN].append(Vector3i(x, y + 1, z))
+				
+				if voxels[x_offset + y + z_next_offset] != Constants.SQUARE_TYPE.AIR:
+					face_data[DIRECTION.FORWARD].append(Vector3i(x, y, z_next))
 	
 	var time_taken := (Time.get_ticks_usec() - start_time) / 1000.0
 	print("Voxel_Chunk- Checked Faces in: %s msec"%time_taken)
@@ -230,13 +225,15 @@ func generate_mesh() -> Array:
 	
 	var start_time_2 := Time.get_ticks_usec()
 	
-	# ATTENTION: Slow af ~ 0.8 msec
+	# ATTENTION: Slow af sometimes
 	for direction:int in greedy_faces.size():
 		
+		var directional_faces:PackedVector3Array = greedy_faces[direction]
+		
 		var greedy_face_index:int = 0
-		while greedy_face_index < greedy_faces[direction].size():
-			var pos:Vector3i = greedy_faces[direction][greedy_face_index]
-			var ending_pos:Vector3i = greedy_faces[direction][greedy_face_index + 1]
+		while greedy_face_index < directional_faces.size():
+			var pos:Vector3i = directional_faces[greedy_face_index]
+			var ending_pos:Vector3i = directional_faces[greedy_face_index + 1]
 			
 			var mesh_face:Array[PackedVector3Array] = create_face(direction, pos, ending_pos, placeholder_uvs)
 			
@@ -280,7 +277,7 @@ func generate_mesh() -> Array:
 	print("Voxel_Chunk- Mesh Made in: %s msec"%time_taken)
 	return mesh_array
 
-func create_face(direction:int, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Array: # ~ 0.001 msec
+func create_face(direction:int, starting_position:Vector3, ending_position:Vector3, uv_coords:Array) -> Array:
 	var direction_array:Array = [
 		Vector3.RIGHT,
 		Vector3.LEFT,
