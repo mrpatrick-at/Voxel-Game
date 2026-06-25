@@ -1,7 +1,7 @@
 using Godot;
 using Godot.Collections;
 using System;
-namespace Voxel.Consts;
+namespace VoxelGame.Consts;
 // enum
 enum DIRECTION : int {
     RIGHT = 0,

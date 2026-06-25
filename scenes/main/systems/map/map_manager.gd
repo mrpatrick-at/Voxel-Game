@@ -98,8 +98,8 @@ func _make_map(is_generating:bool) -> void:
 				var chunk_res:= VoxelChunk.new()
 				add_child(chunk_res)
 				
-				chunk_res.setup(chunk_coord)
-				chunk_res.generate(noise)
+				chunk_res.Setup(chunk_coord)
+				chunk_res.Generate(noise)
 				
 				chunks[chunk_coord] = chunk_res
 	

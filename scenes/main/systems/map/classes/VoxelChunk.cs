@@ -5,7 +5,8 @@ using System.Collections.Generic;
 using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Numerics;
-using Voxel.Consts;
+namespace VoxelGame.Chunck;
+using VoxelGame.Consts;
 [GlobalClass]
 public partial class VoxelChunk : MeshInstance3D
 {
@@ -35,12 +36,12 @@ public partial class VoxelChunk : MeshInstance3D
 
 		}
 	// public methods
-	public void setup(Vector3I TMPChunkCoord) {
+	public void Setup(Vector3I TMPChunkCoord) {
 		ChunkCoord = TMPChunkCoord;
 		this.GlobalPosition = new Godot.Vector3(ChunkCoord.X << 4, ChunkCoord.Y << 4, ChunkCoord.Z << 4);
 	}
 
-	public void generate(FastNoiseLite noise) {
+	public void Generate(FastNoiseLite noise) {
 		ulong StartTime = Time.GetTicksUsec();
 		GD.PrintRich($"[color=Springgreen]VoxelChunk-[/color] Chunk [color=gold]{ChunkCoord}[/color] called setup");
 
@@ -91,7 +92,7 @@ public partial class VoxelChunk : MeshInstance3D
 	}
 
 	private List<int>[] MakeFaces() {
-		List<int>[] TMPFaces = [new(), new(), new(), new(), new(), new() ];
+		List<int>[] TMPFaces = [[], [], [], [], [], []];
 
 		for (int x = 0; x < Consts.ChunkSize; x++) {
 			for (int y = 0; y < Consts.ChunkSize; y++) {
@@ -171,12 +172,6 @@ public partial class VoxelChunk : MeshInstance3D
 		for (int dir = 0; dir < 6; dir++) {
 			DirSize += Faces[dir].Count;
 		}
-		// foreach (List<int> dir in Faces) {
-		// 	foreach (int Face in dir) {
-		// 		DirSize++;
-		// 		GD.Print("Face COun");
-		// 	}
-		// }
 		Godot.Vector3[] VertexArray = new Godot.Vector3[DirSize * 4];
 		Godot.Vector3[] NormalArray = new Godot.Vector3[DirSize * 4];
 		Godot.Vector2[] UvArray = new Godot.Vector2[DirSize * 4];
@@ -221,67 +216,67 @@ public partial class VoxelChunk : MeshInstance3D
 		return MeshArray;
 	}
 
-	private Godot.Vector3[][] CreateFace(int dir, Godot.Vector3 StartingPosition, Godot.Vector3 EndingPosition) {
-		Godot.Vector3[] DirectionArray = new Godot.Vector3[] {
+	private static Godot.Vector3[][] CreateFace(int dir, Godot.Vector3 StartingPosition, Godot.Vector3 EndingPosition) {
+		Godot.Vector3[] DirectionArray = [
 			Godot.Vector3.Right,
 			Godot.Vector3.Left,
 			Godot.Vector3.Up,
 			Godot.Vector3.Down,
 			Godot.Vector3.Back,
 			Godot.Vector3.Forward,
-		};
-		Godot.Vector3[][] VerticesArray = new Godot.Vector3[][] {
-			new Godot.Vector3[] {
+		];
+		Godot.Vector3[][] VerticesArray = [
+			[
 				StartingPosition + new Godot.Vector3(0.5F, -0.5F, -0.5F) * Consts.VoxelSize, // Bottom Left
 				new Godot.Vector3(StartingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(0.5F, -0.5F,  0.5F) * Consts.VoxelSize, // Bottom Right
 				EndingPosition + new Godot.Vector3(0.5F,  0.5F,  0.5F) * Consts.VoxelSize, // Top Right
 				new Godot.Vector3(EndingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(0.5F,  0.5F, -0.5F) * Consts.VoxelSize, // Top Left
-			},
-			new Godot.Vector3[] {
+			],
+			[
 				StartingPosition + new Godot.Vector3(-0.5F, -0.5F, -0.5F) * Consts.VoxelSize, // Bottom Left
 				new Godot.Vector3(EndingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(-0.5F,  0.5F, -0.5F) * Consts.VoxelSize, // Top Left
 				EndingPosition + new Godot.Vector3(-0.5F,  0.5F,  0.5F) * Consts.VoxelSize, // Top Right
 				new Godot.Vector3(StartingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(-0.5F, -0.5F,  0.5F) * Consts.VoxelSize // Bottom Right
-			},
-			new Godot.Vector3[] {
+			],
+			[
 				StartingPosition + new Godot.Vector3(-0.5F,  0.5F, -0.5F) * Consts.VoxelSize,
 				new Godot.Vector3(EndingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3( 0.5F,  0.5F, -0.5F) * Consts.VoxelSize,
 				EndingPosition + new Godot.Vector3( 0.5F,  0.5F,  0.5F) * Consts.VoxelSize,
 				new Godot.Vector3(StartingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(-0.5F,  0.5F,  0.5F) * Consts.VoxelSize
-			},
-			new Godot.Vector3[] {
+			],
+			[
 				StartingPosition + new Godot.Vector3(-0.5F, -0.5F,  -0.5F) * Consts.VoxelSize,
 				new Godot.Vector3(StartingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3( -0.5F, -0.5F,  0.5F) * Consts.VoxelSize,
 				EndingPosition + new Godot.Vector3( 0.5F, -0.5F, 0.5F) * Consts.VoxelSize,
 				new Godot.Vector3(EndingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(0.5F, -0.5F, -0.5F) * Consts.VoxelSize
-			},
-			new Godot.Vector3[] {
+			],
+			[
 				StartingPosition + new Godot.Vector3(-0.5F, -0.5F, 0.5F) * Consts.VoxelSize, // Bottom Left
 				new Godot.Vector3(StartingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(-0.5F,  0.5F, 0.5F) * Consts.VoxelSize, // Top Left
 				EndingPosition + new Godot.Vector3(0.5F,  0.5F,  0.5F) * Consts.VoxelSize, // Top Right
 				new Godot.Vector3(EndingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(0.5F, -0.5F,  0.5F) * Consts.VoxelSize // Bottom Right
-			},
-			new Godot.Vector3[] {
+			],
+			[
 				StartingPosition + new Godot.Vector3(-0.5F, -0.5F, -0.5F) * Consts.VoxelSize, // Bottom Left
 				new Godot.Vector3(EndingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(0.5F, -0.5F,  -0.5F) * Consts.VoxelSize, // Bottom Right
 				EndingPosition + new Godot.Vector3(0.5F,  0.5F,  -0.5F) * Consts.VoxelSize, // Top Right
 				new Godot.Vector3(StartingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(-0.5F,  0.5F, -0.5F) * Consts.VoxelSize, // Top Left
-			},
-		};
+			]
+		];
 		Godot.Vector3[] Vertices = VerticesArray[dir];
 		Godot.Vector3 Direction = DirectionArray[dir];
-		Godot.Vector3[] normals = new Godot.Vector3[] {
+		Godot.Vector3[] normals = [
 			Direction, Direction, Direction, Direction
-		};
+		];
 
-		Godot.Vector3[][] MeshFace = new Godot.Vector3[][] {
-			new Godot.Vector3[] {
+		Godot.Vector3[][] MeshFace = [
+			[
 				Vertices[0], Vertices[1], Vertices[2], Vertices[3]
-			},
-			new Godot.Vector3[] {
+			],
+			[
 				normals[0], normals[1], normals[2], normals[3]
-			}
-		};
+			]
+		];
 		return MeshFace;
 	}
 	private void ApplyMesh() {
