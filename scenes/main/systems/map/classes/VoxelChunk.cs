@@ -75,8 +75,11 @@ public partial class VoxelChunk : MeshInstance3D
 			for (int z = 0; z < Consts.ExtendedChunkSize; z++) {
 				float PixelData = -noise.GetNoise2D(x + ChunkCoord.X * Consts.ChunkSize, z + ChunkCoord.Z * Consts.ChunkSize);
 				int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.WorldHeight - 1) + 1);
-				int LocalTileHeight = TileHeight - ChunkCoord.Y * Consts.ChunkSize;
+				int LocalTileHeight = Math.Min(TileHeight - ChunkCoord.Y * Consts.ChunkSize, 17);
 				// GD.Print($"TileHeight: {TileHeight}, LocalTileHeight: {LocalTileHeight}, Chunk Y: {ChunkCoord.Y}");
+				if (LocalTileHeight >= 18) {
+					GD.Print($"HEY IT HAPPANED {LocalTileHeight}");
+				}
 				for (int y = 0; y < LocalTileHeight; y++) {
 					TMPVoxels[x + z * Consts.ExtendedChunkSize + y * Consts.SqExtendedChunkSize] = (int)VOXELTYPE.DIRT;
 					is_empty = false;
@@ -105,13 +108,13 @@ public partial class VoxelChunk : MeshInstance3D
 						}
 					} else {
 						if (Voxels[index + 1] != 0) {
-							TMPFaces[(int)DIRECTION.RIGHT].Add(index + 1);
+							TMPFaces[(int)DIRECTION.LEFT].Add(index + 1);
 						}
 						if (Voxels[index + Consts.SqExtendedChunkSize] != 0) {
-							TMPFaces[(int)DIRECTION.UP].Add(index + Consts.SqExtendedChunkSize);
+							TMPFaces[(int)DIRECTION.DOWN].Add(index + Consts.SqExtendedChunkSize);
 						}
 						if (Voxels[index + Consts.ExtendedChunkSize] != 0) {
-							TMPFaces[(int)DIRECTION.BACK].Add(index + Consts.ExtendedChunkSize);
+							TMPFaces[(int)DIRECTION.FORWARD].Add(index + Consts.ExtendedChunkSize);
 						}
 					}
 				}
