@@ -75,7 +75,7 @@ public partial class VoxelChunk : MeshInstance3D
 			for (int z = 0; z < Consts.ExtendedChunkSize; z++) {
 				float PixelData = -noise.GetNoise2D(x + ChunkCoord.X * Consts.ChunkSize, z + ChunkCoord.Z * Consts.ChunkSize);
 				int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.WorldHeight - 1) + 1);
-				int LocalTileHeight = TileHeight % Consts.ChunkSize;
+				int LocalTileHeight = TileHeight - ChunkCoord.Y * Consts.ChunkSize;
 				// GD.Print($"TileHeight: {TileHeight}, LocalTileHeight: {LocalTileHeight}, Chunk Y: {ChunkCoord.Y}");
 				for (int y = 0; y < LocalTileHeight; y++) {
 					TMPVoxels[x + z * Consts.ExtendedChunkSize + y * Consts.SqExtendedChunkSize] = (int)VOXELTYPE.DIRT;
@@ -95,23 +95,23 @@ public partial class VoxelChunk : MeshInstance3D
 					int index = x + z * Consts.ExtendedChunkSize + y * Consts.SqExtendedChunkSize;
 					if (Voxels[index] != 0) {
 						if (Voxels[index + 1] == 0) {
-							TMPFaces[(int)DIRECTION.RIGHT].Append(index);
+							TMPFaces[(int)DIRECTION.RIGHT].Add(index);
 						}
 						if (Voxels[index + Consts.SqExtendedChunkSize] == 0) {
-							TMPFaces[(int)DIRECTION.UP].Append(index);
+							TMPFaces[(int)DIRECTION.UP].Add(index);
 						}
 						if (Voxels[index + Consts.ExtendedChunkSize] == 0) {
-							TMPFaces[(int)DIRECTION.BACK].Append(index);
+							TMPFaces[(int)DIRECTION.BACK].Add(index);
 						}
 					} else {
 						if (Voxels[index + 1] != 0) {
-							TMPFaces[(int)DIRECTION.RIGHT].Append(index + 1);
+							TMPFaces[(int)DIRECTION.RIGHT].Add(index + 1);
 						}
 						if (Voxels[index + Consts.SqExtendedChunkSize] != 0) {
-							TMPFaces[(int)DIRECTION.UP].Append(index + Consts.SqExtendedChunkSize);
+							TMPFaces[(int)DIRECTION.UP].Add(index + Consts.SqExtendedChunkSize);
 						}
 						if (Voxels[index + Consts.ExtendedChunkSize] != 0) {
-							TMPFaces[(int)DIRECTION.BACK].Append(index + Consts.ExtendedChunkSize);
+							TMPFaces[(int)DIRECTION.BACK].Add(index + Consts.ExtendedChunkSize);
 						}
 					}
 				}
@@ -164,10 +164,14 @@ public partial class VoxelChunk : MeshInstance3D
 		int DirSize = 0;
 
 		for (int dir = 0; dir < 6; dir++) {
-			int DirFaces = Faces[dir].Count;
-			DirSize += DirFaces;
+			DirSize += Faces[dir].Count;
 		}
-		GD.Print(DirSize);
+		// foreach (List<int> dir in Faces) {
+		// 	foreach (int Face in dir) {
+		// 		DirSize++;
+		// 		GD.Print("Face COun");
+		// 	}
+		// }
 		Godot.Vector3[] VertexArray = new Godot.Vector3[DirSize * 4];
 		Godot.Vector3[] NormalArray = new Godot.Vector3[DirSize * 4];
 		Godot.Vector2[] UvArray = new Godot.Vector2[DirSize * 4];
