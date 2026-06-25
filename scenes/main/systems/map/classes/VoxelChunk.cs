@@ -48,12 +48,13 @@ public partial class VoxelChunk : MeshInstance3D
 
 		if (!is_empty) {
 			Faces = MakeFaces();
+			if (!is_full) {
+				Godot.Collections.Array MeshArray = MakeMesh();
+				CubeMesh = new ArrayMesh();
+				CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray);
 
-			Godot.Collections.Array MeshArray = MakeMesh();
-			CubeMesh = new ArrayMesh();
-			CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray);
-
-			ApplyMesh();
+				ApplyMesh();
+			}
 		}
 
 		float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
@@ -116,6 +117,7 @@ public partial class VoxelChunk : MeshInstance3D
 						if (Voxels[index + Consts.ExtendedChunkSize] != 0) {
 							TMPFaces[(int)DIRECTION.FORWARD].Add(index + Consts.ExtendedChunkSize);
 						}
+						is_full = false;
 					}
 				}
 			}
