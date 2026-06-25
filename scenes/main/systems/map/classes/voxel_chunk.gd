@@ -1,6 +1,5 @@
 @tool
 extends MeshInstance3D
-class_name VoxelChunk
 ## enums
 enum DIRECTION {
 	RIGHT,

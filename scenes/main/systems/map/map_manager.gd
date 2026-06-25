@@ -99,7 +99,7 @@ func _make_map(is_generating:bool) -> void:
 				add_child(chunk_res)
 				
 				chunk_res.setup(chunk_coord)
-				chunk_res.generate(chunk_coord, chunk_size, chunk_heightmap, 1)
+				chunk_res.generate(noise)
 				
 				chunks[chunk_coord] = chunk_res
 	
