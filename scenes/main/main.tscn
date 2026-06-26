@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://b67426wovkrq8" path="res://scenes/main/main.gd" id="1_b1x3f"]
 [ext_resource type="Script" uid="uid://cc2avmes5xlyh" path="res://scenes/main/systems/player/main.gd" id="1_k2fmo"]
 [ext_resource type="Script" uid="uid://w5vx0mroblt2" path="res://scenes/main/systems/map/map_manager.gd" id="2_yyfjg"]
+[ext_resource type="Shader" uid="uid://cxwek3blpr5t7" path="res://scenes/main/systems/map/shader/VoxelChunk.gdshader" id="3_b1x3f"]
 [ext_resource type="PackedScene" uid="uid://seb4ltvn7jae" path="res://ui/ingame_ui/main.tscn" id="4_l3cfh"]
 [ext_resource type="StyleBox" uid="uid://bfry6kmt4pklr" path="res://ui/esc_menu/styles/box_style.tres" id="5_yyfjg"]
 [ext_resource type="StyleBox" uid="uid://dp0fhi8jv6w7f" path="res://ui/esc_menu/styles/button_normal.tres" id="6_b1x3f"]
@@ -10,6 +11,10 @@
 [ext_resource type="StyleBox" uid="uid://bybl822ygnmc8" path="res://ui/esc_menu/styles/button_hover.tres" id="8_ouso4"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_b1x3f"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_yyfjg"]
+render_priority = 0
+shader = ExtResource("3_b1x3f")
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_a8run"]
 
@@ -46,6 +51,7 @@ axis_lock_angular_z = true
 shape = SubResource("CylinderShape3D_b1x3f")
 
 [node name="Test Cube" type="MeshInstance3D" parent="PlayerBody" unique_id=942671774]
+material_override = SubResource("ShaderMaterial_yyfjg")
 mesh = SubResource("CapsuleMesh_a8run")
 surface_material_override/0 = SubResource("StandardMaterial3D_xdea8")
 

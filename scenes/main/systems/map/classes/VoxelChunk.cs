@@ -19,6 +19,8 @@ public partial class VoxelChunk : MeshInstance3D
 	public int[] Voxels = new int[Consts.CubExtendedChunkSize];
 	public List<int>[] Faces = new List<int>[6];
 	public Godot.Collections.Dictionary GreedyFaces;
+	public ShaderMaterial mat = new ShaderMaterial();
+	public Shader shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader");
 
 	bool is_empty = true;
 	bool is_full = true;
@@ -39,6 +41,8 @@ public partial class VoxelChunk : MeshInstance3D
 	public void Setup(Vector3I TMPChunkCoord) {
 		ChunkCoord = TMPChunkCoord;
 		this.GlobalPosition = new Godot.Vector3(ChunkCoord.X << 4, ChunkCoord.Y << 4, ChunkCoord.Z << 4);
+		mat.Shader = shader;
+		this.MaterialOverride = mat;
 	}
 
 	public void Generate(FastNoiseLite noise) {
@@ -79,10 +83,7 @@ public partial class VoxelChunk : MeshInstance3D
 				int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.WorldHeight - 1) + 1);
 				int LocalTileHeight = Math.Min(TileHeight - ChunkCoord.Y * Consts.ChunkSize, 17);
 				// GD.Print($"TileHeight: {TileHeight}, LocalTileHeight: {LocalTileHeight}, Chunk Y: {ChunkCoord.Y}");
-				if (LocalTileHeight >= 18) {
-					GD.Print($"HEY IT HAPPANED {LocalTileHeight}");
-				}
-				for (int y = 0; y < LocalTileHeight; y++) {
+				for (int y = 0; y <= LocalTileHeight; y++) {
 					TMPVoxels[x + z * Consts.ExtendedChunkSize + y * Consts.SqExtendedChunkSize] = (int)VOXELTYPE.DIRT;
 					is_empty = false;
 				}
@@ -167,20 +168,33 @@ public partial class VoxelChunk : MeshInstance3D
 	// }
 	private Godot.Collections.Array MakeMesh() {
 
-		int DirSize = 0;
+		int FaceAmount = 0;
 
 		for (int dir = 0; dir < 6; dir++) {
-			DirSize += Faces[dir].Count;
+			FaceAmount += Faces[dir].Count;
 		}
-		Godot.Vector3[] VertexArray = new Godot.Vector3[DirSize * 4];
-		Godot.Vector3[] NormalArray = new Godot.Vector3[DirSize * 4];
-		Godot.Vector2[] UvArray = new Godot.Vector2[DirSize * 4];
-		int[] IndicesArray = new int[DirSize * 6];
+
+		int VertexSize = FaceAmount * 4;
+		Godot.Vector3[] VertexArray = new Godot.Vector3[VertexSize];
+		Godot.Vector3[] NormalArray = new Godot.Vector3[VertexSize];
+		Godot.Vector2[] UvArray = new Godot.Vector2[VertexSize];
+		Godot.Color[] ColorArray = new Godot.Color[VertexSize];
+
+		int IndicesSize = FaceAmount * 6;
+		int[] IndicesArray = new int[IndicesSize];
 
 		int Index = 0;
 
 		for (int dir = 0; dir < 6; dir++) {
 			List<int> DirList = Faces[dir];
+
+			Color color = Color.Color8(0,255,0);
+			if (dir > 3) {
+				color = Color.Color8(0,0,255);
+			} else if (dir < 2) {
+				color = Color.Color8(255,0,0);
+			}
+
 			foreach (int IndexInt in DirList) {
 				Godot.Vector3 coord = IndexToVector3(IndexInt);
 				Godot.Vector3[][] MeshFace = CreateFace(dir,coord,coord);
@@ -194,6 +208,7 @@ public partial class VoxelChunk : MeshInstance3D
 					VertexArray[i] = vertice;
 					NormalArray[i] = vertice;
 					UvArray[i] = Godot.Vector2.Zero;
+					ColorArray[i] = color;
 					i++;
 				}
 			IndicesArray[IndicesIndex] = IndexOffset;
@@ -212,6 +227,7 @@ public partial class VoxelChunk : MeshInstance3D
 		MeshArray[(int)Mesh.ArrayType.Normal] = NormalArray;
 		MeshArray[(int)Mesh.ArrayType.TexUV] = UvArray;
 		MeshArray[(int)Mesh.ArrayType.Index] = IndicesArray;
+		MeshArray[(int)Mesh.ArrayType.Color] = ColorArray;
 
 		return MeshArray;
 	}
