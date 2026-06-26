@@ -7,17 +7,19 @@ namespace VoxelGame.MapManager;
 using VoxelGame.Chunk;
 using VoxelGame.Consts;
 [Tool]
+// enums
 public partial class MapManager : Node
 {
-	// enums
-	// consts
+	// Signals
+	[Signal]
+    public delegate void NoiseUpdateEventHandler(int Seed, FastNoiseLite Noise);
 	// exports
+	// consts
 	// public vars
 	public int Seed = 0;
 	public FastNoiseLite Noise = new();
 	public System.Collections.Generic.Dictionary<Vector3I, VoxelChunk> Chunks = new();
 	// private vars
-	// onready vars
 	// built-in override methods
 		// Called when the node enters the scene tree for the first time.
 		public override void _Ready() {
@@ -49,6 +51,7 @@ public partial class MapManager : Node
 		Seed = (int)GD.Randi();
 		Noise = MakeNoise();
 
+		EmitSignal(SignalName.NoiseUpdate, Seed, Noise);
 
 		float PreChunkTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 		GD.PrintRich($"[color=Yellow]MapManager-[/color] Finished Pre Chunk Operations in [color=gold]{PreChunkTime}ms[/color]");

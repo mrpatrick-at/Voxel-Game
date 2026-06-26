@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://cc2avmes5xlyh" path="res://scenes/main/systems/player/main.gd" id="1_k2fmo"]
 [ext_resource type="Shader" uid="uid://cxwek3blpr5t7" path="res://scenes/main/systems/map/shader/VoxelChunk.gdshader" id="3_b1x3f"]
 [ext_resource type="PackedScene" uid="uid://seb4ltvn7jae" path="res://ui/ingame_ui/main.tscn" id="4_l3cfh"]
+[ext_resource type="Script" uid="uid://cg5bhv8b0yt63" path="res://ui/ingame_ui/IngameUi.cs" id="5_a8run"]
 [ext_resource type="StyleBox" uid="uid://bfry6kmt4pklr" path="res://ui/esc_menu/styles/box_style.tres" id="5_yyfjg"]
 [ext_resource type="StyleBox" uid="uid://dp0fhi8jv6w7f" path="res://ui/esc_menu/styles/button_normal.tres" id="6_b1x3f"]
 [ext_resource type="StyleBox" uid="uid://ds7uyodmpq8xf" path="res://ui/esc_menu/styles/button_pressed.tres" id="7_a8run"]
@@ -59,6 +60,7 @@ surface_material_override/0 = SubResource("StandardMaterial3D_xdea8")
 current = true
 
 [node name="IngameUI" parent="." unique_id=1629074791 instance=ExtResource("4_l3cfh")]
+script = ExtResource("5_a8run")
 
 [node name="esc_menu" type="CenterContainer" parent="." unique_id=1042103967]
 anchors_preset = 15
@@ -124,3 +126,4 @@ script = ExtResource("9_b1x3f")
 [connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonCloseMenu" to="Player" method="_on_button_close_menu_pressed"]
 [connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonSwitchCam" to="Player" method="_on_button_switch_cam_pressed"]
 [connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonQuit" to="." method="_on_button_quit_pressed"]
+[connection signal="NoiseUpdate" from="Map" to="IngameUI" method="_NoiseUpdate"]

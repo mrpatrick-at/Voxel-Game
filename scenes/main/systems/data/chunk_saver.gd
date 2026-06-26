@@ -14,7 +14,7 @@ static func save_chunk(chunk_res: ChunkData) -> void:
 	var path:String = chunk_path % [chunk_res.chunk_coord.x, chunk_res.chunk_coord.y]
 	
 	# Ensure the directory exists
-	Scripts.DATA_MANAGER.create_directories()
+	#Scripts.DATA_MANAGER.create_directories()
 	
 	ResourceSaver.save(chunk_res, path)
 	print("DATABASE- SAVED Chunk %s"%Vector2i(chunk_res.chunk_coord.x, chunk_res.chunk_coord.y))

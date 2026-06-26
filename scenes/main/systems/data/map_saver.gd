@@ -13,7 +13,7 @@ static var chunks: Dictionary
 ## built-in override methods
 ## public methods
 static func save_data() -> void:
-	Scripts.DATA_MANAGER.create_directories()
+	#Scripts.DATA_MANAGER.create_directories()
 	
 	var data:MapData = MapData.new()
 	data.seed = seed

@@ -30,8 +30,8 @@ grow_vertical = 2
 [node name="PanelContainer" type="PanelContainer" parent="." unique_id=1629074791]
 material = SubResource("CanvasItemMaterial_l3cfh")
 layout_mode = 0
-offset_right = 650.0
-offset_bottom = 731.0
+offset_right = 522.0
+offset_bottom = 603.0
 scale = Vector2(0.5, 0.5)
 theme_override_styles/panel = ExtResource("1_1eur2")
 
@@ -39,8 +39,10 @@ theme_override_styles/panel = ExtResource("1_1eur2")
 layout_mode = 2
 
 [node name="NoiseViewer" type="TextureRect" parent="PanelContainer/VBoxContainer" unique_id=1648510799]
+custom_minimum_size = Vector2(512, 512)
 layout_mode = 2
 texture = SubResource("NoiseTexture2D_6q06x")
+expand_mode = 1
 
 [node name="PanelContainer" type="PanelContainer" parent="PanelContainer/VBoxContainer" unique_id=360862199]
 layout_mode = 2
