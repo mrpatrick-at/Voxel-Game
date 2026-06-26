@@ -22,9 +22,9 @@ public partial class MapManager : Node
 		// Called when the node enters the scene tree for the first time.
 		public override void _Ready() {
 			GD.Randomize();
-			// if (Engine.IsEditorHint()) {
+			if (Engine.IsEditorHint()) {
 				MakeMap(true);
-			// }
+			}
 
 		}
 		
@@ -33,8 +33,11 @@ public partial class MapManager : Node
 			
 		}
 
-		public void OnGeneratePressed() {
-
+		public void _OnGeneratePressed() {
+			MakeMap(false);
+		}
+		public void _OnLoadPressed() {
+			MakeMap(false);
 		}
 	// public methods
 	public void MakeMap(bool IsEditor) {

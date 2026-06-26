@@ -75,7 +75,7 @@ theme_override_styles/panel = ExtResource("5_yyfjg")
 [node name="VBoxContainer" type="VBoxContainer" parent="esc_menu/PanelContainer" unique_id=2117210349]
 layout_mode = 2
 
-[node name="ButtonNew" type="Button" parent="esc_menu/PanelContainer/VBoxContainer" unique_id=1510301649]
+[node name="ButtonGenerate" type="Button" parent="esc_menu/PanelContainer/VBoxContainer" unique_id=1510301649]
 layout_mode = 2
 theme_override_font_sizes/font_size = 48
 theme_override_styles/normal = ExtResource("6_b1x3f")
@@ -119,8 +119,8 @@ text = "Quit
 [node name="Map" type="Node3D" parent="." unique_id=86150080]
 script = ExtResource("9_b1x3f")
 
-[connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonNew" to="Map" method="_on_button_new_pressed"]
-[connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonLoad" to="Map" method="_on_button_load_pressed"]
+[connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonGenerate" to="Map" method="_OnGeneratePressed"]
+[connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonLoad" to="Map" method="_OnLoadPressed"]
 [connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonCloseMenu" to="Player" method="_on_button_close_menu_pressed"]
 [connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonSwitchCam" to="Player" method="_on_button_switch_cam_pressed"]
 [connection signal="pressed" from="esc_menu/PanelContainer/VBoxContainer/ButtonQuit" to="." method="_on_button_quit_pressed"]
