@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Numerics;
-namespace VoxelGame.Chunck;
+namespace VoxelGame.Chunk;
 using VoxelGame.Consts;
 [GlobalClass]
 public partial class VoxelChunk : MeshInstance3D
@@ -14,13 +14,12 @@ public partial class VoxelChunk : MeshInstance3D
 	// consts
 	// exports
 	// public vars
-	public Vector3I ChunkCoord = Vector3I.Zero;
+	public Vector3I Coord {get; set;}
 	public Godot.ArrayMesh CubeMesh;
-	public int[] Voxels = new int[Consts.CubExtendedChunkSize];
+	public int[] Voxels = new int[Consts.Chunk.CubExtendedSize];
 	public List<int>[] Faces = new List<int>[6];
 	public Godot.Collections.Dictionary GreedyFaces;
-	public ShaderMaterial mat = new ShaderMaterial();
-	public Shader shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader");
+	public ShaderMaterial Material = new ShaderMaterial();
 
 	bool is_empty = true;
 	bool is_full = true;
@@ -30,7 +29,9 @@ public partial class VoxelChunk : MeshInstance3D
 	// built-in override methods
 		// Called when the node enters the scene tree for the first time.
 		public override void _Ready() {
-
+		this.GlobalPosition = new Godot.Vector3(Coord.X << 4, Coord.Y << 4, Coord.Z << 4);
+		Material.Shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader");
+		this.MaterialOverride = Material;
 		}
 		
 		// Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -38,18 +39,12 @@ public partial class VoxelChunk : MeshInstance3D
 
 		}
 	// public methods
-	public void Setup(Vector3I TMPChunkCoord) {
-		ChunkCoord = TMPChunkCoord;
-		this.GlobalPosition = new Godot.Vector3(ChunkCoord.X << 4, ChunkCoord.Y << 4, ChunkCoord.Z << 4);
-		mat.Shader = shader;
-		this.MaterialOverride = mat;
-	}
 
-	public void Generate(FastNoiseLite noise) {
+	public void Generate(FastNoiseLite Noise) {
 		ulong StartTime = Time.GetTicksUsec();
-		GD.PrintRich($"[color=Springgreen]VoxelChunk-[/color] Chunk [color=gold]{ChunkCoord}[/color] called setup");
+		GD.PrintRich($"[color=Springgreen]VoxelChunk-[/color] Chunk [color=gold]{Coord}[/color] called setup");
 
-		Voxels = MakeVoxels(noise);
+		Voxels = MakeVoxels(Noise);
 
 		if (!is_empty) {
 			Faces = MakeFaces();
@@ -66,25 +61,25 @@ public partial class VoxelChunk : MeshInstance3D
 		GD.PrintRich($"[color=Springgreen]VoxelChunk-[/color] Created Chunk in [color=gold]{EndTime}ms[/color]");
 	}
 	public static Godot.Vector3 IndexToVector3(int index) {
-		int y = index / Consts.SqExtendedChunkSize;
-		int remainder = index % Consts.SqExtendedChunkSize;
+		int y = index / Consts.Chunk.SqExtendedSize;
+		int remainder = index % Consts.Chunk.SqExtendedSize;
 
-		int x = remainder % Consts.ExtendedChunkSize;
-		int z = remainder / Consts.ExtendedChunkSize;
+		int x = remainder % Consts.Chunk.ExtendedSize;
+		int z = remainder / Consts.Chunk.ExtendedSize;
 
 		return new Godot.Vector3(x, y, z);
 	}
 	// private methods
-	private int[] MakeVoxels(FastNoiseLite noise) {
-		int[] TMPVoxels = new int[Consts.CubExtendedChunkSize];
-		for (int x = 0; x < Consts.ExtendedChunkSize; x++) {
-			for (int z = 0; z < Consts.ExtendedChunkSize; z++) {
-				float PixelData = -noise.GetNoise2D(x + ChunkCoord.X * Consts.ChunkSize, z + ChunkCoord.Z * Consts.ChunkSize);
-				int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.WorldHeight - 1) + 1);
-				int LocalTileHeight = Math.Min(TileHeight - ChunkCoord.Y * Consts.ChunkSize, 17);
-				// GD.Print($"TileHeight: {TileHeight}, LocalTileHeight: {LocalTileHeight}, Chunk Y: {ChunkCoord.Y}");
+	private int[] MakeVoxels(FastNoiseLite Noise) {
+		int[] TMPVoxels = new int[Consts.Chunk.CubExtendedSize];
+		for (int x = 0; x < Consts.Chunk.ExtendedSize; x++) {
+			for (int z = 0; z < Consts.Chunk.ExtendedSize; z++) {
+				float PixelData = -Noise.GetNoise2D(x + Coord.X * Consts.Chunk.Size, z + Coord.Z * Consts.Chunk.Size);
+				int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
+				int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.Size, 17);
+				// GD.Print($"TileHeight: {TileHeight}, LocalTileHeight: {LocalTileHeight}, Chunk Y: {Coord.Y}");
 				for (int y = 0; y <= LocalTileHeight; y++) {
-					TMPVoxels[x + z * Consts.ExtendedChunkSize + y * Consts.SqExtendedChunkSize] = (int)VOXELTYPE.DIRT;
+					TMPVoxels[x + z * Consts.Chunk.ExtendedSize + y * Consts.Chunk.SqExtendedSize] = (int)VOXELTYPE.DIRT;
 					is_empty = false;
 				}
 			}
@@ -95,29 +90,29 @@ public partial class VoxelChunk : MeshInstance3D
 	private List<int>[] MakeFaces() {
 		List<int>[] TMPFaces = [[], [], [], [], [], []];
 
-		for (int x = 0; x < Consts.ChunkSize; x++) {
-			for (int y = 0; y < Consts.ChunkSize; y++) {
-				for (int z = 0; z < Consts.ChunkSize; z++) {
-					int index = x + z * Consts.ExtendedChunkSize + y * Consts.SqExtendedChunkSize;
+		for (int x = 0; x < Consts.Chunk.Size; x++) {
+			for (int y = 0; y < Consts.Chunk.Size; y++) {
+				for (int z = 0; z < Consts.Chunk.Size; z++) {
+					int index = x + z * Consts.Chunk.ExtendedSize + y * Consts.Chunk.SqExtendedSize;
 					if (Voxels[index] != 0) {
 						if (Voxels[index + 1] == 0) {
 							TMPFaces[(int)DIRECTION.RIGHT].Add(index);
 						}
-						if (Voxels[index + Consts.SqExtendedChunkSize] == 0) {
+						if (Voxels[index + Consts.Chunk.SqExtendedSize] == 0) {
 							TMPFaces[(int)DIRECTION.UP].Add(index);
 						}
-						if (Voxels[index + Consts.ExtendedChunkSize] == 0) {
+						if (Voxels[index + Consts.Chunk.ExtendedSize] == 0) {
 							TMPFaces[(int)DIRECTION.BACK].Add(index);
 						}
 					} else {
 						if (Voxels[index + 1] != 0) {
 							TMPFaces[(int)DIRECTION.LEFT].Add(index + 1);
 						}
-						if (Voxels[index + Consts.SqExtendedChunkSize] != 0) {
-							TMPFaces[(int)DIRECTION.DOWN].Add(index + Consts.SqExtendedChunkSize);
+						if (Voxels[index + Consts.Chunk.SqExtendedSize] != 0) {
+							TMPFaces[(int)DIRECTION.DOWN].Add(index + Consts.Chunk.SqExtendedSize);
 						}
-						if (Voxels[index + Consts.ExtendedChunkSize] != 0) {
-							TMPFaces[(int)DIRECTION.FORWARD].Add(index + Consts.ExtendedChunkSize);
+						if (Voxels[index + Consts.Chunk.ExtendedSize] != 0) {
+							TMPFaces[(int)DIRECTION.FORWARD].Add(index + Consts.Chunk.ExtendedSize);
 						}
 						is_full = false;
 					}

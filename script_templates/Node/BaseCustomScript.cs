@@ -6,16 +6,15 @@ using Godot;
 using Godot.Collections;
 using System;
 
-public partial class voxel_chunk : Node
+public partial class NewCustomScript : Node
 {
-	/// enums
-	/// consts
-	/// exports
-	/// public vars
-	/// private vars
-	/// onready vars
-	// obj_ for node refrences
-	/// built-in override methods
+	// enums
+	// consts
+	// exports
+	// public vars
+	// private vars
+	// onready vars
+	// built-in override methods
 		// Called when the node enters the scene tree for the first time.
 		public override void _Ready() {
 
@@ -25,6 +24,6 @@ public partial class voxel_chunk : Node
 		public override void _Process(double delta) {
 			
 		}
-	/// public methods
-	/// private methods
+	// public methods
+	// private methods
 }
