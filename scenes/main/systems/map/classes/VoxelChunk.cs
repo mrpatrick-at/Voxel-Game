@@ -16,7 +16,12 @@ public partial class VoxelChunk : MeshInstance3D {
 	// public vars
 	public Vector3I Coord {get; set;}
 	public Godot.ArrayMesh CubeMesh;
-	public int[] Voxels = new int[Consts.Chunk.CubExtendedSize];
+	public int[] Voxels = new int[Consts.Chunk.CubSize];
+	public struct TypedVoxels() {
+		public static ulong[][] X = new ulong[2][];
+		public static ulong[][] Y = new ulong[2][];
+		public static ulong[][] Z = new ulong[2][];
+	}
 	public List<int>[] Faces = new List<int>[6];
 	public Godot.Collections.Dictionary GreedyFaces;
 	public ShaderMaterial Material = new ShaderMaterial();
@@ -31,6 +36,12 @@ public partial class VoxelChunk : MeshInstance3D {
 		this.GlobalPosition = new Godot.Vector3(Coord.X << 4, Coord.Y << 4, Coord.Z << 4);
 		Material.Shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader");
 		this.MaterialOverride = Material;
+
+		for (int i = 0; i < TypedVoxels.X.Length; i++) {
+			TypedVoxels.X[i] = new ulong[64];
+			TypedVoxels.Y[i] = new ulong[64];
+			TypedVoxels.Z[i] = new ulong[64];
+		}
 		}
 		
 		// Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -60,25 +71,46 @@ public partial class VoxelChunk : MeshInstance3D {
 		GD.PrintRich($"[color=Springgreen]VoxelChunk-[/color] Created Chunk in [color=gold]{EndTime}ms[/color]");
 	}
 	public static Godot.Vector3 IndexToVector3(int index) {
-		int y = index / Consts.Chunk.SqExtendedSize;
-		int remainder = index % Consts.Chunk.SqExtendedSize;
+		int y = index / Consts.Chunk.SqSize;
+		int remainder = index % Consts.Chunk.SqSize;
 
-		int x = remainder % Consts.Chunk.ExtendedSize;
-		int z = remainder / Consts.Chunk.ExtendedSize;
+		int x = remainder % Consts.Chunk.Size;
+		int z = remainder / Consts.Chunk.Size;
 
 		return new Godot.Vector3(x, y, z);
 	}
+	public static void SetVoxelBit(int VoxelType, Vector3I Coord) {
+		int[] Index = [
+			Coord.Y + Coord.Z * Consts.Chunk.Size + Coord.X * Consts.Chunk.SqSize,
+			Coord.X + Coord.Z * Consts.Chunk.Size + Coord.Y * Consts.Chunk.SqSize,
+			Coord.X + Coord.Y * Consts.Chunk.Size + Coord.Z * Consts.Chunk.SqSize
+			];
+
+		int[] UlongIndex = new int[3];
+		int[] BitIndex = new int[3];
+
+		for (int i = 0; i < 3; i++) {
+			UlongIndex[i] = Index[i] >> 6;
+			BitIndex[i] = Index[i] % 64;
+		}
+
+		TypedVoxels.X[VoxelType][UlongIndex[0]] |= (ulong)1 << BitIndex[0];
+		TypedVoxels.Y[VoxelType][UlongIndex[1]] |= (ulong)1 << BitIndex[1];
+		TypedVoxels.Z[VoxelType][UlongIndex[2]] |= (ulong)1 << BitIndex[2];
+	}
+	// public static void Get
 	// private methods
 	private int[] MakeVoxels(FastNoiseLite Noise) {
-		int[] TMPVoxels = new int[Consts.Chunk.CubExtendedSize];
-		for (int x = 0; x < Consts.Chunk.ExtendedSize; x++) {
-			for (int z = 0; z < Consts.Chunk.ExtendedSize; z++) {
+		int[] TMPVoxels = new int[Consts.Chunk.CubSize];
+		for (int x = 0; x < Consts.Chunk.Size; x++) {
+			for (int z = 0; z < Consts.Chunk.Size; z++) {
 				float PixelData = -Noise.GetNoise2D(x + Coord.X * Consts.Chunk.Size, z + Coord.Z * Consts.Chunk.Size);
 				int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
-				int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.Size, 17);
+				int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.Size, 15);
 				// GD.Print($"TileHeight: {TileHeight}, LocalTileHeight: {LocalTileHeight}, Chunk Y: {Coord.Y}");
 				for (int y = 0; y <= LocalTileHeight; y++) {
-					TMPVoxels[x + z * Consts.Chunk.ExtendedSize + y * Consts.Chunk.SqExtendedSize] = (int)VOXELTYPE.DIRT;
+					TMPVoxels[x + z * Consts.Chunk.Size + y * Consts.Chunk.SqSize] = (int)VOXELTYPE.DIRT;
+					SetVoxelBit((int)VOXELTYPE.DIRT, new Vector3I(x, y, z));
 					is_empty = false;
 				}
 			}
@@ -89,29 +121,29 @@ public partial class VoxelChunk : MeshInstance3D {
 	private List<int>[] MakeFaces() {
 		List<int>[] TMPFaces = [[], [], [], [], [], []];
 
-		for (int x = 0; x < Consts.Chunk.Size; x++) {
-			for (int y = 0; y < Consts.Chunk.Size; y++) {
+		for (int x = 0; x < Consts.Chunk.Size - 1; x++) {
+			for (int y = 0; y < Consts.Chunk.Size - 1; y++) {
 				for (int z = 0; z < Consts.Chunk.Size; z++) {
-					int index = x + z * Consts.Chunk.ExtendedSize + y * Consts.Chunk.SqExtendedSize;
+					int index = x + z * Consts.Chunk.Size + y * Consts.Chunk.SqSize;
 					if (Voxels[index] != 0) {
 						if (Voxels[index + 1] == 0) {
 							TMPFaces[(int)DIRECTION.RIGHT].Add(index);
 						}
-						if (Voxels[index + Consts.Chunk.SqExtendedSize] == 0) {
+						if (Voxels[index + Consts.Chunk.SqSize] == 0) {
 							TMPFaces[(int)DIRECTION.UP].Add(index);
 						}
-						if (Voxels[index + Consts.Chunk.ExtendedSize] == 0) {
+						if (Voxels[index + Consts.Chunk.Size] == 0) {
 							TMPFaces[(int)DIRECTION.BACK].Add(index);
 						}
 					} else {
 						if (Voxels[index + 1] != 0) {
 							TMPFaces[(int)DIRECTION.LEFT].Add(index + 1);
 						}
-						if (Voxels[index + Consts.Chunk.SqExtendedSize] != 0) {
-							TMPFaces[(int)DIRECTION.DOWN].Add(index + Consts.Chunk.SqExtendedSize);
+						if (Voxels[index + Consts.Chunk.SqSize] != 0) {
+							TMPFaces[(int)DIRECTION.DOWN].Add(index + Consts.Chunk.SqSize);
 						}
-						if (Voxels[index + Consts.Chunk.ExtendedSize] != 0) {
-							TMPFaces[(int)DIRECTION.FORWARD].Add(index + Consts.Chunk.ExtendedSize);
+						if (Voxels[index + Consts.Chunk.Size] != 0) {
+							TMPFaces[(int)DIRECTION.FORWARD].Add(index + Consts.Chunk.Size);
 						}
 						is_full = false;
 					}

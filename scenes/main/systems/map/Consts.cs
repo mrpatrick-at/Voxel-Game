@@ -15,6 +15,7 @@ enum DIRECTION : int {
 enum VOXELTYPE : int {
     AIR = 0,
     DIRT = 1,
+    Stone = 2,
 }
 enum MESH : int {
     VERTICES = 0,
@@ -26,9 +27,8 @@ public struct Consts {
 public static float VoxelSize = 1;
     public struct Chunk {
         public static int Size = 16;
-        public static int ExtendedSize = Size + 2;
-        public static int SqExtendedSize = ExtendedSize * ExtendedSize;
-        public static int CubExtendedSize = SqExtendedSize * ExtendedSize;
+        public static int SqSize = Size * Size;
+        public static int CubSize = SqSize * Size;
     }
     public struct World {
         public static int ChunkWidth = 6;
