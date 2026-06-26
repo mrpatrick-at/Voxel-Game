@@ -11,7 +11,7 @@ static var player_speed:Vector3 = Vector3.ZERO
 static var player_rotation:float = 0
 ## private vars
 ## onready vars
-@onready var esc_menu: CenterContainer = $"../esc_menu"
+@onready var esc_menu: CenterContainer = $"../EscMenu"
 @onready var float_cam: Camera3D = $FloatCam
 @onready var body_cam: Camera3D = $"../PlayerBody/BodyCam"
 

@@ -8,11 +8,11 @@ using System.Numerics;
 namespace VoxelGame.Chunk;
 using VoxelGame.Consts;
 [GlobalClass]
-public partial class VoxelChunk : MeshInstance3D
-{
-	// enums
-	// consts
+// enums
+public partial class VoxelChunk : MeshInstance3D {
+	// signals
 	// exports
+	// consts
 	// public vars
 	public Vector3I Coord {get; set;}
 	public Godot.ArrayMesh CubeMesh;
@@ -25,7 +25,6 @@ public partial class VoxelChunk : MeshInstance3D
 	bool is_full = true;
 	bool has_faces = false;
 	// private vars
-	// onready vars
 	// built-in override methods
 		// Called when the node enters the scene tree for the first time.
 		public override void _Ready() {

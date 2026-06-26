@@ -5,12 +5,12 @@
 using Godot;
 using Godot.Collections;
 using System;
-
+// enums
 public partial class NewCustomScript : Node
 {
-	// enums
-	// consts
+	// signals
 	// exports
+	// consts
 	// public vars
 	// private vars
 	// onready vars

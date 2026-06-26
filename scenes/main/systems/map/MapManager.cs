@@ -8,8 +8,7 @@ using VoxelGame.Chunk;
 using VoxelGame.Consts;
 [Tool]
 // enums
-public partial class MapManager : Node
-{
+public partial class MapManager : Node {
 	// Signals
 	[Signal]
     public delegate void NoiseUpdateEventHandler(int Seed, FastNoiseLite Noise);

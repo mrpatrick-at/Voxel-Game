@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://seb4ltvn7jae"]
 
 [ext_resource type="StyleBox" uid="uid://bwpcrwipigr1s" path="res://ui/ingame_ui/styles/box_noise.tres" id="1_1eur2"]
+[ext_resource type="Script" uid="uid://cg5bhv8b0yt63" path="res://ui/ingame_ui/IngameUi.cs" id="1_88fik"]
 [ext_resource type="LabelSettings" uid="uid://sipfuq5yhkrl" path="res://ui/ingame_ui/styles/label_seed.tres" id="1_bwru8"]
 [ext_resource type="StyleBox" uid="uid://4kr6lxjv1wi0" path="res://ui/ingame_ui/styles/box_seed.tres" id="2_1eur2"]
 
@@ -19,13 +20,14 @@ generate_mipmaps = false
 noise = SubResource("FastNoiseLite_1eur2")
 invert = true
 
-[node name="Control" type="Control" unique_id=1885786181]
+[node name="IngameUi" type="Control" unique_id=1885786181]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1_88fik")
 
 [node name="PanelContainer" type="PanelContainer" parent="." unique_id=1629074791]
 material = SubResource("CanvasItemMaterial_l3cfh")

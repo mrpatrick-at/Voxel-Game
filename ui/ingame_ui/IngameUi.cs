@@ -3,11 +3,11 @@ using Godot.Collections;
 using System;
 namespace VoxelGame.IngameUi;
 using VoxelGame.Consts;
-public partial class IngameUi : Control
-{
-	// enums
-	// consts
+// enums
+public partial class IngameUi : Control {
+	// signals
 	// exports
+	// consts
 	// public vars
 	public TextureRect NoiseViewer;
 	public Label SeedLabel;
