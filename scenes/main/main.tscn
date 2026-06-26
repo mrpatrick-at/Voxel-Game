@@ -1,9 +1,10 @@
 [gd_scene format=3 uid="uid://chl400oqcunq6"]
 
 [ext_resource type="Script" uid="uid://b67426wovkrq8" path="res://scenes/main/main.gd" id="1_b1x3f"]
-[ext_resource type="Script" uid="uid://cc2avmes5xlyh" path="res://scenes/main/systems/player/main.gd" id="1_k2fmo"]
+[ext_resource type="Script" uid="uid://cbondgukn0vt1" path="res://scenes/main/systems/player/Player.cs" id="2_a8run"]
 [ext_resource type="Shader" uid="uid://cxwek3blpr5t7" path="res://scenes/main/systems/map/shader/VoxelChunk.gdshader" id="3_b1x3f"]
 [ext_resource type="PackedScene" uid="uid://seb4ltvn7jae" path="res://ui/ingame_ui/main.tscn" id="4_l3cfh"]
+[ext_resource type="Script" uid="uid://bqml656al4dlx" path="res://ui/esc_menu/EscMenu.cs" id="5_a8run"]
 [ext_resource type="StyleBox" uid="uid://bfry6kmt4pklr" path="res://ui/esc_menu/styles/box_style.tres" id="5_yyfjg"]
 [ext_resource type="StyleBox" uid="uid://dp0fhi8jv6w7f" path="res://ui/esc_menu/styles/button_normal.tres" id="6_b1x3f"]
 [ext_resource type="StyleBox" uid="uid://ds7uyodmpq8xf" path="res://ui/esc_menu/styles/button_pressed.tres" id="7_a8run"]
@@ -33,12 +34,11 @@ directional_shadow_mode = 0
 directional_shadow_max_distance = 200.0
 
 [node name="Player" type="Node3D" parent="." unique_id=393008323]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 640, 0, 950)
-visible = false
-script = ExtResource("1_k2fmo")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48.437256, 150.05408, 43.565132)
+script = ExtResource("2_a8run")
 
-[node name="FloatCam" type="Camera3D" parent="Player" unique_id=478426265]
-transform = Transform3D(1, 0, 0, 0, 0.49999997, 0.86602545, 0, -0.86602545, 0.49999997, 0, 600, 300)
+[node name="Camera3D" type="Camera3D" parent="Player" unique_id=478426265]
+transform = Transform3D(1, 0, 0, 0, 0.49999997, 0.86602545, 0, -0.86602545, 0.49999997, 0, 0, 0)
 current = true
 
 [node name="PlayerBody" type="RigidBody3D" parent="." unique_id=107806061]
@@ -55,9 +55,6 @@ material_override = SubResource("ShaderMaterial_yyfjg")
 mesh = SubResource("CapsuleMesh_a8run")
 surface_material_override/0 = SubResource("StandardMaterial3D_xdea8")
 
-[node name="BodyCam" type="Camera3D" parent="PlayerBody" unique_id=675006904]
-current = true
-
 [node name="IngameUi" parent="." unique_id=1629074791 instance=ExtResource("4_l3cfh")]
 
 [node name="EscMenu" type="CenterContainer" parent="." unique_id=1042103967]
@@ -66,6 +63,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("5_a8run")
 
 [node name="PanelContainer" type="PanelContainer" parent="EscMenu" unique_id=1615627772]
 material = SubResource("CanvasItemMaterial_blune")
@@ -99,14 +97,6 @@ theme_override_styles/pressed = ExtResource("7_a8run")
 theme_override_styles/hover = ExtResource("8_ouso4")
 text = "Close Menu"
 
-[node name="ButtonSwitchCam" type="Button" parent="EscMenu/PanelContainer/VBoxContainer" unique_id=1391013029]
-layout_mode = 2
-theme_override_font_sizes/font_size = 48
-theme_override_styles/normal = ExtResource("6_b1x3f")
-theme_override_styles/pressed = ExtResource("7_a8run")
-theme_override_styles/hover = ExtResource("8_ouso4")
-text = "Switch Camera"
-
 [node name="ButtonQuit" type="Button" parent="EscMenu/PanelContainer/VBoxContainer" unique_id=133253318]
 layout_mode = 2
 theme_override_font_sizes/font_size = 48
@@ -121,7 +111,6 @@ script = ExtResource("9_b1x3f")
 
 [connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonGenerate" to="Map" method="_OnGeneratePressed"]
 [connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonLoad" to="Map" method="_OnLoadPressed"]
-[connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonCloseMenu" to="Player" method="_on_button_close_menu_pressed"]
-[connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonSwitchCam" to="Player" method="_on_button_switch_cam_pressed"]
-[connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonQuit" to="." method="_on_button_quit_pressed"]
+[connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonCloseMenu" to="EscMenu" method="_OnClosePressed"]
+[connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonQuit" to="EscMenu" method="_OnQuitPressed"]
 [connection signal="NoiseUpdate" from="Map" to="IngameUi" method="_NoiseUpdate"]

@@ -50,12 +50,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouse:
 		_mouse_input()
 
-func _on_button_close_menu_pressed() -> void:
-	esc_menu.hide()
-
-func _on_button_switch_cam_pressed() -> void:
-	esc_menu.hide()
-
 ## public methods
 
 func get_mouse_collision_pos(custom_mouse_position:Vector2 = get_viewport().get_mouse_position()) -> Dictionary:
