@@ -10,11 +10,11 @@ public partial class Player : Node3D {
 	const int MaxSpeed = 32;
 	const int MoveSpeed = 4;
 	const int SpeedDecay = 2;
+	const float MouseSensitivity = 0.2F;
 	// public vars
 	public float CamSpeedMod = 1;
 	public Vector3 Speed = Vector3.Zero;
-	public Vector3 BodyRotateSpeed = Vector3.Zero;
-	public Vector3 CamRotateSpeed = Vector3.Zero;
+	public Vector2 RotationSpeed = Vector2.Zero;
 	// private vars
 	private CenterContainer EscMenu;
 	private Camera3D Cam;
@@ -38,7 +38,9 @@ public partial class Player : Node3D {
 		}
 
     public override void _PhysicsProcess(double delta) {
-        base._PhysicsProcess(delta);
+		if (EscMenu.IsVisibleInTree()) {
+				return;
+			}
 		Speed = CalcMovement();
     }
 
@@ -51,6 +53,12 @@ public partial class Player : Node3D {
 	// public methods
 	// private methods
 	private void HandleMouseInput(InputEventMouse MouseEvent) {
+		if (MouseEvent is InputEventMouseMotion MouseMotion) {
+			RotationSpeed = new(
+				-MouseMotion.Relative.Y * MouseSensitivity,
+				-MouseMotion.Relative.X * MouseSensitivity
+			);
+		}
 		bool PressedLeft = (MouseEvent.ButtonMask & MouseButtonMask.Left) != 0;
 		bool PressedRight = (MouseEvent.ButtonMask & MouseButtonMask.Right) != 0;
 		bool PressedMiddle = (MouseEvent.ButtonMask & MouseButtonMask.Middle) != 0;
@@ -101,32 +109,33 @@ public partial class Player : Node3D {
 		return NewSpeed;
 	}
 	private void UpdatePos(double delta) {
+		Vector3 MoveDirection = (Transform.Basis.X * Speed.X) + (Transform.Basis.Z * Speed.Z);
 		Vector3 NewPos = new(
-			this.GlobalPosition.X + Speed.X * (float)delta,
+			this.GlobalPosition.X + MoveDirection.X * (float)delta,
 			this.GlobalPosition.Y + Speed.Y * (float)delta,
-			this.GlobalPosition.Z + Speed.Z * (float)delta
+			this.GlobalPosition.Z + MoveDirection.Z * (float)delta
 			);
 		this.GlobalPosition = NewPos;
 
-		Vector3 NewBodyRotate = new(
-			this.Rotation.X + BodyRotateSpeed.X * (float)delta,
-			this.Rotation.Y + BodyRotateSpeed.Y * (float)delta,
-			this.Rotation.Z + BodyRotateSpeed.Z * (float)delta
+		Cam.Rotation = new Vector3(
+			Math.Clamp(Cam.GlobalRotation.X + RotationSpeed.X * (float)delta,-89f,89f),
+			0,
+			0
 			);
-		// this.GlobalRotation = NewBodyRotate;
-
-		Vector3 NewCamRotate = new(
-			this.Rotation.X + CamRotateSpeed.X * (float)delta,
-			this.Rotation.Y + CamRotateSpeed.Y * (float)delta,
-			this.Rotation.Z + CamRotateSpeed.Z * (float)delta
+		this.GlobalRotation = new Vector3(
+			0,
+			this.GlobalRotation.Y + RotationSpeed.Y * (float)delta,
+			0
 		);
-		// Cam.GlobalRotation = NewCamRotate;
+		RotationSpeed = Vector2.Zero;
 	}
 	private void ToggleEscMenu() {
 		if (EscMenu.IsVisibleInTree()) {
 			EscMenu.Hide();
+			Input.MouseMode = Input.MouseModeEnum.Captured;
 		} else {
 			EscMenu.Show();
+			Input.MouseMode = Input.MouseModeEnum.Visible;
 		}
 	}
 }
