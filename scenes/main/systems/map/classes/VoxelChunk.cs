@@ -17,7 +17,7 @@ public partial class VoxelChunk : MeshInstance3D {
 	public Vector3I Coord {get; set;}
 	public Godot.ArrayMesh CubeMesh;
 	public int[] Voxels = new int[Consts.Chunk.CubSize];
-	public struct TypedVoxels() {
+	public struct BitVoxels() {
 		public static ulong[][] X = new ulong[2][];
 		public static ulong[][] Y = new ulong[2][];
 		public static ulong[][] Z = new ulong[2][];
@@ -37,10 +37,10 @@ public partial class VoxelChunk : MeshInstance3D {
 		Material.Shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader");
 		this.MaterialOverride = Material;
 
-		for (int i = 0; i < TypedVoxels.X.Length; i++) {
-			TypedVoxels.X[i] = new ulong[64];
-			TypedVoxels.Y[i] = new ulong[64];
-			TypedVoxels.Z[i] = new ulong[64];
+		for (int i = 0; i < BitVoxels.X.Length; i++) {
+			BitVoxels.X[i] = new ulong[64];
+			BitVoxels.Y[i] = new ulong[64];
+			BitVoxels.Z[i] = new ulong[64];
 		}
 		}
 		
@@ -94,11 +94,21 @@ public partial class VoxelChunk : MeshInstance3D {
 			BitIndex[i] = Index[i] % 64;
 		}
 
-		TypedVoxels.X[VoxelType][UlongIndex[0]] |= (ulong)1 << BitIndex[0];
-		TypedVoxels.Y[VoxelType][UlongIndex[1]] |= (ulong)1 << BitIndex[1];
-		TypedVoxels.Z[VoxelType][UlongIndex[2]] |= (ulong)1 << BitIndex[2];
+		BitVoxels.X[VoxelType][UlongIndex[0]] |= (ulong)1 << BitIndex[0];
+		BitVoxels.Y[VoxelType][UlongIndex[1]] |= (ulong)1 << BitIndex[1];
+		BitVoxels.Z[VoxelType][UlongIndex[2]] |= (ulong)1 << BitIndex[2];
 	}
-	// public static void Get
+	public static int GetUlongIndex(int Axis, Vector3I Coord){
+		int[] Index = [
+			Coord.Y + Coord.Z * Consts.Chunk.Size + Coord.X * Consts.Chunk.SqSize,
+			Coord.X + Coord.Z * Consts.Chunk.Size + Coord.Y * Consts.Chunk.SqSize,
+			Coord.X + Coord.Y * Consts.Chunk.Size + Coord.Z * Consts.Chunk.SqSize
+		];
+
+		int UlongIndex = Index[Axis] >> 6;
+		return UlongIndex;
+
+	}
 	// private methods
 	private int[] MakeVoxels(FastNoiseLite Noise) {
 		int[] TMPVoxels = new int[Consts.Chunk.CubSize];
@@ -153,45 +163,47 @@ public partial class VoxelChunk : MeshInstance3D {
 
 		return TMPFaces;
 	}
-	// private int[] MakeGreedyMesh() {
-	// 	int[] TMPFaces = new int[6];
-	// 	int[] VoxelCopy = (int[])Voxels.Clone();
+	private int[] MakeGreedyFaces() {
+		int[] TMPFaces = new int[6];
+		// int[] VoxelCopy = (int[])BitVoxels.Clone();
 
-	// 	for (int y = 0; y < Consts.ChunkSize; y++) {
-	// 		for (int x = 0; x < Consts.ChunkSize; x++) {
-	// 			for (int z = 0; z < Consts.ChunkSize; z++) {
-	// 				int Index = x + z * Consts.ExtendedChunkSize + y * Consts.SqExtendedChunkSize;
-
-	// 				int NeighborIndex1 = Index + 1;
-	// 				if (x < Consts.ChunkSize) {
-	// 					if (VoxelCopy[Index] != 0 && VoxelCopy[NeighborIndex1] == 0) {
-
-	// 					}
-	// 				}
-	// 			}
-	// 		}
-
-	// 		int x_index = 16 + x;
-
-	// 		if (VoxelCopy[x_index] != 0 && VoxelCopy[x_index + y * Consts.SqExtendedChunkSize] == 0) {
-	// 			int StartingIndex = x;
-
-	// 			while (x < 15) {
-	// 				VoxelCopy[x_index] = 0;
+		for (int y = 0; y < Consts.Chunk.Size; y++) {
+			for (int z = 0; z < Consts.Chunk.Size; z++) {
+				for (int x = 0; x < Consts.Chunk.Size; x++) {
+					Vector3I Coord = new(x, y, z);
+					int UlongIndex = GetUlongIndex(1, Coord);
 					
-	// 				int next_x_index = x_index + 1;
-	// 				if (VoxelCopy[next_x_index] != 0 && VoxelCopy[next_x_index + y * Consts.SqExtendedChunkSize] == 0) {
-	// 					x++;
-	// 				}
-	// 			}
-	// 			while (z < 16) {
 
-	// 			}
+					// int NeighborIndex1 = Index + 1;
+					// if (x < Consts.Chunk.Size) {
+					// 	if (VoxelCopy[Index] != 0 && VoxelCopy[NeighborIndex1] == 0) {
 
-	// 		}
-	// 	}
-	// 	return TMPFaces;
-	// }
+					// 	}
+					}
+				}
+			}
+
+		// 	int x_index = 16 + x;
+
+		// 	if (VoxelCopy[x_index] != 0 && VoxelCopy[x_index + y * Consts.SqExtendedChunkSize] == 0) {
+		// 		int StartingIndex = x;
+
+		// 		while (x < 15) {
+		// 			VoxelCopy[x_index] = 0;
+					
+		// 			int next_x_index = x_index + 1;
+		// 			if (VoxelCopy[next_x_index] != 0 && VoxelCopy[next_x_index + y * Consts.SqExtendedChunkSize] == 0) {
+		// 				x++;
+		// 			}
+		// 		}
+		// 		while (z < 16) {
+
+		// 		}
+
+		// 	}
+		// }
+		return TMPFaces;
+	}
 	private Godot.Collections.Array MakeMesh() {
 
 		int FaceAmount = 0;
