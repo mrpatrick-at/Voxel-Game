@@ -17,6 +17,11 @@ enum VOXELTYPE : int {
     DIRT = 1,
     Stone = 2,
 }
+enum AXIS : int {
+    X = 0,
+    Y = 1,
+    Z = 2,
+}
 enum MESH : int {
     VERTICES = 0,
     Normals = 1,
@@ -31,9 +36,9 @@ public static float VoxelSize = 1;
         public static int CubSize = SqSize * Size;
     }
     public struct World {
-        public static int ChunkWidth = 6;
-        public static int ChunkHeight = 6;
-        public static int ChunkLength = 6;
+        public static int ChunkWidth = 2;
+        public static int ChunkHeight = 2;
+        public static int ChunkLength = 2;
         public static int Width = ChunkWidth * Chunk.Size;
         public static int Height = ChunkHeight * Chunk.Size;
         public static int Length = ChunkLength * Chunk.Size;
