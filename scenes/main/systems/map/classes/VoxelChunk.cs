@@ -178,10 +178,9 @@ public partial class VoxelChunk : MeshInstance3D {
 
 				int UlongIndex = LayerUlong + (y << 2);
 				int AboveUlongIndex = UlongIndex + 4;
-				GD.Print($"UlongIndex: {UlongIndex}");
 				ulong Ulong = BitVoxels[1][(int)AXIS.Y][UlongIndex];
-				// ulong AboveUlong = y < 15 ? BitVoxels[1][(int)DIRECTION.UP][AboveUlongIndex] : 0UL;
-				ulong AboveUlong = 0UL;
+				ulong AboveUlong = y < 15 ? BitVoxels[1][(int)AXIS.Y][AboveUlongIndex] : 0UL;
+				// ulong AboveUlong = 0UL;
 				ulong FreeFaces = Ulong & ~AboveUlong; // All Faces Visible from Above
 				
 				// GD.Print($"VoxelChunk- Ulong Flip {LayerUlong}");
