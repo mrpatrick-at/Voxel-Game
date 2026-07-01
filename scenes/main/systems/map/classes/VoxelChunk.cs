@@ -173,22 +173,109 @@ public partial class VoxelChunk : MeshInstance3D {
 	}
 	private System.Collections.Generic.Dictionary<Vector3I,Vector3I>[] MakeGreedyFaces() {
 		System.Collections.Generic.Dictionary<Vector3I,Vector3I>[] TMPFaces = [[],[],[],[],[],[]];
+
+		for (int x = 0; x < Consts.Chunk.Size; x++) {
+			for (int LayerUlong = 0; LayerUlong < 4; LayerUlong++) {
+
+				int UlongIndex = LayerUlong + (x << 2);
+				int RightUlongIndex = UlongIndex + 4;
+				int LeftUlongIndex = UlongIndex - 4;
+
+				ulong Ulong = BitVoxels[1][(int)AXIS.Y][UlongIndex];
+				ulong AboveUlong = x < 15 ? BitVoxels[1][(int)AXIS.X][RightUlongIndex] : 0UL;
+				ulong BelowUlong = x > 0 ? BitVoxels[1][(int)AXIS.X][LeftUlongIndex] : 0UL;
+
+				ulong FreeFacesRight = Ulong & ~AboveUlong; // All Faces Visible from Right
+				ulong FreeFacesLeft = Ulong & ~BelowUlong; // All Faces Visible from Left
+				
+				// Right Faces
+				for (int BitIndex = 0; BitIndex < 64; BitIndex++) {
+
+					ulong Bitmask = 1UL << BitIndex;
+
+					if ((FreeFacesRight & Bitmask) != 0) {
+						int StartingY = BitIndex % 16;
+						Vector3I StartingPosition = new(x, StartingY, (BitIndex / 16) + (LayerUlong * 4));
+						GD.Print($"Found start {StartingPosition}");
+						
+						ulong CountedBits = Bitmask;
+						int EndingY = StartingY;
+
+						while (EndingY < 15) {
+							ulong NextBitmask = 1UL << (BitIndex + (EndingY - StartingY) + 1);
+
+							if ((FreeFacesRight & NextBitmask) == 0) {
+								break;
+							}
+							CountedBits |= NextBitmask;
+
+							EndingY++;
+						}
+
+						Vector3I EndingPosition = new(x, EndingY, StartingPosition.Z);
+						GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
+
+						TMPFaces[(int)DIRECTION.RIGHT].Add(StartingPosition, EndingPosition);
+
+						FreeFacesRight &= ~CountedBits;
+					}
+				}
+				// Left Faces
+				for (int BitIndex = 0; BitIndex < 64; BitIndex++) {
+
+					ulong Bitmask = 1UL << BitIndex;
+
+					if ((FreeFacesLeft & Bitmask) != 0) {
+						int StartingY = BitIndex % 16;
+						Vector3I StartingPosition = new(x, StartingY, (BitIndex / 16) + (LayerUlong * 4));
+						GD.Print($"Found start {StartingPosition}");
+						
+						ulong CountedBits = Bitmask;
+						int EndingY = StartingY;
+
+						while (EndingY < 15) {
+							ulong NextBitmask = 1UL << (BitIndex + (EndingY - StartingY) + 1);
+
+							if ((FreeFacesLeft & NextBitmask) == 0) {
+								break;
+							}
+							CountedBits |= NextBitmask;
+
+							EndingY++;
+						}
+
+						Vector3I EndingPosition = new(x, EndingY, StartingPosition.Z);
+						GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
+
+						TMPFaces[(int)DIRECTION.LEFT].Add(StartingPosition, EndingPosition);
+
+						FreeFacesLeft &= ~CountedBits;
+					}
+				}
+			}
+		}
+
+		// Y Axis
 		for (int y = 0; y < Consts.Chunk.Size; y++) {
 			for (int LayerUlong = 0; LayerUlong < 4; LayerUlong++) {
 
 				int UlongIndex = LayerUlong + (y << 2);
 				int AboveUlongIndex = UlongIndex + 4;
+				int BelowUlongIndex = UlongIndex - 4;
+
 				ulong Ulong = BitVoxels[1][(int)AXIS.Y][UlongIndex];
 				ulong AboveUlong = y < 15 ? BitVoxels[1][(int)AXIS.Y][AboveUlongIndex] : 0UL;
-				// ulong AboveUlong = 0UL;
-				ulong FreeFaces = Ulong & ~AboveUlong; // All Faces Visible from Above
+				ulong BelowUlong = y > 0 ? BitVoxels[1][(int)AXIS.Y][BelowUlongIndex] : 0UL;
+
+				ulong FreeFacesUp = Ulong & ~AboveUlong; // All Faces Visible from Above
+				ulong FreeFacesDown = Ulong & ~BelowUlong; // All Faces Visible from Above
 				
-				// GD.Print($"VoxelChunk- Ulong Flip {LayerUlong}");
+				// Above Faces
 				for (int BitIndex = 0; BitIndex < 64; BitIndex++) {
 
 					ulong Bitmask = 1UL << BitIndex;
 
-					if ((FreeFaces & Bitmask) != 0) {
+					if ((FreeFacesUp & Bitmask) != 0) {
 						int StartingX = BitIndex % 16;
 						Vector3I StartingPosition = new(StartingX, y, (BitIndex / 16) + (LayerUlong * 4));
 						GD.Print($"Found start {StartingPosition}");
@@ -199,7 +286,7 @@ public partial class VoxelChunk : MeshInstance3D {
 						while (EndingX < 15) {
 							ulong NextBitmask = 1UL << (BitIndex + (EndingX - StartingX) + 1);
 
-							if ((FreeFaces & NextBitmask) == 0) {
+							if ((FreeFacesUp & NextBitmask) == 0) {
 								break;
 							}
 							CountedBits |= NextBitmask;
@@ -212,7 +299,39 @@ public partial class VoxelChunk : MeshInstance3D {
 
 						TMPFaces[(int)DIRECTION.UP].Add(StartingPosition, EndingPosition);
 
-						FreeFaces &= ~CountedBits;
+						FreeFacesUp &= ~CountedBits;
+					}
+				}
+				// Below Faces
+				for (int BitIndex = 0; BitIndex < 64; BitIndex++) {
+
+					ulong Bitmask = 1UL << BitIndex;
+
+					if ((FreeFacesDown & Bitmask) != 0) {
+						int StartingX = BitIndex % 16;
+						Vector3I StartingPosition = new(StartingX, y, (BitIndex / 16) + (LayerUlong * 4));
+						GD.Print($"Found start {StartingPosition}");
+						
+						ulong CountedBits = Bitmask;
+						int EndingX = StartingX;
+
+						while (EndingX < 15) {
+							ulong NextBitmask = 1UL << (BitIndex + (EndingX - StartingX) + 1);
+
+							if ((FreeFacesDown & NextBitmask) == 0) {
+								break;
+							}
+							CountedBits |= NextBitmask;
+
+							EndingX++;
+						}
+
+						Vector3I EndingPosition = new(EndingX, y, StartingPosition.Z);
+						GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
+
+						TMPFaces[(int)DIRECTION.DOWN].Add(StartingPosition, EndingPosition);
+
+						FreeFacesDown &= ~CountedBits;
 					}
 				}
 			}
