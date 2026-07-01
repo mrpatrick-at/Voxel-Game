@@ -17,7 +17,7 @@ public partial class VoxelChunk : MeshInstance3D {
 	public Vector3I Coord {get; set;}
 	public Godot.ArrayMesh CubeMesh;
 	public int[] Voxels = new int[Consts.Chunk.CubSize];
-	public static ulong[][][] BitVoxels = new ulong[2][][]; // BitVoxels[VoxelType][FaceDirection][64]
+	public static ulong[][][] BitVoxels = new ulong[2][][]; // BitVoxels[VoxelType][Axis][64]
 	public System.Collections.Generic.Dictionary<Vector3I,Vector3I>[] Faces = [];
 	public Godot.Collections.Dictionary GreedyFaces;
 	public ShaderMaterial Material = new ShaderMaterial();
@@ -68,17 +68,11 @@ public partial class VoxelChunk : MeshInstance3D {
 		GD.PrintRich($"[color=Springgreen]VoxelChunk-[/color] Created Chunk in [color=gold]{EndTime}ms[/color]");
 	}
 	public static void SetVoxelBit(int VoxelType, Vector3I Coord) {
-		int[] Index = [
-			Coord.Y + Coord.Z * Consts.Chunk.Size + Coord.X * Consts.Chunk.SqSize,
-			Coord.X + Coord.Z * Consts.Chunk.Size + Coord.Y * Consts.Chunk.SqSize,
-			Coord.X + Coord.Y * Consts.Chunk.Size + Coord.Z * Consts.Chunk.SqSize
-			];
-		
-		for (int i = 0; i < 3; i++) {
-			int UlongIndex = Index[i] >> 6;
-			int BitIndex = Index[i] % 64;
+		for (int Axis = 0; Axis < 3; Axis++) {
+			int UlongIndex = GetUlongIndex(Axis, Coord);
+			int BitIndex = GetBitIndex(Axis, Coord);
 			ulong Bitmask = (ulong)1 << BitIndex;
-			BitVoxels[VoxelType][i][UlongIndex] |= Bitmask;
+			BitVoxels[VoxelType][Axis][UlongIndex] |= Bitmask;
 		}
 	}
 	public static int GetUlongIndex(int Axis, Vector3I Coord){
@@ -90,7 +84,6 @@ public partial class VoxelChunk : MeshInstance3D {
 					break;
 				
 				case (int)AXIS.Y:
-				 	// Index = Coord.X + Coord.Z * Consts.Chunk.Size + Coord.Y * Consts.Chunk.SqSize;
 				 	UlongIndex = (Coord.Z >> 2) + (Coord.Y << 2);
 					break;
 				
@@ -102,23 +95,22 @@ public partial class VoxelChunk : MeshInstance3D {
 		return UlongIndex;
 	}
 	public static int GetBitIndex(int Axis, Vector3I Coord) {
-		int Index = 0;
+		int BitIndex = 0;
 
 		switch (Axis) {
 			case (int)AXIS.X:
-				Index = Coord.Y + Coord.Z * Consts.Chunk.Size;
+				BitIndex = Coord.Y + ((Coord.Z % 4) << 4);
 				break;
 			
 			case (int)AXIS.Y:
-				Index = Coord.X + Coord.Z * Consts.Chunk.Size;
+				BitIndex = Coord.X + ((Coord.Z % 4) << 4);
 				break;
 			
 			case (int)AXIS.Z:
-				Index = Coord.X + Coord.Y * Consts.Chunk.Size;
+				BitIndex = Coord.X + ((Coord.Y % 4) << 4);
 				break;
 		}
 
-		int BitIndex = Index % 64;
 		return BitIndex;
 	}
 	// private methods
@@ -181,77 +173,37 @@ public partial class VoxelChunk : MeshInstance3D {
 	}
 	private System.Collections.Generic.Dictionary<Vector3I,Vector3I>[] MakeGreedyFaces() {
 		System.Collections.Generic.Dictionary<Vector3I,Vector3I>[] TMPFaces = [[],[],[],[],[],[]];
-
-		// for (int y = 0; y < Consts.Chunk.Size; y++) {
-		// 	for (int z = 0; z < Consts.Chunk.Size; z++) {
-		// 		for (int x = 0; x < Consts.Chunk.Size; x++) {
-
-		// 			Vector3I Coord = new(x, y, z);
-		// 			int UlongIndex = GetUlongIndex((int)AXIS.Y, Coord);
-		// 			int AboveUlongIndex = GetUlongIndex((int)AXIS.Y, new Vector3I(x, y + 1, z));
-		// 			int BitIndex = (x + z * Consts.Chunk.Size) % 64;
-					
-		// 			ulong Ulong = BitVoxels[1][(int)DIRECTION.UP][UlongIndex];
-		// 			ulong AboveUlong = y < 15 ? BitVoxels[1][(int)DIRECTION.UP][AboveUlongIndex] : 0UL;
-		// 			ulong FreeFaces = Ulong & ~AboveUlong; // All Faces Visible from Above
-
-		// 			ulong Bitmask = 1UL << BitIndex;
-
-		// 			if ((FreeFaces & Bitmask) != 0) {
-		// 				Vector3I StartingPosition = new Vector3I(x, y, z);
-		// 				GD.Print($"Found start {StartingPosition}");
-		// 				Vector3I EndingPosition = StartingPosition;
-		// 				ulong NextBitmask = Bitmask;
-
-		// 				for (int i = 15 - BitIndex % 16; i < 16; i++) {
-		// 					NextBitmask <<= 1;
-		// 					x = i;
-		// 					GD.Print($"x = {x}");
-		// 					EndingPosition = new Vector3I(x, y, z);
-
-		// 					if ((FreeFaces & NextBitmask) == 0) {
-		// 						GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
-		// 						break;
-		// 					}
-		// 				}
-
-		// 				TMPFaces[(int)DIRECTION.UP].Add(StartingPosition, EndingPosition);
-						
-		// 			}
-
-		// 			}
-		// 		}
-		// 	}
 		for (int y = 0; y < Consts.Chunk.Size; y++) {
 			for (int LayerUlong = 0; LayerUlong < 4; LayerUlong++) {
 
-				int UlongIndex = LayerUlong + y * 4;
+				int UlongIndex = LayerUlong + (y << 2);
 				int AboveUlongIndex = UlongIndex + 4;
-
-				ulong Ulong = BitVoxels[1][(int)DIRECTION.UP][UlongIndex];
-				ulong AboveUlong = y < 15 ? BitVoxels[1][(int)DIRECTION.UP][AboveUlongIndex] : 0UL;
+				GD.Print($"UlongIndex: {UlongIndex}");
+				ulong Ulong = BitVoxels[1][(int)AXIS.Y][UlongIndex];
+				// ulong AboveUlong = y < 15 ? BitVoxels[1][(int)DIRECTION.UP][AboveUlongIndex] : 0UL;
+				ulong AboveUlong = 0UL;
 				ulong FreeFaces = Ulong & ~AboveUlong; // All Faces Visible from Above
 				
 				// GD.Print($"VoxelChunk- Ulong Flip {LayerUlong}");
-
 				for (int BitIndex = 0; BitIndex < 64; BitIndex++) {
 
 					ulong Bitmask = 1UL << BitIndex;
 
 					if ((FreeFaces & Bitmask) != 0) {
-						Vector3I StartingPosition = new(BitIndex % 16, y, BitIndex / 16 + LayerUlong * 4);
+						int StartingX = BitIndex % 16;
+						Vector3I StartingPosition = new(StartingX, y, (BitIndex / 16) + (LayerUlong * 4));
 						GD.Print($"Found start {StartingPosition}");
+						
+						ulong CountedBits = Bitmask;
+						int EndingX = StartingX;
 
-						ulong NextBitmask = Bitmask << 1;
-						int EndingX = StartingPosition.X;
-
-						while (EndingX < 16) {
-							// GD.Print($"EndingX = {EndingX}");
+						while (EndingX < 15) {
+							ulong NextBitmask = 1UL << (BitIndex + (EndingX - StartingX) + 1);
 
 							if ((FreeFaces & NextBitmask) == 0) {
 								break;
 							}
-							NextBitmask <<= 1;
+							CountedBits |= NextBitmask;
 
 							EndingX++;
 						}
@@ -261,8 +213,7 @@ public partial class VoxelChunk : MeshInstance3D {
 
 						TMPFaces[(int)DIRECTION.UP].Add(StartingPosition, EndingPosition);
 
-						BitIndex += EndingPosition.X + 1 - StartingPosition.X;
-						
+						FreeFaces &= ~CountedBits;
 					}
 				}
 			}
