@@ -16,15 +16,11 @@ public partial class VoxelChunk : MeshInstance3D {
 	// public vars
 	public Vector3I Coord {get; set;}
 	public Godot.ArrayMesh CubeMesh;
-	public int[] Voxels = new int[Consts.Chunk.CubSize];
-	public static ulong[][][] BitVoxels = new ulong[2][][]; // BitVoxels[VoxelType][Axis][64]
+	public static ulong[][][] BitVoxels; // BitVoxels[VoxelType][Axis][64]
 	public System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] Faces;
-	public Godot.Collections.Dictionary GreedyFaces;
 	public ShaderMaterial Material = new();
 
 	bool is_empty = true;
-	bool is_full = true;
-	bool has_faces = false;
 	// private vars
 	// built-in override methods
 		// Called when the node enters the scene tree for the first time.
@@ -48,7 +44,7 @@ public partial class VoxelChunk : MeshInstance3D {
 
 		if (!is_empty) {
 			Faces = MakeGreedyFaces();
-			// Faces = MakeFaces();
+			
 			Godot.Collections.Array MeshArray = MakeMesh();
 			CubeMesh = new ArrayMesh();
 			CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray);
@@ -139,54 +135,13 @@ public partial class VoxelChunk : MeshInstance3D {
 
 		return BitIndex;
 	}
-	private System.Collections.Generic.Dictionary<Vector3I,Vector3I>[] MakeFaces() {
-		System.Collections.Generic.Dictionary<Vector3I,Vector3I>[] TMPFaces = [[], [], [], [], [], []];
-
-		for (int x = 0; x < Consts.Chunk.Size - 1; x++) {
-			for (int y = 0; y < Consts.Chunk.Size - 1; y++) {
-				for (int z = 0; z < Consts.Chunk.Size; z++) {
-					int index = x + z * Consts.Chunk.Size + y * Consts.Chunk.SqSize;
-					if (Voxels[index] != 0) {
-						Vector3I Coord = new(x, y, z);
-						if (Voxels[index + 1] == 0) {
-							TMPFaces[(int)DIRECTION.RIGHT].Add(Coord, Coord);
-						}
-						if (Voxels[index + Consts.Chunk.SqSize] == 0) {
-							TMPFaces[(int)DIRECTION.UP].Add(Coord, Coord);
-						}
-						if (Voxels[index + Consts.Chunk.Size] == 0) {
-							TMPFaces[(int)DIRECTION.BACK].Add(Coord, Coord);
-						}
-					} else {
-						if (Voxels[index + 1] != 0) {
-							Vector3I Coord = new(x + 1, y, z);
-							TMPFaces[(int)DIRECTION.LEFT].Add(Coord, Coord);
-						}
-						if (Voxels[index + Consts.Chunk.SqSize] != 0) {
-							Vector3I Coord = new(x, y + 1, z);
-							TMPFaces[(int)DIRECTION.DOWN].Add(Coord, Coord);
-						}
-						if (Voxels[index + Consts.Chunk.Size] != 0) {
-							Vector3I Coord = new(x, y, z + 1);
-							TMPFaces[(int)DIRECTION.FORWARD].Add(Coord, Coord);
-						}
-						is_full = false;
-					}
-				}
-			}
-		}
-
-		return TMPFaces;
-	}
 	private System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] MakeGreedyFaces() {
 		System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] TMPFaces = new System.Collections.Generic.Dictionary<Vector3I,Vector3I>[Consts.Voxel.Amount][];
 
 		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
 			TMPFaces[VoxelType] = new System.Collections.Generic.Dictionary<Vector3I,Vector3I>[6];
-			GD.Print(TMPFaces[VoxelType]);
 			for (int Dir = 0; Dir < 6; Dir++) {
 				TMPFaces[VoxelType][Dir] = new System.Collections.Generic.Dictionary<Vector3I,Vector3I>();
-				GD.Print(TMPFaces[VoxelType][Dir]);
 				int Axis = Dir / 2;
 
 				for (int LayerIndex = 0; LayerIndex < Consts.Chunk.Size; LayerIndex++) {
@@ -230,7 +185,7 @@ public partial class VoxelChunk : MeshInstance3D {
 								}
 
 								Vector3I EndingPosition = GetPosition(EndingI, LayerIndex, StartingN, Axis);
-								GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
+								// GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
 
 								TMPFaces[VoxelType][Dir].Add(StartingPosition, EndingPosition);
 
