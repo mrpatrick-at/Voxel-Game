@@ -15,7 +15,7 @@ public partial class VoxelChunk : MeshInstance3D {
 	// consts
 	// public vars
 	public Vector3I Coord {get; set;}
-	public Godot.ArrayMesh CubeMesh;
+	public Godot.ArrayMesh CubeMesh = new();
 	public static ulong[][][] BitVoxels; // BitVoxels[VoxelType][Axis][64]
 	public System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] Faces;
 	public ShaderMaterial Material = new();
@@ -27,6 +27,8 @@ public partial class VoxelChunk : MeshInstance3D {
 		public override void _Ready() {
 		this.GlobalPosition = new Godot.Vector3(Coord.X << 4, Coord.Y << 4, Coord.Z << 4);
 		Material.Shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader");
+		Texture2D TextureAtlas = GD.Load<Texture2D>("res://assets/textures/TextureAtlas.png");
+		(Material as ShaderMaterial).SetShaderParameter("TextureAtlas", TextureAtlas);
 		this.MaterialOverride = Material;
 		}
 		
@@ -46,8 +48,17 @@ public partial class VoxelChunk : MeshInstance3D {
 			Faces = MakeGreedyFaces();
 			
 			Godot.Collections.Array MeshArray = MakeMesh();
-			CubeMesh = new ArrayMesh();
-			CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray);
+			Mesh.ArrayFormat FormatFlags = Mesh.ArrayFormat.FormatVertex
+										| Mesh.ArrayFormat.FormatNormal
+										| Mesh.ArrayFormat.FormatTexUV
+										| Mesh.ArrayFormat.FormatIndex
+										| Mesh.ArrayFormat.FormatColor
+										| Mesh.ArrayFormat.FormatCustom0;
+
+			int Custom0FormatShift = (int)Mesh.ArrayCustomFormat.RFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift;
+			FormatFlags |= (Mesh.ArrayFormat)Custom0FormatShift;
+
+			CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
 
 			ApplyMesh();
 		}
@@ -227,12 +238,15 @@ public partial class VoxelChunk : MeshInstance3D {
 		Godot.Vector3[] NormalArray = new Godot.Vector3[VertexSize];
 		Godot.Vector2[] UvArray = new Godot.Vector2[VertexSize];
 		Godot.Color[] ColorArray = new Godot.Color[VertexSize];
+		float[] Custom0Array = new float[VertexSize];
 
 		int IndicesSize = FaceAmount * 6;
 		int[] IndicesArray = new int[IndicesSize];
 
 		int Index = 0;
 		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
+
+
 			for (int dir = 0; dir < 6; dir++) {
 
 				Color color = Color.Color8(0,255,0);
@@ -242,21 +256,24 @@ public partial class VoxelChunk : MeshInstance3D {
 					color = Color.Color8(255,0,0);
 				}
 
+
 				foreach (var(StartingPos, EndingPos) in Faces[VoxelType][dir]) {
 					Godot.Vector3[][] MeshFace = CreateFace(dir,StartingPos,EndingPos);
 
 					int IndexOffset = Index << 2;
 					int IndicesIndex = IndexOffset + (Index << 1);
+					int CustomArrayIndex = IndexOffset << 2;
 
-					int i = IndexOffset;
+					Godot.Vector2[] TmpUvs = [new(0, 0), new(1, 0), new(1, 1), new(0, 1)];
 
-					Godot.Vector2[] TmpUvs = [new(0, 0), new(1, 0), new(0, 1), new(1, 1)];
-					for (int n = 0; n < 4; n++) {
-						VertexArray[i] = MeshFace[(int)MESH.VERTICES][n];
-						NormalArray[i] = MeshFace[(int)MESH.Normals][n];
-						UvArray[i] = TmpUvs[n];
-						ColorArray[i] = color;
-						i++;
+					for (int i = 0; i < 4; i++) {
+						int ArrayIndex = i + IndexOffset;
+						VertexArray[ArrayIndex] = MeshFace[(int)MESH.VERTICES][i];
+						NormalArray[ArrayIndex] = MeshFace[(int)MESH.Normals][i];
+						UvArray[ArrayIndex] = TmpUvs[i];
+						ColorArray[ArrayIndex] = color;
+
+						Custom0Array[ArrayIndex] = (float)VoxelType;
 					}
 
 				IndicesArray[IndicesIndex] = IndexOffset;
@@ -277,7 +294,8 @@ public partial class VoxelChunk : MeshInstance3D {
 		MeshArray[(int)Mesh.ArrayType.TexUV] = UvArray;
 		MeshArray[(int)Mesh.ArrayType.Index] = IndicesArray;
 		MeshArray[(int)Mesh.ArrayType.Color] = ColorArray;
-
+		MeshArray[(int)Mesh.ArrayType.Custom0] = Custom0Array;
+		
 		return MeshArray;
 		}
 
@@ -343,6 +361,11 @@ public partial class VoxelChunk : MeshInstance3D {
 			],
 		];
 		return MeshFace;
+	}
+	private Godot.Vector4 GetTexId(int VoxelType) {
+		Godot.Vector4 TexId = new(0, 0, 0, 0);
+
+		return TexId;
 	}
 	private void ApplyMesh() {
 		this.Mesh = CubeMesh;

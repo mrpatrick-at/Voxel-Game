@@ -16,6 +16,7 @@
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_yyfjg"]
 render_priority = 0
 shader = ExtResource("3_b1x3f")
+shader_parameter/TextureRowLength = 4.0
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_a8run"]
 
