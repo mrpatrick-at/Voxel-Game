@@ -55,7 +55,7 @@ public partial class VoxelChunk : MeshInstance3D {
 										| Mesh.ArrayFormat.FormatColor
 										| Mesh.ArrayFormat.FormatCustom0;
 
-			int Custom0FormatShift = (int)Mesh.ArrayCustomFormat.RFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift;
+			int Custom0FormatShift = (int)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift;
 			FormatFlags |= (Mesh.ArrayFormat)Custom0FormatShift;
 
 			CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
@@ -238,7 +238,7 @@ public partial class VoxelChunk : MeshInstance3D {
 		Godot.Vector3[] NormalArray = new Godot.Vector3[VertexSize];
 		Godot.Vector2[] UvArray = new Godot.Vector2[VertexSize];
 		Godot.Color[] ColorArray = new Godot.Color[VertexSize];
-		float[] Custom0Array = new float[VertexSize];
+		float[] Custom0Array = new float[VertexSize << 2];
 
 		int IndicesSize = FaceAmount * 6;
 		int[] IndicesArray = new int[IndicesSize];
@@ -262,7 +262,6 @@ public partial class VoxelChunk : MeshInstance3D {
 
 					int IndexOffset = Index << 2;
 					int IndicesIndex = IndexOffset + (Index << 1);
-					int CustomArrayIndex = IndexOffset << 2;
 
 					Godot.Vector2[] TmpUvs = [new(0, 0), new(1, 0), new(1, 1), new(0, 1)];
 
@@ -273,7 +272,10 @@ public partial class VoxelChunk : MeshInstance3D {
 						UvArray[ArrayIndex] = TmpUvs[i];
 						ColorArray[ArrayIndex] = color;
 
-						Custom0Array[ArrayIndex] = (float)VoxelType;
+						int CustomArrayIndex = ArrayIndex << 2; // TODO: VERY IMPORTANT !!!!!! ADD FUNC THAT GETS DISTANCE OF VECS AND PASSES IT TO SHADER :)
+						for (int n = 0; n < 4; n++) {
+							Custom0Array[CustomArrayIndex + n] = (float)VoxelType;
+						}
 					}
 
 				IndicesArray[IndicesIndex] = IndexOffset;
