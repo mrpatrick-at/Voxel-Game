@@ -10,7 +10,7 @@ public partial class Player : Node3D {
 	const int MaxSpeed = 32;
 	const int MoveSpeed = 4;
 	const int SpeedDecay = 2;
-	const float MouseSensitivity = 0.2F;
+	const float MouseSensitivity = 0.5F;
 	// public vars
 	public float CamSpeedMod = 1;
 	public Vector3 Speed = Vector3.Zero;
@@ -54,10 +54,15 @@ public partial class Player : Node3D {
 	// private methods
 	private void HandleMouseInput(InputEventMouse MouseEvent) {
 		if (MouseEvent is InputEventMouseMotion MouseMotion) {
+
 			RotationSpeed = new(
 				-MouseMotion.Relative.Y * MouseSensitivity,
 				-MouseMotion.Relative.X * MouseSensitivity
 			);
+
+			// Cam.Rotation = new Vector3(NewRotationX, Cam.Rotation.Y, Cam.Rotation.Z);
+
+			// this.Rotation = new Vector3(this.Rotation.X, NewRotationY, this.Rotation.Z);
 		}
 		bool PressedLeft = (MouseEvent.ButtonMask & MouseButtonMask.Left) != 0;
 		bool PressedRight = (MouseEvent.ButtonMask & MouseButtonMask.Right) != 0;
@@ -116,17 +121,27 @@ public partial class Player : Node3D {
 			this.GlobalPosition.Z + MoveDirection.Z * (float)delta
 			);
 		this.GlobalPosition = NewPos;
+		
+		float SmoothSpeed = 32f * (float)delta;
+
+		float FrameRotationSpeedX = RotationSpeed.X * SmoothSpeed;
+		float FrameRotationSpeedY = RotationSpeed.Y * SmoothSpeed;
+
+		float TargetRotationX = Mathf.Clamp(Cam.Rotation.X + FrameRotationSpeedX, Mathf.DegToRad(-90f), Mathf.DegToRad(90f));
+		float TargetRotationY = this.Rotation.Y + FrameRotationSpeedY;
 
 		Cam.Rotation = new Vector3(
-			Math.Clamp(Cam.GlobalRotation.X + RotationSpeed.X * (float)delta,-89f,89f),
+			TargetRotationX,
 			0,
 			0
 			);
-		this.GlobalRotation = new Vector3(
+		
+		this.Rotation = new Vector3(
 			0,
-			this.GlobalRotation.Y + RotationSpeed.Y * (float)delta,
+			TargetRotationY,
 			0
 		);
+
 		RotationSpeed = Vector2.Zero;
 	}
 	private void ToggleEscMenu() {
