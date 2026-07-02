@@ -18,7 +18,7 @@ public partial class VoxelChunk : MeshInstance3D {
 	public Godot.ArrayMesh CubeMesh;
 	public int[] Voxels = new int[Consts.Chunk.CubSize];
 	public static ulong[][][] BitVoxels = new ulong[2][][]; // BitVoxels[VoxelType][Axis][64]
-	public System.Collections.Generic.Dictionary<Vector3I,Vector3I>[] Faces = [];
+	public System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] Faces;
 	public Godot.Collections.Dictionary GreedyFaces;
 	public ShaderMaterial Material = new();
 
@@ -32,14 +32,6 @@ public partial class VoxelChunk : MeshInstance3D {
 		this.GlobalPosition = new Godot.Vector3(Coord.X << 4, Coord.Y << 4, Coord.Z << 4);
 		Material.Shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader");
 		this.MaterialOverride = Material;
-		
-		for (int VoxelType = 0; VoxelType < 2; VoxelType++) {
-			BitVoxels[VoxelType] = new ulong[3][];
-			for (int Axis = 0; Axis < 3; Axis++) {
-				// GD.Print($"Type: {VoxelType}, Axis: {Axis}");
-				BitVoxels[VoxelType][Axis] = new ulong[64];
-			}
-		}
 		}
 		
 		// Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -52,7 +44,7 @@ public partial class VoxelChunk : MeshInstance3D {
 		ulong StartTime = Time.GetTicksUsec();
 		GD.PrintRich($"[color=Springgreen]VoxelChunk-[/color] Chunk [color=gold]{Coord}[/color] called setup");
 
-		Voxels = MakeVoxels(Noise);
+		BitVoxels = MakeBitVoxels(Noise);
 
 		if (!is_empty) {
 			Faces = MakeGreedyFaces();
@@ -67,34 +59,68 @@ public partial class VoxelChunk : MeshInstance3D {
 		float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 		GD.PrintRich($"[color=Springgreen]VoxelChunk-[/color] Created Chunk in [color=gold]{EndTime}ms[/color]");
 	}
-	public static void SetVoxelBit(int VoxelType, Vector3I Coord) {
-		for (int Axis = 0; Axis < 3; Axis++) {
-			int UlongIndex = GetUlongIndex(Axis, Coord);
-			int BitIndex = GetBitIndex(Axis, Coord);
-			ulong Bitmask = (ulong)1 << BitIndex;
-			BitVoxels[VoxelType][Axis][UlongIndex] |= Bitmask;
+	// private methods
+	private ulong[][][] MakeBitVoxels(FastNoiseLite Noise) {
+		ulong[][][] TmpBitVoxels = new ulong[Consts.Voxel.Amount][][];
+
+		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
+			TmpBitVoxels[VoxelType] = new ulong[3][];
+
+			for (int Axis = 0; Axis < 3; Axis++) {
+				TmpBitVoxels[VoxelType][Axis] = new ulong[72];
+			}
+		}
+
+		for (int x = 0; x < Consts.Chunk.Size; x++) {
+			for (int z = 0; z < Consts.Chunk.Size; z++) {
+
+				float PixelData = -Noise.GetNoise2D(x + Coord.X * Consts.Chunk.Size, z + Coord.Z * Consts.Chunk.Size);
+
+				int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
+
+				int LocalTileHeight = TileHeight - Coord.Y * Consts.Chunk.Size;
+
+				for (int y = 0; y <= LocalTileHeight; y++) {
+					is_empty = false;
+					Vector3I VoxelCoord = new(x, y, z);
+
+						for (int Axis = 0; Axis < 3; Axis++) {
+						int UlongIndex = GetUlongIndex(Axis, VoxelCoord);
+
+						// if (UlongIndex == -1) {
+						// 	GD.Print("Bad Coord");
+						// 	continue;
+						// }
+
+						int BitIndex = GetBitIndex(Axis, VoxelCoord);
+						ulong Bitmask = (ulong)1 << BitIndex;
+						TmpBitVoxels[(int)Consts.Voxel.Type.DIRT][Axis][UlongIndex] |= Bitmask;
+					}
+				}
+
+			}
+		}
+
+		return TmpBitVoxels;
+	}
+	private static int GetUlongIndex(int Axis, Vector3I Coord){
+		bool IsGood;
+
+		switch (Axis) {
+			case (int)AXIS.X:
+				IsGood = Coord.Y < Consts.Chunk.Size && Coord.Z < Consts.Chunk.Size;
+				return IsGood ? (Coord.Z >> 2) + (Coord.X << 2) : -1;
+			
+			case (int)AXIS.Y:
+				IsGood = Coord.X < Consts.Chunk.Size && Coord.Z < Consts.Chunk.Size;
+				return IsGood ? (Coord.Z >> 2) + (Coord.Y << 2) : -1;
+			
+			default: // Axis Z
+				IsGood = Coord.X < Consts.Chunk.Size && Coord.Y < Consts.Chunk.Size;
+				return IsGood ? (Coord.Y >> 2) + (Coord.Z << 2) : -1;
 		}
 	}
-	public static int GetUlongIndex(int Axis, Vector3I Coord){
-		int UlongIndex = 0;
-
-			switch (Axis) {
-				case (int)AXIS.X:
-					UlongIndex = (Coord.Z >> 2) + (Coord.X << 2);
-					break;
-				
-				case (int)AXIS.Y:
-				 	UlongIndex = (Coord.Z >> 2) + (Coord.Y << 2);
-					break;
-				
-				case (int)AXIS.Z:
-					UlongIndex = (Coord.Y >> 2) + (Coord.Z << 2);
-					break;
-			}
-
-		return UlongIndex;
-	}
-	public static int GetBitIndex(int Axis, Vector3I Coord) {
+	private static int GetBitIndex(int Axis, Vector3I Coord) {
 		int BitIndex = 0;
 
 		switch (Axis) {
@@ -113,25 +139,6 @@ public partial class VoxelChunk : MeshInstance3D {
 
 		return BitIndex;
 	}
-	// private methods
-	private int[] MakeVoxels(FastNoiseLite Noise) {
-		int[] TMPVoxels = new int[Consts.Chunk.CubSize];
-		for (int x = 0; x < Consts.Chunk.Size; x++) {
-			for (int z = 0; z < Consts.Chunk.Size; z++) {
-				float PixelData = -Noise.GetNoise2D(x + Coord.X * Consts.Chunk.Size, z + Coord.Z * Consts.Chunk.Size);
-				int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
-				int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.Size, 15);
-				// GD.Print($"TileHeight: {TileHeight}, LocalTileHeight: {LocalTileHeight}, Chunk Y: {Coord.Y}");
-				for (int y = 0; y <= LocalTileHeight; y++) {
-					TMPVoxels[x + z * Consts.Chunk.Size + y * Consts.Chunk.SqSize] = (int)VOXELTYPE.DIRT;
-					SetVoxelBit((int)VOXELTYPE.DIRT, new Vector3I(x, y, z));
-					is_empty = false;
-				}
-			}
-		}
-		return TMPVoxels;
-	}
-
 	private System.Collections.Generic.Dictionary<Vector3I,Vector3I>[] MakeFaces() {
 		System.Collections.Generic.Dictionary<Vector3I,Vector3I>[] TMPFaces = [[], [], [], [], [], []];
 
@@ -171,59 +178,64 @@ public partial class VoxelChunk : MeshInstance3D {
 
 		return TMPFaces;
 	}
-	private System.Collections.Generic.Dictionary<Vector3I,Vector3I>[] MakeGreedyFaces() {
-		System.Collections.Generic.Dictionary<Vector3I,Vector3I>[] TMPFaces = [[],[],[],[],[],[]];
+	private System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] MakeGreedyFaces() {
+		System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] TMPFaces = new System.Collections.Generic.Dictionary<Vector3I,Vector3I>[Consts.Voxel.Amount][];
 
-		for (int Dir = 0; Dir < 6; Dir++) {
-			int Axis = Dir / 2;
-			// GD.Print($"Axis: {Axis}");
+		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
+			TMPFaces[VoxelType] = new System.Collections.Generic.Dictionary<Vector3I,Vector3I>[6];
+			GD.Print(TMPFaces[VoxelType]);
+			for (int Dir = 0; Dir < 6; Dir++) {
+				TMPFaces[VoxelType][Dir] = new System.Collections.Generic.Dictionary<Vector3I,Vector3I>();
+				GD.Print(TMPFaces[VoxelType][Dir]);
+				int Axis = Dir / 2;
 
-			for (int LayerIndex = 0; LayerIndex < Consts.Chunk.Size; LayerIndex++) {
-				for (int LayerUlongIndex = 0; LayerUlongIndex < 4; LayerUlongIndex++) {
+				for (int LayerIndex = 0; LayerIndex < Consts.Chunk.Size; LayerIndex++) {
+					for (int LayerUlongIndex = 0; LayerUlongIndex < 4; LayerUlongIndex++) {
 
-					int UlongIndex = LayerUlongIndex + (LayerIndex << 2);
-					ulong Ulong = BitVoxels[1][Axis][UlongIndex];
+						int UlongIndex = LayerUlongIndex + (LayerIndex << 2);
+						ulong Ulong = BitVoxels[VoxelType][Axis][UlongIndex];
 
-					ulong ComparisonUlong;
+						ulong ComparisonUlong;
 
-					if ((Dir & 1) == 0) {
-						ComparisonUlong = LayerIndex < 15 ? BitVoxels[1][Axis][UlongIndex + 4] : 0UL;
-					} else {
-						ComparisonUlong = LayerIndex > 0 ? BitVoxels[1][Axis][UlongIndex - 4] : 0UL;
-					}
-					
-					ulong VisibleFaces = Ulong & ~ComparisonUlong; // All Faces Visible
-					
-					for (int BitIndex = 0; BitIndex < 64; BitIndex++) {
+						if ((Dir & 1) == 0) {
+							ComparisonUlong = LayerIndex < 15 ? BitVoxels[VoxelType][Axis][UlongIndex + 4] : 0UL;
+						} else {
+							ComparisonUlong = LayerIndex > 0 ? BitVoxels[VoxelType][Axis][UlongIndex - 4] : 0UL;
+						}
+						
+						ulong VisibleFaces = Ulong & ~ComparisonUlong; // All Faces Visible
+						
+						for (int BitIndex = 0; BitIndex < 64; BitIndex++) {
 
-						ulong Bitmask = 1UL << BitIndex;
+							ulong Bitmask = 1UL << BitIndex;
 
-						if ((VisibleFaces & Bitmask) != 0) {
-							int StartingI = BitIndex % 16;
-							int StartingN = (BitIndex / 16) + (LayerUlongIndex * 4);
-							Vector3I StartingPosition = GetPosition(StartingI, LayerIndex, StartingN, Axis);
-							GD.Print($"Found start {StartingPosition}");
-							
-							ulong CountedBits = Bitmask;
-							int EndingI = StartingI;
+							if ((VisibleFaces & Bitmask) != 0) {
+								int StartingI = BitIndex % 16;
+								int StartingN = (BitIndex / 16) + (LayerUlongIndex * 4);
+								Vector3I StartingPosition = GetPosition(StartingI, LayerIndex, StartingN, Axis);
+								// GD.Print($"Found start {StartingPosition}");
+								
+								ulong CountedBits = Bitmask;
+								int EndingI = StartingI;
 
-							while (EndingI < 15) {
-								ulong NextBitmask = 1UL << (BitIndex + (EndingI - StartingI) + 1);
+								while (EndingI < 15) {
+									ulong NextBitmask = 1UL << (BitIndex + (EndingI - StartingI) + 1);
 
-								if ((VisibleFaces & NextBitmask) == 0) {
-									break;
+									if ((VisibleFaces & NextBitmask) == 0) {
+										break;
+									}
+									CountedBits |= NextBitmask;
+
+									EndingI++;
 								}
-								CountedBits |= NextBitmask;
 
-								EndingI++;
+								Vector3I EndingPosition = GetPosition(EndingI, LayerIndex, StartingN, Axis);
+								GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
+
+								TMPFaces[VoxelType][Dir].Add(StartingPosition, EndingPosition);
+
+								VisibleFaces &= ~CountedBits;
 							}
-
-							Vector3I EndingPosition = GetPosition(EndingI, LayerIndex, StartingN, Axis);
-							GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
-
-							TMPFaces[Dir].Add(StartingPosition, EndingPosition);
-
-							VisibleFaces &= ~CountedBits;
 						}
 					}
 				}
@@ -249,9 +261,10 @@ public partial class VoxelChunk : MeshInstance3D {
 
 		int FaceAmount = 0;
 
-		for (int dir = 0; dir < 6; dir++) {
-			FaceAmount += Faces[dir].Count;
-			GD.Print($"Dir Face Amount += {Faces[dir].Count}");
+		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
+			for (int dir = 0; dir < 6; dir++) {
+				FaceAmount += Faces[VoxelType][dir].Count;
+			}
 		}
 
 		int VertexSize = FaceAmount * 4;
@@ -264,40 +277,41 @@ public partial class VoxelChunk : MeshInstance3D {
 		int[] IndicesArray = new int[IndicesSize];
 
 		int Index = 0;
+		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
+			for (int dir = 0; dir < 6; dir++) {
+				System.Collections.Generic.Dictionary<Vector3I,Vector3I> DirList = Faces[VoxelType][dir];
 
-		for (int dir = 0; dir < 6; dir++) {
-			System.Collections.Generic.Dictionary<Vector3I,Vector3I> DirList = Faces[dir];
-
-			Color color = Color.Color8(0,255,0);
-			if (dir > 3) {
-				color = Color.Color8(0,0,255);
-			} else if (dir < 2) {
-				color = Color.Color8(255,0,0);
-			}
-
-			foreach (var(StartingPos, EndingPos) in DirList) {
-				Godot.Vector3[][] MeshFace = CreateFace(dir,StartingPos,EndingPos);
-
-				int IndexOffset = Index << 2;
-				int IndicesIndex = IndexOffset + (Index << 1);
-
-				int i = IndexOffset;
-
-				foreach (Godot.Vector3 vertice in MeshFace[(int)MESH.VERTICES]) {
-					VertexArray[i] = vertice;
-					NormalArray[i] = vertice;
-					UvArray[i] = Godot.Vector2.Zero;
-					ColorArray[i] = color;
-					i++;
+				Color color = Color.Color8(0,255,0);
+				if (dir > 3) {
+					color = Color.Color8(0,0,255);
+				} else if (dir < 2) {
+					color = Color.Color8(255,0,0);
 				}
-			IndicesArray[IndicesIndex] = IndexOffset;
-			IndicesArray[IndicesIndex + 1] = IndexOffset + 1;
-			IndicesArray[IndicesIndex + 2] = IndexOffset + 2;
-			IndicesArray[IndicesIndex + 3] = IndexOffset;
-			IndicesArray[IndicesIndex + 4] = IndexOffset + 2;
-			IndicesArray[IndicesIndex + 5] = IndexOffset + 3;
-			
-			Index++;
+
+				foreach (var(StartingPos, EndingPos) in DirList) {
+					Godot.Vector3[][] MeshFace = CreateFace(dir,StartingPos,EndingPos);
+
+					int IndexOffset = Index << 2;
+					int IndicesIndex = IndexOffset + (Index << 1);
+
+					int i = IndexOffset;
+
+					foreach (Godot.Vector3 vertice in MeshFace[(int)MESH.VERTICES]) {
+						VertexArray[i] = vertice;
+						NormalArray[i] = vertice;
+						UvArray[i] = Godot.Vector2.Zero;
+						ColorArray[i] = color;
+						i++;
+					}
+				IndicesArray[IndicesIndex] = IndexOffset;
+				IndicesArray[IndicesIndex + 1] = IndexOffset + 1;
+				IndicesArray[IndicesIndex + 2] = IndexOffset + 2;
+				IndicesArray[IndicesIndex + 3] = IndexOffset;
+				IndicesArray[IndicesIndex + 4] = IndexOffset + 2;
+				IndicesArray[IndicesIndex + 5] = IndexOffset + 3;
+				
+				Index++;
+				}
 			}
 		}
 		Godot.Collections.Array MeshArray = [];
@@ -309,7 +323,7 @@ public partial class VoxelChunk : MeshInstance3D {
 		MeshArray[(int)Mesh.ArrayType.Color] = ColorArray;
 
 		return MeshArray;
-	}
+		}
 
 	private static Godot.Vector3[][] CreateFace(int dir, Godot.Vector3 StartingPosition, Godot.Vector3 EndingPosition) {
 		Godot.Vector3[] DirectionArray = [
@@ -322,40 +336,40 @@ public partial class VoxelChunk : MeshInstance3D {
 		];
 		Godot.Vector3[][] VerticesArray = [
 			[
-				StartingPosition + new Godot.Vector3(0.5F, -0.5F, -0.5F) * Consts.VoxelSize, // Bottom Left
-				new Godot.Vector3(StartingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(0.5F, -0.5F,  0.5F) * Consts.VoxelSize, // Bottom Right
-				EndingPosition + new Godot.Vector3(0.5F,  0.5F,  0.5F) * Consts.VoxelSize, // Top Right
-				new Godot.Vector3(EndingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(0.5F,  0.5F, -0.5F) * Consts.VoxelSize, // Top Left
+				StartingPosition + new Godot.Vector3(0.5F, -0.5F, -0.5F) * Consts.Voxel.Size, // Bottom Left
+				new Godot.Vector3(StartingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(0.5F, -0.5F,  0.5F) * Consts.Voxel.Size, // Bottom Right
+				EndingPosition + new Godot.Vector3(0.5F,  0.5F,  0.5F) * Consts.Voxel.Size, // Top Right
+				new Godot.Vector3(EndingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(0.5F,  0.5F, -0.5F) * Consts.Voxel.Size, // Top Left
 			],
 			[
-				StartingPosition + new Godot.Vector3(-0.5F, -0.5F, -0.5F) * Consts.VoxelSize, // Bottom Left
-				new Godot.Vector3(EndingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(-0.5F,  0.5F, -0.5F) * Consts.VoxelSize, // Top Left
-				EndingPosition + new Godot.Vector3(-0.5F,  0.5F,  0.5F) * Consts.VoxelSize, // Top Right
-				new Godot.Vector3(StartingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(-0.5F, -0.5F,  0.5F) * Consts.VoxelSize // Bottom Right
+				StartingPosition + new Godot.Vector3(-0.5F, -0.5F, -0.5F) * Consts.Voxel.Size, // Bottom Left
+				new Godot.Vector3(EndingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(-0.5F,  0.5F, -0.5F) * Consts.Voxel.Size, // Top Left
+				EndingPosition + new Godot.Vector3(-0.5F,  0.5F,  0.5F) * Consts.Voxel.Size, // Top Right
+				new Godot.Vector3(StartingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(-0.5F, -0.5F,  0.5F) * Consts.Voxel.Size // Bottom Right
 			],
 			[
-				StartingPosition + new Godot.Vector3(-0.5F,  0.5F, -0.5F) * Consts.VoxelSize,
-				new Godot.Vector3(EndingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3( 0.5F,  0.5F, -0.5F) * Consts.VoxelSize,
-				EndingPosition + new Godot.Vector3( 0.5F,  0.5F,  0.5F) * Consts.VoxelSize,
-				new Godot.Vector3(StartingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(-0.5F,  0.5F,  0.5F) * Consts.VoxelSize
+				StartingPosition + new Godot.Vector3(-0.5F,  0.5F, -0.5F) * Consts.Voxel.Size,
+				new Godot.Vector3(EndingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3( 0.5F,  0.5F, -0.5F) * Consts.Voxel.Size,
+				EndingPosition + new Godot.Vector3( 0.5F,  0.5F,  0.5F) * Consts.Voxel.Size,
+				new Godot.Vector3(StartingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(-0.5F,  0.5F,  0.5F) * Consts.Voxel.Size
 			],
 			[
-				StartingPosition + new Godot.Vector3(-0.5F, -0.5F,  -0.5F) * Consts.VoxelSize,
-				new Godot.Vector3(StartingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3( -0.5F, -0.5F,  0.5F) * Consts.VoxelSize,
-				EndingPosition + new Godot.Vector3( 0.5F, -0.5F, 0.5F) * Consts.VoxelSize,
-				new Godot.Vector3(EndingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(0.5F, -0.5F, -0.5F) * Consts.VoxelSize
+				StartingPosition + new Godot.Vector3(-0.5F, -0.5F,  -0.5F) * Consts.Voxel.Size,
+				new Godot.Vector3(StartingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3( -0.5F, -0.5F,  0.5F) * Consts.Voxel.Size,
+				EndingPosition + new Godot.Vector3( 0.5F, -0.5F, 0.5F) * Consts.Voxel.Size,
+				new Godot.Vector3(EndingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(0.5F, -0.5F, -0.5F) * Consts.Voxel.Size
 			],
 			[
-				StartingPosition + new Godot.Vector3(-0.5F, -0.5F, 0.5F) * Consts.VoxelSize, // Bottom Left
-				new Godot.Vector3(StartingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(-0.5F,  0.5F, 0.5F) * Consts.VoxelSize, // Top Left
-				EndingPosition + new Godot.Vector3(0.5F,  0.5F,  0.5F) * Consts.VoxelSize, // Top Right
-				new Godot.Vector3(EndingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(0.5F, -0.5F,  0.5F) * Consts.VoxelSize // Bottom Right
+				StartingPosition + new Godot.Vector3(-0.5F, -0.5F, 0.5F) * Consts.Voxel.Size, // Bottom Left
+				new Godot.Vector3(StartingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(-0.5F,  0.5F, 0.5F) * Consts.Voxel.Size, // Top Left
+				EndingPosition + new Godot.Vector3(0.5F,  0.5F,  0.5F) * Consts.Voxel.Size, // Top Right
+				new Godot.Vector3(EndingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(0.5F, -0.5F,  0.5F) * Consts.Voxel.Size // Bottom Right
 			],
 			[
-				StartingPosition + new Godot.Vector3(-0.5F, -0.5F, -0.5F) * Consts.VoxelSize, // Bottom Left
-				new Godot.Vector3(EndingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(0.5F, -0.5F,  -0.5F) * Consts.VoxelSize, // Bottom Right
-				EndingPosition + new Godot.Vector3(0.5F,  0.5F,  -0.5F) * Consts.VoxelSize, // Top Right
-				new Godot.Vector3(StartingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(-0.5F,  0.5F, -0.5F) * Consts.VoxelSize, // Top Left
+				StartingPosition + new Godot.Vector3(-0.5F, -0.5F, -0.5F) * Consts.Voxel.Size, // Bottom Left
+				new Godot.Vector3(EndingPosition.X,StartingPosition.Y,EndingPosition.Z) + new Godot.Vector3(0.5F, -0.5F,  -0.5F) * Consts.Voxel.Size, // Bottom Right
+				EndingPosition + new Godot.Vector3(0.5F,  0.5F,  -0.5F) * Consts.Voxel.Size, // Top Right
+				new Godot.Vector3(StartingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(-0.5F,  0.5F, -0.5F) * Consts.Voxel.Size, // Top Left
 			]
 		];
 		Godot.Vector3[] Vertices = VerticesArray[dir];

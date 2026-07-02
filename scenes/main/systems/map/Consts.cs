@@ -12,11 +12,6 @@ enum DIRECTION : int {
     BACK = 4,
     FORWARD = 5,
 }
-enum VOXELTYPE : int {
-    AIR = 0,
-    DIRT = 1,
-    Stone = 2,
-}
 enum AXIS : int {
     X = 0,
     Y = 1,
@@ -29,9 +24,19 @@ enum MESH : int {
     INDICES = 3,
 }
 public struct Consts {
-public static float VoxelSize = 1;
+    public struct Voxel {
+        public static float Size = 1;
+        public enum Type : int {
+            AIR = 0,
+            DIRT = 1,
+            Stone = 2,
+        }
+        public static int Amount = Enum.GetNames(typeof(Consts.Voxel.Type)).Length;
+
+    }
     public struct Chunk {
         public static int Size = 16;
+        public static int ExtendedSize = 18;
         public static int SqSize = Size * Size;
         public static int CubSize = SqSize * Size;
     }
