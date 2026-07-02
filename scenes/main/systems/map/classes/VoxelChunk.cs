@@ -279,7 +279,6 @@ public partial class VoxelChunk : MeshInstance3D {
 		int Index = 0;
 		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
 			for (int dir = 0; dir < 6; dir++) {
-				System.Collections.Generic.Dictionary<Vector3I,Vector3I> DirList = Faces[VoxelType][dir];
 
 				Color color = Color.Color8(0,255,0);
 				if (dir > 3) {
@@ -288,7 +287,7 @@ public partial class VoxelChunk : MeshInstance3D {
 					color = Color.Color8(255,0,0);
 				}
 
-				foreach (var(StartingPos, EndingPos) in DirList) {
+				foreach (var(StartingPos, EndingPos) in Faces[VoxelType][dir]) {
 					Godot.Vector3[][] MeshFace = CreateFace(dir,StartingPos,EndingPos);
 
 					int IndexOffset = Index << 2;
@@ -296,13 +295,15 @@ public partial class VoxelChunk : MeshInstance3D {
 
 					int i = IndexOffset;
 
-					foreach (Godot.Vector3 vertice in MeshFace[(int)MESH.VERTICES]) {
-						VertexArray[i] = vertice;
-						NormalArray[i] = vertice;
-						UvArray[i] = Godot.Vector2.Zero;
+					Godot.Vector2[] TmpUvs = [new(0, 0), new(1, 0), new(0, 1), new(1, 1)];
+					for (int n = 0; n < 4; n++) {
+						VertexArray[i] = MeshFace[(int)MESH.VERTICES][n];
+						NormalArray[i] = MeshFace[(int)MESH.Normals][n];
+						UvArray[i] = TmpUvs[n];
 						ColorArray[i] = color;
 						i++;
 					}
+
 				IndicesArray[IndicesIndex] = IndexOffset;
 				IndicesArray[IndicesIndex + 1] = IndexOffset + 1;
 				IndicesArray[IndicesIndex + 2] = IndexOffset + 2;
@@ -384,7 +385,7 @@ public partial class VoxelChunk : MeshInstance3D {
 			],
 			[
 				normals[0], normals[1], normals[2], normals[3]
-			]
+			],
 		];
 		return MeshFace;
 	}
