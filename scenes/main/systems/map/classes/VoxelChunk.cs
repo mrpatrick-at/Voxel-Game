@@ -185,9 +185,11 @@ public partial class VoxelChunk : MeshInstance3D {
 							
 							ulong CountedBits = Bitmask;
 							int EndingI = StartingI;
+							int BitShiftAmount = 0;
 
 							while (EndingI < 15) {
 								ulong NextBitmask = 1UL << (BitIndex + (EndingI - StartingI) + 1);
+								BitShiftAmount++;
 
 								if ((VisibleFaces[BitIndex / 64] & NextBitmask) == 0) {
 									break;
@@ -200,43 +202,34 @@ public partial class VoxelChunk : MeshInstance3D {
 							VisibleFaces[BitletIndex] &= ~CountedBits;
 
 							ulong ShiftedRow = CountedBits;
-							for (int RowBitshift = 0; RowBitshift < 4; RowBitshift++) {
-								ShiftedRow >>= RowBitshift * 16;
-
-								if ((ShiftedRow & 170) != 0) {
-									GD.Print($"RowBitshift: {RowBitshift}");
-									break;
+							for (int RowBitshift = 0; RowBitshift <= BitShiftAmount; RowBitshift++) {
+									ShiftedRow |= 1UL << (RowBitshift + StartingI);
 								}
-							}
+
 							ulong[] RowBits = [ShiftedRow, ShiftedRow, ShiftedRow, ShiftedRow];
 							RowBits[BitletIndex] = CountedBits;
 
 							int EndingN = StartingN;
 
-							while (EndingN < 15) {
-								int Bitshift = 16 * (EndingN % 4);
-								int FaceIndex = EndingN / 4;
+							// while (EndingN < 15) {
+							// 	int Bitshift = 16 * (EndingN % 4);
+							// 	int FaceIndex = EndingN / 4;
 
-								ulong NextBitmask = RowBits[FaceIndex] << Bitshift; // Here is Issue :(
+							// 	ulong NextBitmask = RowBits[FaceIndex] << Bitshift; // Here is Issue :(
+							// 	// GD.Print($"RowBits: {RowBits[FaceIndex]}");
 
-								if ((VisibleFaces[FaceIndex] & NextBitmask) != NextBitmask) {
-									break;
-								}
-								VisibleFaces[FaceIndex] &= ~NextBitmask;
+							// 	if ((VisibleFaces[FaceIndex] & NextBitmask) != NextBitmask) {
+							// 		break;
+							// 	}
+							// 	VisibleFaces[FaceIndex] &= ~NextBitmask;
 
-								EndingN++;
-							}
+							// 	EndingN++;
+							// }
 
 							Vector3I EndingPosition = GetPosition(EndingI, LayerIndex, EndingN, Axis);
-							// GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
+							GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
 
 							TMPFaces[VoxelType][Dir].Add(StartingPosition, EndingPosition);
-
-							// for (int l = 0; l < 4; l++) {
-							// 	VisibleFaces[l] &= ~DoneFaceArray[l];
-							// 	// BitVoxels[VoxelType][Axis][UlongIndex + l] &= ~DoneFaceArray[l];
-							// }
-							// VisibleFaces &= ~DoneFaceArray[FirstFaceArrayIndex];
 						}
 						
 					}
