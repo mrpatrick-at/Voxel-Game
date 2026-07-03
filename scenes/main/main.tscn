@@ -25,6 +25,13 @@ albedo_color = Color(0.10980392, 0.10980392, 0.10980392, 1)
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_blune"]
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ouso4"]
+render_priority = 0
+shader = ExtResource("3_b1x3f")
+shader_parameter/TextureRowLength = 3.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_a8run"]
+
 [node name="Node3D" type="Node3D" unique_id=175156120]
 script = ExtResource("1_b1x3f")
 
@@ -109,6 +116,12 @@ text = "Quit
 
 [node name="Map" type="Node3D" parent="." unique_id=86150080]
 script = ExtResource("9_b1x3f")
+
+[node name="Test Cube" type="MeshInstance3D" parent="." unique_id=459361056]
+visible = false
+material_overlay = SubResource("ShaderMaterial_ouso4")
+mesh = SubResource("BoxMesh_a8run")
+surface_material_override/0 = SubResource("StandardMaterial3D_xdea8")
 
 [connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonGenerate" to="Map" method="_OnGeneratePressed"]
 [connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonLoad" to="Map" method="_OnLoadPressed"]

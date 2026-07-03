@@ -23,29 +23,34 @@ enum MESH : int {
     UVS = 2,
     INDICES = 3,
 }
-public struct Consts {
-    public struct Voxel {
-        public static float Size = 1;
+public readonly struct Consts {
+    public readonly struct Voxel {
+        public static readonly float Size = 1;
         public enum Type : int {
             AIR = 0,
             DIRT = 1,
             Stone = 2,
         }
-        public static int Amount = Enum.GetNames(typeof(Consts.Voxel.Type)).Length;
+        public static readonly int Amount = Enum.GetNames(typeof(Consts.Voxel.Type)).Length;
 
     }
     public struct Chunk {
-        public static int Size = 16;
-        public static int ExtendedSize = 18;
-        public static int SqSize = Size * Size;
-        public static int CubSize = SqSize * Size;
+        public static readonly int Size = 16;
+        public static readonly int ExtendedSize = 18;
+        public static readonly int SqSize = Size * Size;
+        public static readonly int CubSize = SqSize * Size;
     }
-    public struct World {
-        public static int ChunkWidth = 2;
-        public static int ChunkHeight = 2;
-        public static int ChunkLength = 2;
-        public static int Width = ChunkWidth * Chunk.Size;
-        public static int Height = ChunkHeight * Chunk.Size;
-        public static int Length = ChunkLength * Chunk.Size;
+    public readonly struct World {
+        public static readonly int ChunkWidth = 4;
+        public static readonly int ChunkHeight = 4;
+        public static readonly int ChunkLength = 4;
+        public static readonly int Width = ChunkWidth * Chunk.Size;
+        public static readonly int Height = ChunkHeight * Chunk.Size;
+        public static readonly int Length = ChunkLength * Chunk.Size;
     }
 }
+
+public partial class AssetPreloader : Node {
+
+}
+
