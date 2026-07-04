@@ -82,14 +82,14 @@ public partial class VoxelChunk : MeshInstance3D {
 			}
 		}
 
-		for (int x = 0; x < Consts.Chunk.ExtendedSize; x++) {
-			for (int z = 0; z < Consts.Chunk.ExtendedSize; z++) {
+		for (int x = 0; x < Consts.Chunk.Size; x++) {
+			for (int z = 0; z < Consts.Chunk.Size; z++) {
 
 				float PixelData = -Noise.GetNoise2D(x + Coord.X * Consts.Chunk.Size, z + Coord.Z * Consts.Chunk.Size);
 
 				int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
 
-				int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.ExtendedSize, Consts.Chunk.ExtendedSize);
+				int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.Size, Consts.Chunk.Size);
 
 				for (int y = 0; y <= LocalTileHeight; y++) {
 					is_empty = false;
@@ -98,12 +98,12 @@ public partial class VoxelChunk : MeshInstance3D {
 						for (int Axis = 0; Axis < 3; Axis++) {
 						int UlongIndex = GetUlongIndex(Axis, VoxelCoord);
 
-						if (UlongIndex == -1 || UlongIndex >= 72) {
-							if (UlongIndex >= 72) {
-							GD.Print($"Bad Coord: {VoxelCoord}, Ulong: {UlongIndex}, Axis: {Axis}");
-							}
-							continue;
-						}
+						// if (UlongIndex == -1 || UlongIndex >= 72) {
+						// 	if (UlongIndex >= 72) {
+						// 	GD.Print($"Bad Coord: {VoxelCoord}, Ulong: {UlongIndex}, Axis: {Axis}");
+						// 	}
+						// 	continue;
+						// }
 
 						int BitIndex = GetBitIndex(Axis, VoxelCoord);
 						ulong Bitmask = (ulong)1 << BitIndex;
@@ -117,26 +117,26 @@ public partial class VoxelChunk : MeshInstance3D {
 		return TmpBitVoxels;
 	}
 	private static int GetUlongIndex(int Axis, Vector3I VoxelCoord){
-		bool IsGood;
+		bool IsGood = true;
 
 		switch (Axis) {
 			case (int)AXIS.X:
-				IsGood = VoxelCoord.Y < 16 && VoxelCoord.Z < 16;
-				return IsGood ? (VoxelCoord.Z >> 2) + (VoxelCoord.X << 2) : -1;
+				// IsGood = VoxelCoord.Y < 16 && VoxelCoord.Z < 16;
+				return IsGood ? (VoxelCoord.Y >> 2) + (VoxelCoord.X << 2) : -1;
 			
 			case (int)AXIS.Y:
-				IsGood = VoxelCoord.X < 16 && VoxelCoord.Z < 16;
+				// IsGood = VoxelCoord.X < 16 && VoxelCoord.Z < 16;
 				return IsGood ? (VoxelCoord.Z >> 2) + (VoxelCoord.Y << 2) : -1;
 			
 			default: // Axis Z
-				IsGood = VoxelCoord.X < 16 && VoxelCoord.Y < 16;
+				// IsGood = VoxelCoord.X < 16 && VoxelCoord.Y < 16;
 				return IsGood ? (VoxelCoord.X >> 2) + (VoxelCoord.Z << 2) : -1;
 		}
 	}
 	private static int GetBitIndex(int Axis, Vector3I Coord) {
 		switch (Axis) {
 			case (int)AXIS.X:
-				return Coord.Y + ((Coord.Z % 4) << 4);
+				return Coord.Z + ((Coord.Y % 4) << 4);
 			
 			case (int)AXIS.Y:
 				return Coord.X + ((Coord.Z % 4) << 4);
@@ -234,6 +234,7 @@ public partial class VoxelChunk : MeshInstance3D {
 							TMPFaces[VoxelType][Dir].Add(StartingPosition, EndingPosition);
 							
 							Vector2I TilingData = (Dir & 1) == 0 ? new(EndingI - StartingI + 1, EndingN - StartingN + 1): new(EndingN - StartingN + 1, EndingI - StartingI + 1);
+
 							FaceLengths[Dir].Add(StartingPosition, TilingData);
 						}
 						
@@ -248,7 +249,7 @@ public partial class VoxelChunk : MeshInstance3D {
 		Vector3I StartingPos;
 
 		if (Axis == 0) { // Is X Axis
-			StartingPos = new(LayerIndex, StartingI, StartingN);
+			StartingPos = new(LayerIndex, StartingN, StartingI);
 		} else if (Axis == 1) { // Is Y Axis
 			StartingPos = new(StartingI, LayerIndex, StartingN);
 		} else { // Is Z Axis
