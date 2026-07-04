@@ -41,9 +41,9 @@ public readonly struct Consts {
         public static readonly int CubSize = SqSize * Size;
     }
     public readonly struct World {
-        public static readonly int ChunkWidth = 1;
+        public static readonly int ChunkWidth = 8;
         public static readonly int ChunkHeight = 4;
-        public static readonly int ChunkLength = 1;
+        public static readonly int ChunkLength = 8;
         public static readonly int Width = ChunkWidth * Chunk.Size;
         public static readonly int Height = ChunkHeight * Chunk.Size;
         public static readonly int Length = ChunkLength * Chunk.Size;

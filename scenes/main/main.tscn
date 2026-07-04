@@ -42,7 +42,7 @@ directional_shadow_mode = 0
 directional_shadow_max_distance = 200.0
 
 [node name="Player" type="Node3D" parent="." unique_id=393008323]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48.437256, 150.05408, 43.565132)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 80, 0)
 script = ExtResource("2_a8run")
 
 [node name="Camera3D" type="Camera3D" parent="Player" unique_id=478426265]
