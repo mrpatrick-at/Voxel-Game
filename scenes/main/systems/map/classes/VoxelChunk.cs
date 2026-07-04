@@ -115,36 +115,26 @@ public partial class VoxelChunk : MeshInstance3D {
 
 		switch (Axis) {
 			case (int)AXIS.X:
-				// IsGood = Coord.Y < Consts.Chunk.Size && Coord.Z < Consts.Chunk.Size;
 				return IsGood ? (VoxelCoord.Z >> 2) + (VoxelCoord.X << 2) : -1;
 			
 			case (int)AXIS.Y:
-				// IsGood = Coord.X < Consts.Chunk.Size && Coord.Z < Consts.Chunk.Size;
 				return IsGood ? (VoxelCoord.Z >> 2) + (VoxelCoord.Y << 2) : -1;
 			
 			default: // Axis Z
-				// IsGood = Coord.X < Consts.Chunk.Size && Coord.Y < Consts.Chunk.Size;
 				return IsGood ? (VoxelCoord.X >> 2) + (VoxelCoord.Z << 2) : -1;
 		}
 	}
 	private static int GetBitIndex(int Axis, Vector3I Coord) {
-		int BitIndex = 0;
-
 		switch (Axis) {
 			case (int)AXIS.X:
-				BitIndex = Coord.Y + ((Coord.Z % 4) << 4);
-				break;
+				return Coord.Y + ((Coord.Z % 4) << 4);
 			
 			case (int)AXIS.Y:
-				BitIndex = Coord.X + ((Coord.Z % 4) << 4);
-				break;
+				return Coord.X + ((Coord.Z % 4) << 4);
 			
-			case (int)AXIS.Z:
-				BitIndex = Coord.Y + ((Coord.X % 4) << 4);
-				break;
+			default:
+				return Coord.Y + ((Coord.X % 4) << 4);
 		}
-
-		return BitIndex;
 	}
 	private System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] MakeGreedyFaces() {
 		System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] TMPFaces = new System.Collections.Generic.Dictionary<Vector3I,Vector3I>[Consts.Voxel.Amount][];
@@ -173,58 +163,67 @@ public partial class VoxelChunk : MeshInstance3D {
 							VisibleFaces[LayerUlongIndex] = Ulong & ~ComparisonUlong; // All Faces Visible
 					}
 
-					for (int BitIndex = 0; BitIndex < 256; BitIndex++) {
+					for (int FaceIndex = 0; FaceIndex < 256; FaceIndex++) {
 
-						ulong Bitmask = 1UL << (BitIndex % 64);
+						int UlongIndex = FaceIndex / 64;
+						int BitIndex = FaceIndex % 64;
+						ulong Bitmask = 1UL << (BitIndex);
 
-						if ((VisibleFaces[BitIndex / 64] & Bitmask) != 0) {
-							int StartingI = BitIndex % 16;
-							int StartingN = BitIndex / 16;
+						if ((VisibleFaces[UlongIndex] & Bitmask) != 0) {
+							int StartingI = FaceIndex % 16;
+							int StartingN = FaceIndex / 16;
 							Vector3I StartingPosition = GetPosition(StartingI, LayerIndex, StartingN, Axis);
 							// GD.Print($"Found start {StartingPosition}");
 							
-							ulong CountedBits = Bitmask;
-							int EndingI = StartingI;
-							int BitShiftAmount = 0;
+							int NextI = StartingI + 1;
 
-							while (EndingI < 15) {
-								ulong NextBitmask = 1UL << (BitIndex + (EndingI - StartingI) + 1);
-								BitShiftAmount++;
+							while (NextI < 16) {
+								ulong NextBitmask = Bitmask << (NextI - StartingI);
 
-								if ((VisibleFaces[BitIndex / 64] & NextBitmask) == 0) {
+								if ((VisibleFaces[UlongIndex] & NextBitmask) == 0) {
 									break;
 								}
-								CountedBits |= NextBitmask;
+								VisibleFaces[UlongIndex] &= ~NextBitmask;
+								// CountedBits |= NextBitmask;
 
-								EndingI++;
+								NextI++;
 							}
-							int BitletIndex = BitIndex / 64;
-							VisibleFaces[BitletIndex] &= ~CountedBits;
+							int EndingI = NextI - 1;
 
-							ulong ShiftedRow = CountedBits;
-							for (int RowBitshift = 0; RowBitshift <= BitShiftAmount; RowBitshift++) {
-									ShiftedRow |= 1UL << (RowBitshift + StartingI);
-								}
+							// VisibleFaces[UlongIndex] &= ~CountedBits;
 
-							ulong[] RowBits = [ShiftedRow, ShiftedRow, ShiftedRow, ShiftedRow];
-							RowBits[BitletIndex] = CountedBits;
-
-							int EndingN = StartingN;
-
-							// while (EndingN < 15) {
-							// 	int Bitshift = 16 * (EndingN % 4);
-							// 	int FaceIndex = EndingN / 4;
-
-							// 	ulong NextBitmask = RowBits[FaceIndex] << Bitshift; // Here is Issue :(
-							// 	// GD.Print($"RowBits: {RowBits[FaceIndex]}");
-
-							// 	if ((VisibleFaces[FaceIndex] & NextBitmask) != NextBitmask) {
-							// 		break;
+							// ulong ShiftedRow = CountedBits;
+							// for (int RowBitshift = 0; RowBitshift <= BitShiftAmount; RowBitshift++) {
+							// 		ShiftedRow |= 1UL << (RowBitshift + StartingI);
 							// 	}
-							// 	VisibleFaces[FaceIndex] &= ~NextBitmask;
 
-							// 	EndingN++;
-							// }
+							// ulong[] RowBits = [ShiftedRow, ShiftedRow, ShiftedRow, ShiftedRow];
+							// RowBits[BitletIndex] = CountedBits;
+							ulong CountedBits = 0UL;
+
+							for (int Shift = StartingI; Shift < EndingI + 1; Shift++) {
+								CountedBits |= 1UL << Shift;
+							}
+
+							
+							
+							int NextN = StartingN + 1;
+
+							while (NextN < 16) {
+								// Issue Starts Here
+								int LoopUlongIndex = NextN / 4;
+								int RowIndex = NextN % 4;
+
+								ulong NextBitmask = CountedBits << (16 * RowIndex); // This Might be Issue
+
+								if ((VisibleFaces[LoopUlongIndex] & NextBitmask) != NextBitmask) { // This Might be Issue too
+									break;
+								}
+								VisibleFaces[LoopUlongIndex] &= ~NextBitmask; // Or This even Might be Issue too
+
+								NextN++;
+							}
+							int EndingN = NextN - 1;
 
 							Vector3I EndingPosition = GetPosition(EndingI, LayerIndex, EndingN, Axis);
 							GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
