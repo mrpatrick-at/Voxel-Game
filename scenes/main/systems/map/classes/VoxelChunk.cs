@@ -18,24 +18,28 @@ public partial class VoxelChunk : MeshInstance3D {
 	public Godot.ArrayMesh CubeMesh = new();
 	public static ulong[][][] BitVoxels; // BitVoxels[VoxelType][Axis][64]
 	public System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] Faces;
+	public System.Collections.Generic.Dictionary<Vector3I,Vector2I>[] FaceLengths = new System.Collections.Generic.Dictionary<Vector3I,Vector2I>[6];
 	public ShaderMaterial Material = new();
 
 	bool is_empty = true;
 	// private vars
 	// built-in override methods
-		// Called when the node enters the scene tree for the first time.
-		public override void _Ready() {
+	public override void _Ready() {
 		this.GlobalPosition = new Godot.Vector3(Coord.X << 4, Coord.Y << 4, Coord.Z << 4);
 		Material.Shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader");
 		Texture2D TextureAtlas = GD.Load<Texture2D>("res://assets/textures/TextureAtlas.png");
 		(Material as ShaderMaterial).SetShaderParameter("TextureAtlas", TextureAtlas);
 		this.MaterialOverride = Material;
-		}
-		
-		// Called every frame. 'delta' is the elapsed time since the previous frame.
-		public override void _Process(double delta) {
 
+		for (int Dir = 0; Dir < 6; Dir++) {
+			FaceLengths[Dir] = new System.Collections.Generic.Dictionary<Vector3I,Vector2I>();
 		}
+	}
+		
+	// Called every frame. 'delta' is the elapsed time since the previous frame.
+	public override void _Process(double delta) {
+
+	}
 	// public methods
 
 	public void Generate(FastNoiseLite Noise) {
@@ -169,9 +173,10 @@ public partial class VoxelChunk : MeshInstance3D {
 							ComparisonUlong = LayerIndex > 0 ? BitVoxels[VoxelType][Axis][UlongIndex - 4] : 0UL;
 						}
 						VisibleFaces[LayerUlongIndex] = Ulong & ~ComparisonUlong; // All Faces Visible
-						if (Ulong != 0UL){
-						GD.Print($"UlongIndex: {UlongIndex}, Ulong: {Ulong}, ComparisonUlongIndex: {ComparisonUlongIndex}, ComparisonUlong: {ComparisonUlong}. VisibleFaces: {VisibleFaces[LayerUlongIndex]}");
-						}
+						
+						// if (Ulong != 0UL){
+						// GD.Print($"UlongIndex: {UlongIndex}, Ulong: {Ulong}, ComparisonUlongIndex: {ComparisonUlongIndex}, ComparisonUlong: {ComparisonUlong}. VisibleFaces: {VisibleFaces[LayerUlongIndex]}");
+						// }
 				}
 
 					for (int FaceIndex = 0; FaceIndex < 256; FaceIndex++) {
@@ -227,6 +232,9 @@ public partial class VoxelChunk : MeshInstance3D {
 							// GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
 
 							TMPFaces[VoxelType][Dir].Add(StartingPosition, EndingPosition);
+							
+							Vector2I TilingData = (Dir & 1) == 0 ? new(EndingI - StartingI + 1, EndingN - StartingN + 1): new(EndingN - StartingN + 1, EndingI - StartingI + 1);
+							FaceLengths[Dir].Add(StartingPosition, TilingData);
 						}
 						
 					}
@@ -273,18 +281,19 @@ public partial class VoxelChunk : MeshInstance3D {
 		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
 
 
-			for (int dir = 0; dir < 6; dir++) {
+			for (int Dir = 0; Dir < 6; Dir++) {
 
 				Color color = Color.Color8(0,255,0);
-				if (dir > 3) {
+				if (Dir > 3) {
 					color = Color.Color8(0,0,255);
-				} else if (dir < 2) {
+				} else if (Dir < 2) {
 					color = Color.Color8(255,0,0);
 				}
 
 
-				foreach (var(StartingPos, EndingPos) in Faces[VoxelType][dir]) {
-					Godot.Vector3[][] MeshFace = CreateFace(dir,StartingPos,EndingPos);
+				foreach (var(StartingPos, EndingPos) in Faces[VoxelType][Dir]) {
+					Godot.Vector3[][] MeshFace = CreateFace(Dir,StartingPos,EndingPos);
+					Vector2I FaceLength = FaceLengths[Dir][StartingPos];
 
 					int IndexOffset = Index << 2;
 					int IndicesIndex = IndexOffset + (Index << 1);
@@ -299,9 +308,10 @@ public partial class VoxelChunk : MeshInstance3D {
 						ColorArray[ArrayIndex] = color;
 
 						int CustomArrayIndex = ArrayIndex << 2; // TODO: VERY IMPORTANT !!!!!! ADD FUNC THAT GETS DISTANCE OF VECS AND PASSES IT TO SHADER :)
-						for (int n = 0; n < 4; n++) {
-							Custom0Array[CustomArrayIndex + n] = (float)VoxelType;
-						}
+							Custom0Array[CustomArrayIndex] = (float)VoxelType;
+							Custom0Array[CustomArrayIndex + 1] = (float)FaceLength.X; // Face Length X
+							Custom0Array[CustomArrayIndex + 2] = (float)FaceLength.Y; // Face Length Y
+							// Custom0Array[CustomArrayIndex + n + 3] = (float)VoxelType; // placeholder
 					}
 
 				IndicesArray[IndicesIndex] = IndexOffset;
