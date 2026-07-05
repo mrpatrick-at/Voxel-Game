@@ -107,8 +107,10 @@ public partial class DataChunk {
 			}
 		}
 
-		for (int x = 0; x < Consts.Chunk.Size; x++) {
-			for (int z = 0; z < Consts.Chunk.Size; z++) {
+		System.Collections.Generic.Dictionary<Vector3I,int> VoxelData = new();
+
+		for (int x = -1; x <= Consts.Chunk.Size; x++) {
+			for (int z = -1; z <= Consts.Chunk.Size; z++) {
 
 				float PixelData = -Noise.GetNoise2D(x + Coord.X * Consts.Chunk.Size, z + Coord.Z * Consts.Chunk.Size);
 
@@ -116,29 +118,48 @@ public partial class DataChunk {
 
 				int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.Size, Consts.Chunk.Size);
 
-				for (int y = 0; y <= LocalTileHeight; y++) {
+				for (int y = -1; y <= LocalTileHeight; y++) {
 					is_empty = false;
 					Vector3I VoxelCoord = new(x, y, z);
+
+					// VoxelData.Add(VoxelCoord, (int)Consts.Voxel.Type.DIRT);
 
 						for (int Axis = 0; Axis < 3; Axis++) {
 						int UlongIndex = GetUlongIndex(Axis, VoxelCoord);
 
-						// if (UlongIndex == -1 || UlongIndex >= 72) {
-						// 	if (UlongIndex >= 72) {
-						// 	GD.Print($"Bad Coord: {VoxelCoord}, Ulong: {UlongIndex}, Axis: {Axis}");
-						// 	}
-						// 	continue;
-						// }
+						if (UlongIndex <= -1 || UlongIndex >= 72) {
+							if (UlongIndex is >= 72 or < -1) {
+							GD.Print($"Bad Coord: {VoxelCoord}, Ulong: {UlongIndex}, Axis: {Axis}");
+							}
+							continue;
+						}
 
 						int BitIndex = GetBitIndex(Axis, VoxelCoord);
 						ulong Bitmask = (ulong)1 << BitIndex;
 						TmpBitVoxels[(int)Consts.Voxel.Type.DIRT][Axis][UlongIndex] |= Bitmask;
 					}
 				}
-
 			}
 		}
 
+		// for (int UlongIndex = 0; UlongIndex < 64; UlongIndex++) {
+		// 	for (int BitIndex = 0; BitIndex < 64; BitIndex++) {
+		// 		int I = BitIndex % 16;
+		// 		int N = (UlongIndex * 4) + (BitIndex / 16);
+		// 		int LayerIndex = UlongIndex / 4;
+
+		// 		for (int Axis = 0; Axis < 3; Axis++) {
+		// 			Vector3I VoxelCoord = GetPosition(I, LayerIndex, N, Axis);
+
+		// 			if (VoxelData.ContainsKey(VoxelCoord)) {
+
+		// 				ulong Bitmask = 1UL << BitIndex;
+		// 				TmpBitVoxels[(int)Consts.Voxel.Type.DIRT][Axis][UlongIndex] |= Bitmask;
+		// 			}
+		// 		}
+		// 	}
+		// }
+		
 		return TmpBitVoxels;
 	}
 	private static int GetUlongIndex(int Axis, Vector3I VoxelCoord){
@@ -146,16 +167,16 @@ public partial class DataChunk {
 
 		switch (Axis) {
 			case (int)AXIS.X:
-				// IsGood = VoxelCoord.Y < 16 && VoxelCoord.Z < 16;
-				return IsGood ? (VoxelCoord.Y >> 2) + (VoxelCoord.X << 2) : -1;
+				IsGood = VoxelCoord.Y is >= 0 and < 16 && VoxelCoord.Z is >= 0 and < 16;
+				return IsGood ? (VoxelCoord.Y >> 2) + ((VoxelCoord.X + 1) << 2) : -1;
 			
 			case (int)AXIS.Y:
-				// IsGood = VoxelCoord.X < 16 && VoxelCoord.Z < 16;
-				return IsGood ? (VoxelCoord.Z >> 2) + (VoxelCoord.Y << 2) : -1;
+				IsGood = VoxelCoord.X is >= 0 and < 16 && VoxelCoord.Z is >= 0 and < 16;
+				return IsGood ? (VoxelCoord.Z >> 2) + ((VoxelCoord.Y + 1) << 2) : -1;
 			
 			default: // Axis Z
-				// IsGood = VoxelCoord.X < 16 && VoxelCoord.Y < 16;
-				return IsGood ? (VoxelCoord.X >> 2) + (VoxelCoord.Z << 2) : -1;
+				IsGood = VoxelCoord.X is >= 0 and < 16 && VoxelCoord.Y is >= 0 and < 16;
+				return IsGood ? (VoxelCoord.X >> 2) + ((VoxelCoord.Z + 1) << 2) : -1;
 		}
 	}
 	private static int GetBitIndex(int Axis, Vector3I VoxelCoord) {
@@ -184,7 +205,7 @@ public partial class DataChunk {
 					ulong[] VisibleFaces = new ulong[4];
 					for (int LayerUlongIndex = 0; LayerUlongIndex < 4; LayerUlongIndex++) {
 
-						int UlongIndex = LayerUlongIndex + (LayerIndex << 2);
+						int UlongIndex = LayerUlongIndex + (LayerIndex << 2) + 4;
 
 						ulong Ulong = BitVoxels[VoxelType][Axis][UlongIndex];
 
@@ -193,16 +214,16 @@ public partial class DataChunk {
 						ulong ComparisonUlong;
 
 						if ((Dir & 1) == 0) {
-							ComparisonUlong = LayerIndex < 15 ? BitVoxels[VoxelType][Axis][UlongIndex + 4] : 0UL;
+							ComparisonUlong = BitVoxels[VoxelType][Axis][ComparisonUlongIndex];
 						} else {
-							ComparisonUlong = LayerIndex > 0 ? BitVoxels[VoxelType][Axis][UlongIndex - 4] : 0UL;
+							ComparisonUlong = BitVoxels[VoxelType][Axis][ComparisonUlongIndex];
 						}
 						VisibleFaces[LayerUlongIndex] = Ulong & ~ComparisonUlong; // All Faces Visible
 						
 						// if (Ulong != 0UL){
 						// GD.Print($"UlongIndex: {UlongIndex}, Ulong: {Ulong}, ComparisonUlongIndex: {ComparisonUlongIndex}, ComparisonUlong: {ComparisonUlong}. VisibleFaces: {VisibleFaces[LayerUlongIndex]}");
 						// }
-				}
+					}
 
 					for (int FaceIndex = 0; FaceIndex < 256; FaceIndex++) {
 

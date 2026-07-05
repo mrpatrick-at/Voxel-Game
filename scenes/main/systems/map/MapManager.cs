@@ -17,8 +17,8 @@ public partial class MapManager : Node {
 	// public vars
 	public int Seed = 0;
 	public FastNoiseLite Noise = new();
-	public System.Collections.Generic.Dictionary<Vector3I, VoxelChunk> GeneratingChunks = new();
-	public System.Collections.Generic.Dictionary<Vector3I, VoxelChunk> Chunks = new();
+	public System.Collections.Generic.Dictionary<Vector3I, VoxelChunk> GeneratingChunks = [];
+	public System.Collections.Generic.Dictionary<Vector3I, VoxelChunk> Chunks = [];
 	// private vars
 	// built-in override methods
 		// Called when the node enters the scene tree for the first time.
@@ -47,7 +47,7 @@ public partial class MapManager : Node {
 		GD.PrintRich($"[color=Yellow]MapManager-[/color] Started making Map");
 
 		if (IsGenrating) {
-			Chunks = new();
+			Chunks = [];
 		}
 		
 		ClearChildren();
@@ -60,12 +60,11 @@ public partial class MapManager : Node {
 		float PreChunkTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 		GD.PrintRich($"[color=Yellow]MapManager-[/color] Finished Pre Chunk Operations in [color=gold]{PreChunkTime}ms[/color]");
 
-		ShaderMaterial ChunkMaterial = new();
-		ChunkMaterial.Shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader");
-		Texture2D TextureAtlas = GD.Load<Texture2D>("res://assets/textures/TextureAtlas.png");
+        ShaderMaterial ChunkMaterial = new(){
+            Shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader")
+        };
+        Texture2D TextureAtlas = GD.Load<Texture2D>("res://assets/textures/TextureAtlas.png");
 		(ChunkMaterial as ShaderMaterial).SetShaderParameter("TextureAtlas", TextureAtlas);
-
-
 
 		for (int x = 0; x < Consts.World.ChunkLength; x++) {
 			for (int z = 0; z < Consts.World.ChunkWidth; z++) {
@@ -75,14 +74,16 @@ public partial class MapManager : Node {
 					DataChunk ChunkData = new();
 					ChunkData.Generate(Noise, ChunkCoord);
 					Godot.ArrayMesh CubeMesh = ChunkData.CubeMesh;
-					// ChunkData;
 
-					VoxelChunk Chunk = new() {Coord = ChunkCoord, CubeMesh = CubeMesh};
-					Chunk.MaterialOverride = ChunkMaterial;
+                    VoxelChunk Chunk = new() {
+                        Coord = ChunkCoord,
+                        CubeMesh = CubeMesh,
+                        MaterialOverride = ChunkMaterial
+                    };
 
-					// Chunk.Generate(Noise);
-					
-					this.AddChild(Chunk);
+                    // Chunk.Generate(Noise);
+
+                    this.AddChild(Chunk);
 
 					Chunks[ChunkCoord] = Chunk;
 				}
@@ -92,17 +93,9 @@ public partial class MapManager : Node {
 		float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 		GD.PrintRich($"[color=Yellow]MapManager-[/color] Created Map of size [color=gold]{new Vector3I(Consts.World.ChunkLength,Consts.World.ChunkHeight,Consts.World.ChunkWidth)}[/color] in [color=gold]{EndTime}ms[/color]");
 	}
-	public VoxelChunk GetChunk(Vector3I ChunkCoord) {
-		if (Chunks.ContainsKey(ChunkCoord)) {
-			return Chunks[ChunkCoord];
-		}
-
-		VoxelChunk Chunk = new() {Coord = ChunkCoord};
-		return Chunk;
-	}
 	// private methods
 	private void ClearChildren() {
-		VoxelChunk[] Children = this.GetChildren().OfType<VoxelChunk>().ToArray();
+		VoxelChunk[] Children = [.. this.GetChildren().OfType<VoxelChunk>()];
 		foreach (VoxelChunk Child in Children) {
 			this.RemoveChild(Child);
 			Child.QueueFree();
@@ -110,14 +103,15 @@ public partial class MapManager : Node {
 		GD.PrintRich($"[color=Yellow]MapManager-[/color] Deleted [color=gold]{Children.Length}[/color] children");
 	}
 	private FastNoiseLite MakeNoise() {
-		FastNoiseLite TmpNoise = new();
-		TmpNoise.NoiseType = FastNoiseLite.NoiseTypeEnum.SimplexSmooth;
-		TmpNoise.FractalType = FastNoiseLite.FractalTypeEnum.Ridged;
-		TmpNoise.FractalOctaves = 1;
-		TmpNoise.Seed = Seed;
-		TmpNoise.Frequency = 0.0025F;
+        FastNoiseLite TmpNoise = new() {
+            NoiseType = FastNoiseLite.NoiseTypeEnum.SimplexSmooth,
+            FractalType = FastNoiseLite.FractalTypeEnum.Ridged,
+            FractalOctaves = 1,
+            Seed = Seed,
+            Frequency = 0.0025F
+        };
 
-		return TmpNoise;
+        return TmpNoise;
 	}
 }
 
