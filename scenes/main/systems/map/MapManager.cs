@@ -4,8 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 namespace VoxelGame.MapManager;
-using VoxelGame.Chunk;
 using VoxelGame.Consts;
+using VoxelGame.Chunk;
 [Tool]
 // enums
 public partial class MapManager : Node {
@@ -17,6 +17,7 @@ public partial class MapManager : Node {
 	// public vars
 	public int Seed = 0;
 	public FastNoiseLite Noise = new();
+	public System.Collections.Generic.Dictionary<Vector3I, VoxelChunk> GeneratingChunks = new();
 	public System.Collections.Generic.Dictionary<Vector3I, VoxelChunk> Chunks = new();
 	// private vars
 	// built-in override methods
@@ -35,16 +36,20 @@ public partial class MapManager : Node {
 		}
 
 		public void _OnGeneratePressed() {
-			MakeMap(false);
+			MakeMap(true);
 		}
 		public void _OnLoadPressed() {
 			MakeMap(false);
 		}
 	// public methods
-	public void MakeMap(bool IsEditor) {
+	public void MakeMap(bool IsGenrating) {
 		ulong StartTime = Time.GetTicksUsec();
 		GD.PrintRich($"[color=Yellow]MapManager-[/color] Started making Map");
 
+		if (IsGenrating) {
+			Chunks = new();
+		}
+		
 		ClearChildren();
 		
 		Seed = (int)GD.Randi();
@@ -55,13 +60,29 @@ public partial class MapManager : Node {
 		float PreChunkTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 		GD.PrintRich($"[color=Yellow]MapManager-[/color] Finished Pre Chunk Operations in [color=gold]{PreChunkTime}ms[/color]");
 
+		ShaderMaterial ChunkMaterial = new();
+		ChunkMaterial.Shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader");
+		Texture2D TextureAtlas = GD.Load<Texture2D>("res://assets/textures/TextureAtlas.png");
+		(ChunkMaterial as ShaderMaterial).SetShaderParameter("TextureAtlas", TextureAtlas);
+
+
+
 		for (int x = 0; x < Consts.World.ChunkLength; x++) {
 			for (int z = 0; z < Consts.World.ChunkWidth; z++) {
 				for (int y = 0; y < Consts.World.ChunkHeight; y++) {
 					Vector3I ChunkCoord = new(x,y,z);
-					VoxelChunk Chunk = new() {Coord = ChunkCoord};
+
+					DataChunk ChunkData = new();
+					ChunkData.Generate(Noise, ChunkCoord);
+					Godot.ArrayMesh CubeMesh = ChunkData.CubeMesh;
+					// ChunkData;
+
+					VoxelChunk Chunk = new() {Coord = ChunkCoord, CubeMesh = CubeMesh};
+					Chunk.MaterialOverride = ChunkMaterial;
+
+					// Chunk.Generate(Noise);
+					
 					this.AddChild(Chunk);
-					Chunk.Generate(Noise);
 
 					Chunks[ChunkCoord] = Chunk;
 				}
@@ -70,6 +91,14 @@ public partial class MapManager : Node {
 
 		float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 		GD.PrintRich($"[color=Yellow]MapManager-[/color] Created Map of size [color=gold]{new Vector3I(Consts.World.ChunkLength,Consts.World.ChunkHeight,Consts.World.ChunkWidth)}[/color] in [color=gold]{EndTime}ms[/color]");
+	}
+	public VoxelChunk GetChunk(Vector3I ChunkCoord) {
+		if (Chunks.ContainsKey(ChunkCoord)) {
+			return Chunks[ChunkCoord];
+		}
+
+		VoxelChunk Chunk = new() {Coord = ChunkCoord};
+		return Chunk;
 	}
 	// private methods
 	private void ClearChildren() {
@@ -81,7 +110,7 @@ public partial class MapManager : Node {
 		GD.PrintRich($"[color=Yellow]MapManager-[/color] Deleted [color=gold]{Children.Length}[/color] children");
 	}
 	private FastNoiseLite MakeNoise() {
-		FastNoiseLite TmpNoise = new FastNoiseLite();
+		FastNoiseLite TmpNoise = new();
 		TmpNoise.NoiseType = FastNoiseLite.NoiseTypeEnum.SimplexSmooth;
 		TmpNoise.FractalType = FastNoiseLite.FractalTypeEnum.Ridged;
 		TmpNoise.FractalOctaves = 1;
