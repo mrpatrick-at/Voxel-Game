@@ -34,7 +34,7 @@ public readonly struct Consts {
         public static readonly int Amount = Enum.GetNames(typeof(Consts.Voxel.Type)).Length;
 
     }
-    public struct Chunk {
+    public readonly struct Chunk {
         public static readonly int Size = 16;
         public static readonly int ExtendedSize = 18;
         public static readonly int SqSize = Size * Size;

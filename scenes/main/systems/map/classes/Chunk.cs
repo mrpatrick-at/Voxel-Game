@@ -16,12 +16,6 @@ public partial class VoxelChunk : MeshInstance3D {
 	// public vars
 	public Vector3I Coord {get; set;}
 	public Godot.ArrayMesh CubeMesh {get; set;}
-	// public static ulong[][][] BitVoxels; // BitVoxels[VoxelType][Axis][64]
-	// public System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] Faces;
-	// public System.Collections.Generic.Dictionary<Vector3I,Vector2I>[] FaceLengths = [[],[],[],[],[],[]];
-	// public ShaderMaterial Material = new();
-	// bool is_empty = true;
-	
 	// private vars
 	// built-in override methods
 	public override void _Ready() {
@@ -147,42 +141,33 @@ public partial class DataChunk {
 		return TmpBitVoxels;
 	}
 	private static bool IsCoordGood(int Axis, Vector3I VoxelCoord) {
-		switch (Axis) {
-			case (int)AXIS.X:
-				return VoxelCoord.Y is >= 0 and < 16 && VoxelCoord.Z is >= 0 and < 16;
-			
-			case (int)AXIS.Y:
-				return VoxelCoord.X is >= 0 and < 16 && VoxelCoord.Z is >= 0 and < 16;
-			
-			default: // Axis Z
-				return VoxelCoord.X is >= 0 and < 16 && VoxelCoord.Y is >= 0 and < 16;
-		}
-	}
+        return Axis switch
+        {
+            (int)AXIS.X => VoxelCoord.Y is >= 0 and < 16 && VoxelCoord.Z is >= 0 and < 16,
+            (int)AXIS.Y => VoxelCoord.X is >= 0 and < 16 && VoxelCoord.Z is >= 0 and < 16,
+            // Axis Z
+            _ => VoxelCoord.X is >= 0 and < 16 && VoxelCoord.Y is >= 0 and < 16,
+        };
+    }
 	private static int GetUlongIndex(int Axis, Vector3I VoxelCoord) { // returns -1 if number invalid
 
-		switch (Axis) {
-			case (int)AXIS.X:
-				return (VoxelCoord.Y >> 2) + ((VoxelCoord.X + 1) << 2);
-			
-			case (int)AXIS.Y:
-				return (VoxelCoord.Z >> 2) + ((VoxelCoord.Y + 1) << 2);
-			
-			default: // Axis Z
-				return (VoxelCoord.X >> 2) + ((VoxelCoord.Z + 1) << 2);
-		}
-	}
+        return Axis switch
+        {
+            (int)AXIS.X => (VoxelCoord.Y >> 2) + ((VoxelCoord.X + 1) << 2),
+            (int)AXIS.Y => (VoxelCoord.Z >> 2) + ((VoxelCoord.Y + 1) << 2),
+            // Axis Z
+            _ => (VoxelCoord.X >> 2) + ((VoxelCoord.Z + 1) << 2),
+        };
+    }
 	private static int GetBitIndex(int Axis, Vector3I VoxelCoord) {
-		switch (Axis) {
-			case (int)AXIS.X:
-				return VoxelCoord.Z + ((VoxelCoord.Y % 4) << 4);
-			
-			case (int)AXIS.Y:
-				return VoxelCoord.X + ((VoxelCoord.Z % 4) << 4);
-			
-			default:
-				return VoxelCoord.Y + ((VoxelCoord.X % 4) << 4);
-		}
-	}
+        return Axis switch
+        {
+            (int)AXIS.X => VoxelCoord.Z + ((VoxelCoord.Y % 4) << 4),
+            (int)AXIS.Y => VoxelCoord.X + ((VoxelCoord.Z % 4) << 4),
+			// Axis Z
+            _ => VoxelCoord.Y + ((VoxelCoord.X % 4) << 4),
+        };
+    }
 	private System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] MakeGreedyFaces() {
 		System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] TMPFaces = new System.Collections.Generic.Dictionary<Vector3I,Vector3I>[Consts.Voxel.Amount][];
 
@@ -190,7 +175,7 @@ public partial class DataChunk {
 			TMPFaces[VoxelType] = new System.Collections.Generic.Dictionary<Vector3I,Vector3I>[6];
 
 			for (int Dir = 0; Dir < 6; Dir++) {
-				TMPFaces[VoxelType][Dir] = new System.Collections.Generic.Dictionary<Vector3I,Vector3I>();
+				TMPFaces[VoxelType][Dir] = [];
 				int Axis = Dir / 2;
 
 				for (int LayerIndex = 0; LayerIndex < Consts.Chunk.Size; LayerIndex++) {
@@ -198,23 +183,15 @@ public partial class DataChunk {
 					for (int LayerUlongIndex = 0; LayerUlongIndex < 4; LayerUlongIndex++) {
 
 						int UlongIndex = LayerUlongIndex + (LayerIndex << 2) + 4;
+						int ComparisonUlongIndex = (Dir & 1) == 0 ? UlongIndex + 4 : UlongIndex -4;
 
 						ulong Ulong = BitVoxels[VoxelType][Axis][UlongIndex];
-
-						int ComparisonUlongIndex = (Dir & 1) == 0 ? UlongIndex + 4 : UlongIndex -4;
-						// ulong ComparisonUlong = BitVoxels[VoxelType][Axis][ComparisonUlongIndex];
-						ulong ComparisonUlong;
-
-						if ((Dir & 1) == 0) {
-							ComparisonUlong = BitVoxels[VoxelType][Axis][ComparisonUlongIndex];
-						} else {
-							ComparisonUlong = BitVoxels[VoxelType][Axis][ComparisonUlongIndex];
+						ulong ComparisonUlong = 0UL;
+						for (int LoopVoxelType = 0; LoopVoxelType < Consts.Voxel.Amount; LoopVoxelType++) {
+							ComparisonUlong |= BitVoxels[LoopVoxelType][Axis][ComparisonUlongIndex];
 						}
+
 						VisibleFaces[LayerUlongIndex] = Ulong & ~ComparisonUlong; // All Faces Visible
-						
-						// if (Ulong != 0UL){
-						// GD.Print($"UlongIndex: {UlongIndex}, Ulong: {Ulong}, ComparisonUlongIndex: {ComparisonUlongIndex}, ComparisonUlong: {ComparisonUlong}. VisibleFaces: {VisibleFaces[LayerUlongIndex]}");
-						// }
 					}
 
 					for (int FaceIndex = 0; FaceIndex < 256; FaceIndex++) {
@@ -227,7 +204,6 @@ public partial class DataChunk {
 							int StartingI = FaceIndex % 16;
 							int StartingN = FaceIndex / 16;
 							Vector3I StartingPosition = GetPosition(StartingI, LayerIndex, StartingN, Axis);
-							// GD.Print($"Found start {StartingPosition}");
 							
 							int NextI = StartingI + 1;
 
@@ -285,18 +261,14 @@ public partial class DataChunk {
 		return TMPFaces;
 	}
 	private static Vector3I GetPosition(int StartingI, int LayerIndex, int StartingN, int Axis) {
-		Vector3I StartingPos;
-
-		if (Axis == 0) { // Is X Axis
-			StartingPos = new(LayerIndex, StartingN, StartingI);
-		} else if (Axis == 1) { // Is Y Axis
-			StartingPos = new(StartingI, LayerIndex, StartingN);
-		} else { // Is Z Axis
-			StartingPos = new(StartingN, StartingI, LayerIndex);
-		}
-
-		return StartingPos;
-	}
+        return Axis switch
+        {
+            (int)AXIS.X => new(LayerIndex, StartingN, StartingI),
+            (int)AXIS.Y => new(StartingI, LayerIndex, StartingN),
+			// Axis Z
+            _ => new(StartingN, StartingI, LayerIndex),
+        };
+    }
 	private Godot.Collections.Array MakeMesh() {
 
 		int FaceAmount = 0;
