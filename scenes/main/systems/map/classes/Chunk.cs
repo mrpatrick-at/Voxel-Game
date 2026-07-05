@@ -64,32 +64,34 @@ public partial class DataChunk {
 	public static ulong[][][] BitVoxels; // BitVoxels[VoxelType][Axis][64]
 	public System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] Faces;
 	public System.Collections.Generic.Dictionary<Vector3I,Vector2I>[] FaceLengths = [[],[],[],[],[],[]];
-
-	bool is_empty = true;
 	// private vars
+	private bool is_empty = true;
+	private bool HasFaces = false;
 	// built-in override methods
 	// public methods
 	public void Generate(FastNoiseLite Noise, Vector3I Coord) {
 		ulong StartTime = Time.GetTicksUsec();
 		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Chunk [color=gold]{Coord}[/color] Created");
-
+		
 		BitVoxels = MakeBitVoxels(Noise, Coord);
 
 		if (!is_empty) {
 			Faces = MakeGreedyFaces();
 			
-			Godot.Collections.Array MeshArray = MakeMesh();
-			Mesh.ArrayFormat FormatFlags = Mesh.ArrayFormat.FormatVertex
-										| Mesh.ArrayFormat.FormatNormal
-										| Mesh.ArrayFormat.FormatTexUV
-										| Mesh.ArrayFormat.FormatIndex
-										| Mesh.ArrayFormat.FormatColor
-										| Mesh.ArrayFormat.FormatCustom0;
+			if (HasFaces) {
+				Godot.Collections.Array MeshArray = MakeMesh();
+				Mesh.ArrayFormat FormatFlags = Mesh.ArrayFormat.FormatVertex
+											| Mesh.ArrayFormat.FormatNormal
+											| Mesh.ArrayFormat.FormatTexUV
+											| Mesh.ArrayFormat.FormatIndex
+											| Mesh.ArrayFormat.FormatColor
+											| Mesh.ArrayFormat.FormatCustom0;
 
-			int Custom0FormatShift = (int)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift;
-			FormatFlags |= (Mesh.ArrayFormat)Custom0FormatShift;
+				int Custom0FormatShift = (int)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift;
+				FormatFlags |= (Mesh.ArrayFormat)Custom0FormatShift;
 
-			CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
+				CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
+				}
 		}
 
 		float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
@@ -107,8 +109,6 @@ public partial class DataChunk {
 			}
 		}
 
-		System.Collections.Generic.Dictionary<Vector3I,int> VoxelData = new();
-
 		for (int x = -1; x <= Consts.Chunk.Size; x++) {
 			for (int z = -1; z <= Consts.Chunk.Size; z++) {
 
@@ -119,64 +119,56 @@ public partial class DataChunk {
 				int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.Size, Consts.Chunk.Size);
 
 				for (int y = -1; y <= LocalTileHeight; y++) {
-					is_empty = false;
 					Vector3I VoxelCoord = new(x, y, z);
 
-					// VoxelData.Add(VoxelCoord, (int)Consts.Voxel.Type.DIRT);
+					for (int Axis = 0; Axis < 3; Axis++) {
+						if (IsCoordGood(Axis, VoxelCoord)) {
+							int UlongIndex = GetUlongIndex(Axis, VoxelCoord);
+							is_empty = false;
 
-						for (int Axis = 0; Axis < 3; Axis++) {
-						int UlongIndex = GetUlongIndex(Axis, VoxelCoord);
+							int BitIndex = GetBitIndex(Axis, VoxelCoord);
+							ulong Bitmask = (ulong)1 << BitIndex;
+							int Block;
 
-						if (UlongIndex <= -1 || UlongIndex >= 72) {
-							if (UlongIndex is >= 72 or < -1) {
-							GD.Print($"Bad Coord: {VoxelCoord}, Ulong: {UlongIndex}, Axis: {Axis}");
+							if (y == LocalTileHeight) {
+								Block = (int)Consts.Voxel.Type.Grass;
+							} else if (y == LocalTileHeight - 1) {
+								Block = (int)Consts.Voxel.Type.Dirt;
+							} else {
+								Block = (int)Consts.Voxel.Type.Stone;
 							}
-							continue;
-						}
 
-						int BitIndex = GetBitIndex(Axis, VoxelCoord);
-						ulong Bitmask = (ulong)1 << BitIndex;
-						TmpBitVoxels[(int)Consts.Voxel.Type.DIRT][Axis][UlongIndex] |= Bitmask;
+							TmpBitVoxels[Block][Axis][UlongIndex] |= Bitmask;
+						}
 					}
 				}
 			}
 		}
-
-		// for (int UlongIndex = 0; UlongIndex < 64; UlongIndex++) {
-		// 	for (int BitIndex = 0; BitIndex < 64; BitIndex++) {
-		// 		int I = BitIndex % 16;
-		// 		int N = (UlongIndex * 4) + (BitIndex / 16);
-		// 		int LayerIndex = UlongIndex / 4;
-
-		// 		for (int Axis = 0; Axis < 3; Axis++) {
-		// 			Vector3I VoxelCoord = GetPosition(I, LayerIndex, N, Axis);
-
-		// 			if (VoxelData.ContainsKey(VoxelCoord)) {
-
-		// 				ulong Bitmask = 1UL << BitIndex;
-		// 				TmpBitVoxels[(int)Consts.Voxel.Type.DIRT][Axis][UlongIndex] |= Bitmask;
-		// 			}
-		// 		}
-		// 	}
-		// }
-		
 		return TmpBitVoxels;
 	}
-	private static int GetUlongIndex(int Axis, Vector3I VoxelCoord){
-		bool IsGood = true;
+	private static bool IsCoordGood(int Axis, Vector3I VoxelCoord) {
+		switch (Axis) {
+			case (int)AXIS.X:
+				return VoxelCoord.Y is >= 0 and < 16 && VoxelCoord.Z is >= 0 and < 16;
+			
+			case (int)AXIS.Y:
+				return VoxelCoord.X is >= 0 and < 16 && VoxelCoord.Z is >= 0 and < 16;
+			
+			default: // Axis Z
+				return VoxelCoord.X is >= 0 and < 16 && VoxelCoord.Y is >= 0 and < 16;
+		}
+	}
+	private static int GetUlongIndex(int Axis, Vector3I VoxelCoord) { // returns -1 if number invalid
 
 		switch (Axis) {
 			case (int)AXIS.X:
-				IsGood = VoxelCoord.Y is >= 0 and < 16 && VoxelCoord.Z is >= 0 and < 16;
-				return IsGood ? (VoxelCoord.Y >> 2) + ((VoxelCoord.X + 1) << 2) : -1;
+				return (VoxelCoord.Y >> 2) + ((VoxelCoord.X + 1) << 2);
 			
 			case (int)AXIS.Y:
-				IsGood = VoxelCoord.X is >= 0 and < 16 && VoxelCoord.Z is >= 0 and < 16;
-				return IsGood ? (VoxelCoord.Z >> 2) + ((VoxelCoord.Y + 1) << 2) : -1;
+				return (VoxelCoord.Z >> 2) + ((VoxelCoord.Y + 1) << 2);
 			
 			default: // Axis Z
-				IsGood = VoxelCoord.X is >= 0 and < 16 && VoxelCoord.Y is >= 0 and < 16;
-				return IsGood ? (VoxelCoord.X >> 2) + ((VoxelCoord.Z + 1) << 2) : -1;
+				return (VoxelCoord.X >> 2) + ((VoxelCoord.Z + 1) << 2);
 		}
 	}
 	private static int GetBitIndex(int Axis, Vector3I VoxelCoord) {
@@ -276,6 +268,7 @@ public partial class DataChunk {
 
 							Vector3I EndingPosition = GetPosition(EndingI, LayerIndex, EndingN, Axis);
 							// GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
+							HasFaces = true;
 
 							TMPFaces[VoxelType][Dir].Add(StartingPosition, EndingPosition);
 							
