@@ -72,8 +72,7 @@ public partial class MapManager : Node {
 					Vector3I ChunkCoord = new(x,y,z);
 
 					DataChunk ChunkData = new();
-					ChunkData.Generate(Noise, ChunkCoord);
-					Godot.ArrayMesh CubeMesh = ChunkData.CubeMesh;
+					Godot.ArrayMesh CubeMesh = ChunkData.Generate(Noise, ChunkCoord);
 
                     VoxelChunk Chunk = new() {
                         Coord = ChunkCoord,

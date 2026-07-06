@@ -27,9 +27,10 @@ public readonly struct Consts {
     public readonly struct Voxel {
         public static readonly float Size = 1;
         public enum Type : int {
-            Stone = 0,
-            Dirt = 1,
-            Grass = 2,
+            Air = 0,
+            Stone = 1,
+            Dirt = 2,
+            Grass = 3,
         }
         public static readonly int Amount = Enum.GetNames(typeof(Consts.Voxel.Type)).Length;
 
