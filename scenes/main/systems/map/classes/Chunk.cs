@@ -20,7 +20,7 @@ public partial class VoxelChunk : MeshInstance3D {
 	// built-in override methods
 	public override void _Ready() {
 		ulong StartTime = Time.GetTicksUsec();
-		GD.PrintRich($"[color=Springgreen]VoxelChunk-[/color] VoxelChunk [color=gold]{Coord}[/color] Created");
+		GD.PrintRich($"[color=Springgreen]VoxelChunk-[/color] VoxelChunk [color=gold]{Coord}[/color] Starting Creation");
 
 		this.GlobalPosition = new Godot.Vector3(Coord.X << 4, Coord.Y << 4, Coord.Z << 4);
 		ApplyMesh();
@@ -38,15 +38,19 @@ public partial class VoxelChunk : MeshInstance3D {
 	private void ApplyMesh() {
 		this.Mesh = CubeMesh;
 
-		// StaticBody3D StaticBody = new();
-		// CollisionShape3D CollisionShape = new();
-		// ConvexPolygonShape3D ChunkCollison = CubeMesh.CreateConvexShape();
-		// CollisionShape.Shape = ChunkCollison;
-		// StaticBody.SetCollisionLayerValue(1, true);
-		// StaticBody.SetCollisionMaskValue(0, true);
+		ConvexPolygonShape3D ChunkCollison = CubeMesh.CreateConvexShape(false, false);
+        CollisionShape3D CollisionShape = new() {
+            Shape = ChunkCollison
+        };
 
-		// this.AddChild(StaticBody);
-		// StaticBody.AddChild(CollisionShape);
+        StaticBody3D StaticBody = new() {
+            CollisionLayer = 1,
+            CollisionMask = 1
+        };
+
+        StaticBody.AddChild(CollisionShape);
+
+		this.AddChild(StaticBody);
 	}
 }
 public partial class DataChunk {
@@ -54,52 +58,39 @@ public partial class DataChunk {
 	// exports
 	// consts
 	// public vars
-	// public Godot.ArrayMesh CubeMesh = new();
-	// public static ulong[][][] BitVoxels; // BitVoxels[VoxelType][Axis][64]
-	// public System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] Faces;
-	private System.Collections.Generic.Dictionary<Vector3I,Vector2I>[] FaceLengths = [[],[],[],[],[],[]];
+	private readonly System.Collections.Generic.Dictionary<Vector3I,Vector2I>[] FaceLengths = [[],[],[],[],[],[]];
 	// private vars
-	// private bool is_empty = true;
-	// private bool HasFaces = false;
 	// built-in override methods
 	// public methods
 	public Godot.ArrayMesh Generate(FastNoiseLite Noise, Vector3I Coord) {
 		ulong StartTime = Time.GetTicksUsec();
-		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Chunk [color=gold]{Coord}[/color] Created");
+		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Chunk [color=gold]{Coord}[/color] Starting Creation");
 		
 		Godot.ArrayMesh CubeMesh = new();
 
 		int[][][] Voxels = MakeVoxelData(Noise, Coord);
 
-		// float EndTime3 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-		// GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Time Taken To make VoxelData [color=gold]{EndTime3}ms[/color]");
-
 		bool HasFaces = CheckIfFaces(Voxels);
 
 		if (HasFaces) {
 
-			ulong[][][] BitVoxels = MakeBitVoxels(Voxels); // ~0.3ms
-
-			// float EndTime2 = (Godot.Time.GetTicksUsec() - StartTime - EndTime3) / 1000f;
-			// GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Time Taken To make Bit-Voxels [color=gold]{EndTime2}ms[/color]");
+			ulong[][][] BitVoxels = MakeBitVoxels(Voxels);
 
 			System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] Faces = MakeGreedyFaces(BitVoxels);
-			
-			// if (HasFaces) {
-				Godot.Collections.Array MeshArray = MakeMesh(Faces);
-				Mesh.ArrayFormat FormatFlags = Mesh.ArrayFormat.FormatVertex
-											| Mesh.ArrayFormat.FormatNormal
-											| Mesh.ArrayFormat.FormatTexUV
-											| Mesh.ArrayFormat.FormatIndex
-											// | Mesh.ArrayFormat.FormatColor
-											| Mesh.ArrayFormat.FormatCustom0;
+		
+			Godot.Collections.Array MeshArray = MakeMesh(Faces);
+			Mesh.ArrayFormat FormatFlags = Mesh.ArrayFormat.FormatVertex
+										| Mesh.ArrayFormat.FormatNormal
+										| Mesh.ArrayFormat.FormatTexUV
+										| Mesh.ArrayFormat.FormatIndex
+										// | Mesh.ArrayFormat.FormatColor
+										| Mesh.ArrayFormat.FormatCustom0;
 
-				int Custom0FormatShift = (int)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift;
-				FormatFlags |= (Mesh.ArrayFormat)Custom0FormatShift;
+			int Custom0FormatShift = (int)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift;
+			FormatFlags |= (Mesh.ArrayFormat)Custom0FormatShift;
 
-				CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
-				// }
-	}
+			CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
+}
 
 		float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Chunk in [color=gold]{EndTime}ms[/color]");
@@ -125,19 +116,12 @@ public partial class DataChunk {
 				int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.Size, 17);
 
 				for (int y = 0; y <= LocalTileHeight; y++) {
-					byte Block;
-					switch (LocalTileHeight - y) {
-						case 0:
-							Block = (int)Consts.Voxel.Type.Grass;
-							break;
-						case < 3:
-							Block = (int)Consts.Voxel.Type.Dirt;
-							break;
-						default:
-							Block = (int)Consts.Voxel.Type.Stone;
-							break;
-					}
-					Voxels[x][y][z] = Block;					
+                    int Block = (LocalTileHeight - y) switch {
+                        0 => (int)Consts.Voxel.Type.Grass,
+                        < 3 => (int)Consts.Voxel.Type.Dirt,
+                        _ => (int)Consts.Voxel.Type.Stone,
+                    };
+                    Voxels[x][y][z] = Block;					
 				}
 			}
 		}
@@ -174,7 +158,6 @@ public partial class DataChunk {
 		}
 	
 	return !IsEmpty && !IsFull;
-
 	}
 	private ulong[][][] MakeBitVoxels(int[][][] Voxels) {
 		ulong[][][] TmpBitVoxels = new ulong[Consts.Voxel.Amount][][];
@@ -410,11 +393,11 @@ public partial class DataChunk {
 						NormalArray[ArrayIndex] = MeshFace[(int)MESH.Normals][i];
 						UvArray[ArrayIndex] = TmpUvs[i];
 
-						int CustomArrayIndex = ArrayIndex << 2; // TODO: VERY IMPORTANT !!!!!! ADD FUNC THAT GETS DISTANCE OF VECS AND PASSES IT TO SHADER :)
-							Custom0Array[CustomArrayIndex] = (float)VoxelType - 1;
-							Custom0Array[CustomArrayIndex + 1] = (float)FaceLength.X; // Face Length X
-							Custom0Array[CustomArrayIndex + 2] = (float)FaceLength.Y; // Face Length Y
-							// Custom0Array[CustomArrayIndex + n + 3] = (float)VoxelType; // placeholder
+						int CustomArrayIndex = ArrayIndex << 2;
+						Custom0Array[CustomArrayIndex] = (float)VoxelType - 1;
+						Custom0Array[CustomArrayIndex + 1] = (float)FaceLength.X; // Face Length X
+						Custom0Array[CustomArrayIndex + 2] = (float)FaceLength.Y; // Face Length Y
+						// Custom0Array[CustomArrayIndex + 3] = (float)VoxelType; // placeholder
 					}
 
 				IndicesArray[IndicesIndex] = IndexOffset;
