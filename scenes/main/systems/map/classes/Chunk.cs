@@ -38,7 +38,7 @@ public partial class VoxelChunk : MeshInstance3D {
 	private void ApplyMesh() {
 		this.Mesh = CubeMesh;
 
-		ConvexPolygonShape3D ChunkCollison = CubeMesh.CreateConvexShape(false, false);
+		ConcavePolygonShape3D ChunkCollison = CubeMesh.CreateTrimeshShape();
         CollisionShape3D CollisionShape = new() {
             Shape = ChunkCollison
         };
