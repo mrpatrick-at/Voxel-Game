@@ -50,10 +50,12 @@ public partial class VoxelChunk : MeshInstance3D {
 	}
 	// public methods
 	public void Delete(bool IsGenrating) { // To Delete the Chunk duh
-		this.RemoveChild(StaticBody);
+		if (HasFaces) {
+			this.RemoveChild(StaticBody);
 
-		if (IsGenrating) {
-			StaticBody.QueueFree();
+			if (IsGenrating) {
+				StaticBody.QueueFree();
+			}
 		}
 	}
 	// private methods
