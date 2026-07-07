@@ -1,6 +1,7 @@
 using Godot;
 using Godot.Collections;
 using System;
+using System.Linq;
 using System.Runtime.CompilerServices;
 // enums
 public partial class Player : Node3D {
@@ -19,13 +20,13 @@ public partial class Player : Node3D {
 	// private vars
 	private CenterContainer EscMenu;
 	private Camera3D Cam;
-	private Node3D World;
+	private Node3D DebugNode;
 	PackedScene DebugCubeScene = GD.Load<PackedScene>("res://scenes/debug_cube.tscn");
 	// built-in override methods
 	public override void _Ready() {
 		EscMenu = GetNode<CenterContainer>("../EscMenu");
 		Cam = GetNode<Camera3D>("Camera3D");
-		World = GetNode<Node3D>("..");
+		DebugNode = GetNode<Node3D>("../DebugNode");
 	}
 	public override void _Process(double delta) { // Called for Every Frame
 		if (EscMenu.IsVisibleInTree()) {
@@ -48,6 +49,14 @@ public partial class Player : Node3D {
 			HandleKeyInput(KeyEvent);
 		}
     }
+	public void _OnDeleteDebugPressed() {
+		RigidBody3D[] Children = [.. DebugNode.GetChildren().OfType<RigidBody3D>()];
+		foreach (RigidBody3D Child in Children) {
+			DebugNode.RemoveChild(Child);
+			Child.QueueFree();
+		}
+		GD.PrintRich($"[color=lightblue]Player-[/color] Deleted [color=gold]{Children.Length}[/color] Debug Objects");
+		}
 	// public methods
 	// private methods
 	private void HandleMouseInput(InputEventMouse MouseEvent) {
@@ -63,13 +72,13 @@ public partial class Player : Node3D {
 		bool PressedMiddle = (MouseEvent.ButtonMask & MouseButtonMask.Middle) != 0;
 
 		if (PressedLeft) {
-			GD.Print("PLAYER- LMB Pressed");
+			GD.PrintRich("[color=lightblue]Player-[/color] LMB Pressed");
 		}
 		if (PressedRight) {
-			GD.Print("PLAYER- RMB Pressed");
+			GD.PrintRich("[color=lightblue]Player-[/color] RMB Pressed");
 		}
 		if (PressedMiddle) {
-			GD.Print("PLAYER- MMB Pressed");
+			GD.PrintRich("[color=lightblue]Player-[/color] MMB Pressed");
 		}
 
 	}
@@ -110,8 +119,9 @@ public partial class Player : Node3D {
 		// Misc Keys
 		if (Input.IsActionPressed("_input_spawn_debug")) {
 			RigidBody3D DebugCube = (RigidBody3D)DebugCubeScene.Instantiate();
-			World.AddChild(DebugCube);
+			DebugNode.AddChild(DebugCube);
 			DebugCube.GlobalPosition = this.GlobalPosition;
+			GD.PrintRich($"[color=lightblue]Player-[/color] Created Debug Cube");
 		}
 	}
 	private Vector3 CalcMovement() {

@@ -88,6 +88,14 @@ theme_override_styles/pressed = ExtResource("7_a8run")
 theme_override_styles/hover = ExtResource("8_ouso4")
 text = "Load Map"
 
+[node name="ButtonDeleteDebug" type="Button" parent="EscMenu/PanelContainer/VBoxContainer" unique_id=1756705743]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+theme_override_styles/normal = ExtResource("6_b1x3f")
+theme_override_styles/pressed = ExtResource("7_a8run")
+theme_override_styles/hover = ExtResource("8_ouso4")
+text = "Delete Debug Objects"
+
 [node name="ButtonCloseMenu" type="Button" parent="EscMenu/PanelContainer/VBoxContainer" unique_id=334497910]
 layout_mode = 2
 theme_override_font_sizes/font_size = 48
@@ -108,8 +116,11 @@ text = "Quit
 [node name="Map" type="Node3D" parent="." unique_id=86150080]
 script = ExtResource("9_b1x3f")
 
+[node name="DebugNode" type="Node3D" parent="." unique_id=1259004223]
+
 [connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonGenerate" to="Map" method="_OnGeneratePressed"]
 [connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonLoad" to="Map" method="_OnLoadPressed"]
+[connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonDeleteDebug" to="Player" method="_OnDeleteDebugPressed"]
 [connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonCloseMenu" to="EscMenu" method="_OnClosePressed"]
 [connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonQuit" to="EscMenu" method="_OnQuitPressed"]
 [connection signal="NoiseUpdate" from="Map" to="IngameUi" method="_NoiseUpdate"]
