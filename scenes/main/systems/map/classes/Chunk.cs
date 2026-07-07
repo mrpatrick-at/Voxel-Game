@@ -6,6 +6,8 @@ using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Numerics;
 namespace VoxelGame.Chunk;
+
+using System.Security.Cryptography.X509Certificates;
 using VoxelGame.Consts;
 [GlobalClass]
 // enums
@@ -15,15 +17,28 @@ public partial class VoxelChunk : MeshInstance3D {
 	// consts
 	// public vars
 	public Vector3I Coord {get; set;}
-	public Godot.ArrayMesh CubeMesh {get; set;}
+	public ArrayMesh CubeMesh {get; set;}
+	public StaticBody3D StaticBody {get; set;}
+	public bool HasFaces {get; set;}
 	// private vars
 	// built-in override methods
 	public override void _Ready() {
 		ulong StartTime = Time.GetTicksUsec();
 		GD.PrintRich($"[color=Springgreen]VoxelChunk-[/color] VoxelChunk [color=gold]{Coord}[/color] Starting Creation");
 
+		ShaderMaterial ChunkMaterial = new(){
+            Shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader")
+        };
+        Texture2D TextureAtlas = GD.Load<Texture2D>("res://assets/textures/TextureAtlas.png");
+		(ChunkMaterial as ShaderMaterial).SetShaderParameter("TextureAtlas", TextureAtlas);
+
+		this.MaterialOverride = ChunkMaterial;
+
 		this.GlobalPosition = new Godot.Vector3(Coord.X << 4, Coord.Y << 4, Coord.Z << 4);
-		ApplyMesh();
+		if (HasFaces) {
+			this.Mesh = CubeMesh;
+			this.AddChild(StaticBody);
+		}
 
 		float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 		GD.PrintRich($"[color=Springgreen]VoxelChunk-[/color] Created VoxelChunk in [color=gold]{EndTime}ms[/color]");
@@ -34,39 +49,30 @@ public partial class VoxelChunk : MeshInstance3D {
 
 	}
 	// public methods
-	// private methods
-	private void ApplyMesh() {
-		this.Mesh = CubeMesh;
+	public void Delete(bool IsGenrating) { // To Delete the Chunk duh
+		this.RemoveChild(StaticBody);
 
-		ConcavePolygonShape3D ChunkCollison = CubeMesh.CreateTrimeshShape();
-        CollisionShape3D CollisionShape = new() {
-            Shape = ChunkCollison
-        };
-
-        StaticBody3D StaticBody = new() {
-            CollisionLayer = 1,
-            CollisionMask = 1
-        };
-
-        StaticBody.AddChild(CollisionShape);
-
-		this.AddChild(StaticBody);
+		if (IsGenrating) {
+			StaticBody.QueueFree();
+		}
 	}
+	// private methods
 }
-public partial class DataChunk {
+public partial class MakeChunkData {
 	// signals
 	// exports
 	// consts
 	// public vars
-	private readonly System.Collections.Generic.Dictionary<Vector3I,Vector2I>[] FaceLengths = [[],[],[],[],[],[]];
+	// private static readonly System.Collections.Generic.Dictionary<Vector3I,Vector2I>[] FaceLengths = [[],[],[],[],[],[]];
 	// private vars
 	// built-in override methods
 	// public methods
-	public Godot.ArrayMesh Generate(FastNoiseLite Noise, Vector3I Coord) {
+	public static ChunkData Generate(FastNoiseLite Noise, Vector3I Coord) {
 		ulong StartTime = Time.GetTicksUsec();
 		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Chunk [color=gold]{Coord}[/color] Starting Creation");
-		
+
 		Godot.ArrayMesh CubeMesh = new();
+		StaticBody3D StaticBody = new();
 
 		int[][][] Voxels = MakeVoxelData(Noise, Coord);
 
@@ -90,14 +96,18 @@ public partial class DataChunk {
 			FormatFlags |= (Mesh.ArrayFormat)Custom0FormatShift;
 
 			CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
-}
+
+			StaticBody = MakeStaticBody(CubeMesh);
+		}
+
+		ChunkData Chunk = new(Voxels, CubeMesh, StaticBody, HasFaces);
 
 		float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Chunk in [color=gold]{EndTime}ms[/color]");
-		return CubeMesh;
+		return Chunk;
 	}
 	// private methods
-	private int[][][] MakeVoxelData(FastNoiseLite Noise, Vector3I Coord) {
+	private static int[][][] MakeVoxelData(FastNoiseLite Noise, Vector3I Coord) {
 		int[][][] Voxels = new int[18][][];
 
 		for (int x = 0; x < Consts.Chunk.ExtendedSize; x++) {
@@ -127,7 +137,7 @@ public partial class DataChunk {
 		}
 		return Voxels;
 	}
-	private bool CheckIfFaces(int[][][] Voxels) {
+	private static bool CheckIfFaces(int[][][] Voxels) {
 		bool IsEmpty = CheckIfEmpty();
 		bool IsFull = CheckIfFull();
 
@@ -146,8 +156,20 @@ public partial class DataChunk {
 
 		bool CheckIfFull() {
 			for (int x = 17; x >= 0; x--) {
+				bool IsBorderX = x is 0 or 18;
+
 				for (int y = 17; y >= 0; y--) {
+					bool IsBorderY = y is 0 or 18;
+					if (IsBorderX && IsBorderY) {
+						continue;
+					}
+
 					for (int z = 17; z >= 0; z--) {
+						bool IsBorderZ = z is 0 or 18;
+						if (IsBorderX && IsBorderZ || IsBorderY && IsBorderZ) {
+							continue;
+						}
+
 						if (Voxels[x][y][z] == 0) {
 							return false;
 						}
@@ -159,7 +181,7 @@ public partial class DataChunk {
 	
 	return !IsEmpty && !IsFull;
 	}
-	private ulong[][][] MakeBitVoxels(int[][][] Voxels) {
+	private static ulong[][][] MakeBitVoxels(int[][][] Voxels) {
 		ulong[][][] TmpBitVoxels = new ulong[Consts.Voxel.Amount][][];
 
 		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
@@ -170,32 +192,6 @@ public partial class DataChunk {
 			}
 		}
 
-		// for (int x = -1; x <= Consts.Chunk.Size; x++) {
-		// 		for (int y = -1; y <= Consts.Chunk.Size; y++) {
-
-		// 		// float PixelData = -Noise.GetNoise2D(x + Coord.X * Consts.Chunk.Size, z + Coord.Z * Consts.Chunk.Size);
-
-		// 		// int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
-
-		// 		// int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.Size, Consts.Chunk.Size);
-
-		// 		// for (int z = -1; z <= Consts.Chunk.Size; z++) {
-		// 		// 	Vector3I VoxelCoord = new(x, y, z);
-		// 		// 	int Block = Voxels[x + 1][y + 1][z + 1];
-
-		// 		// 	for (int Axis = 0; Axis < 3; Axis++) {
-		// 		// 		if (IsCoordGood(Axis, VoxelCoord)) {
-		// 		// 			int UlongIndex = GetUlongIndex(Axis, VoxelCoord);
-
-		// 		// 			int BitIndex = GetBitIndex(Axis, VoxelCoord);
-		// 		// 			ulong Bitmask = (ulong)1 << BitIndex;
-
-		// 		// 			TmpBitVoxels[Block][Axis][UlongIndex] |= Bitmask;
-		// 		// 		}
-		// 		// 	}
-		// 		// }
-		// 	}
-		// }
 		for (int LayerIndex = 0; LayerIndex < Consts.Chunk.ExtendedSize; LayerIndex++) {
 			for (int FaceIndex = 0; FaceIndex < 256; FaceIndex++) {
 				int I = FaceIndex % 16;
@@ -245,7 +241,7 @@ public partial class DataChunk {
     //         _ => VoxelCoord.Y + ((VoxelCoord.X % 4) << 4),
     //     };
     // }
-	private System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] MakeGreedyFaces(ulong[][][] BitVoxels) {
+	private static System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] MakeGreedyFaces(ulong[][][] BitVoxels) {
 		System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] TMPFaces = new System.Collections.Generic.Dictionary<Vector3I,Vector3I>[Consts.Voxel.Amount][];
 
 		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
@@ -321,13 +317,8 @@ public partial class DataChunk {
 
 							Vector3I EndingPosition = GetPosition(EndingI, LayerIndex, EndingN, Axis);
 							// GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
-							// HasFaces = true;
 
 							TMPFaces[VoxelType][Dir].Add(StartingPosition, EndingPosition);
-							
-							Vector2I TilingData = (Dir & 1) == 0 ? new(EndingI - StartingI + 1, EndingN - StartingN + 1): new(EndingN - StartingN + 1, EndingI - StartingI + 1);
-
-							FaceLengths[Dir].Add(StartingPosition, TilingData);
 						}
 						
 					}
@@ -337,6 +328,23 @@ public partial class DataChunk {
 
 		return TMPFaces;
 	}
+	private static Vector2I GetTilingData(int Direction, Vector3I StartingPos, Vector3I EndingPos) {
+        static Vector2I GetFaceData(int Direction, Vector3I Coord) {
+			Godot.Vector2I[] FaceArray = [
+			new(Coord.Y, Coord.Z),
+			new(Coord.X, Coord.Z),
+			new(Coord.X, Coord.Y),
+		];
+		return FaceArray[Direction / 2];
+		}
+
+		Vector2I FaceStart = GetFaceData(Direction, StartingPos);
+		Vector2I FaceEnd = GetFaceData(Direction, EndingPos);
+
+		Vector2I TilingData = (Direction & 1) == 0 ? new(FaceEnd.X - FaceStart.X + 1, FaceEnd.Y - FaceStart.Y + 1): new(FaceEnd.Y - FaceStart.Y + 1, FaceEnd.X - FaceStart.X + 1);
+
+		return TilingData;
+	}
 	private static Vector3I GetPosition(int StartingI, int LayerIndex, int StartingN, int Axis) {
         return Axis switch {
             (int)AXIS.X => new(LayerIndex, StartingN, StartingI),
@@ -345,7 +353,7 @@ public partial class DataChunk {
             _ => new(StartingN, StartingI, LayerIndex),
         };
     }
-	private Godot.Collections.Array MakeMesh(System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] Faces) {
+	private static Godot.Collections.Array MakeMesh(System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] Faces) {
 
 		int FaceAmount = 0;
 
@@ -377,10 +385,10 @@ public partial class DataChunk {
 				// 	color = Color.Color8(255,0,0);
 				// }
 
-
 				foreach (var(StartingPos, EndingPos) in Faces[VoxelType][Dir]) {
-					Godot.Vector3[][] MeshFace = CreateFace(Dir,StartingPos,EndingPos);
-					Vector2I FaceLength = FaceLengths[Dir][StartingPos];
+					Godot.Vector3[][] MeshFace = CreateFace(Dir, StartingPos, EndingPos);
+					// Vector2I FaceLength = FaceLengths[Dir][StartingPos];
+					Vector2I FaceLength = GetTilingData(Dir, StartingPos, EndingPos);
 
 					int IndexOffset = Index << 2;
 					int IndicesIndex = IndexOffset + (Index << 1);
@@ -486,4 +494,26 @@ public partial class DataChunk {
 		];
 		return MeshFace;
 	}
+	public static StaticBody3D MakeStaticBody(ArrayMesh CubeMesh) {
+	 	ConcavePolygonShape3D ChunkCollison = CubeMesh.CreateTrimeshShape();
+		
+        CollisionShape3D CollisionShape = new() {
+            Shape = ChunkCollison
+        };
+
+        StaticBody3D StaticBody = new() {
+            CollisionLayer = 1,
+            CollisionMask = 1
+        };
+
+        StaticBody.AddChild(CollisionShape);
+
+		return StaticBody;
+	}
 }
+public readonly struct ChunkData(int[][][] voxels, ArrayMesh cubeMesh, StaticBody3D staticBody, bool hasFaces) {
+        public int[][][] Voxels { get; } = voxels;
+        public ArrayMesh CubeMesh { get; } = cubeMesh;
+        public StaticBody3D StaticBody { get; } = staticBody;
+        public bool HasFaces { get; } = hasFaces;
+    }
