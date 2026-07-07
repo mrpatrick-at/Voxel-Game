@@ -56,12 +56,6 @@ public partial class MapManager : Node {
 		float PreChunkTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 		GD.PrintRich($"[color=Yellow]MapManager-[/color] Finished Pre Chunk Operations in [color=gold]{PreChunkTime}ms[/color]");
 
-        // ShaderMaterial ChunkMaterial = new(){
-        //     Shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader")
-        // };
-        // Texture2D TextureAtlas = GD.Load<Texture2D>("res://assets/textures/TextureAtlas.png");
-		// (ChunkMaterial as ShaderMaterial).SetShaderParameter("TextureAtlas", TextureAtlas);
-
 		for (int x = 0; x < Consts.World.ChunkLength; x++) {
 			for (int z = 0; z < Consts.World.ChunkWidth; z++) {
 				for (int y = 0; y < Consts.World.ChunkHeight; y++) {
@@ -87,7 +81,6 @@ public partial class MapManager : Node {
 		VoxelChunk Chunk = new() {
 			Coord = ChunkCoord,
 			CubeMesh = Data.CubeMesh,
-			StaticBody = Data.StaticBody,
 			HasFaces = Data.HasFaces,
 		};
 
@@ -96,17 +89,17 @@ public partial class MapManager : Node {
 	}
 	// private methods
 	private void ClearChunks(bool IsGenrating) {
-		VoxelChunk[] Children = [.. this.GetChildren().OfType<VoxelChunk>()];
-		foreach (VoxelChunk Child in Children) {
-			Child.Delete(IsGenrating);
-			this.RemoveChild(Child);
-			Child.QueueFree();
-		}
-		VoxelChunks = [];
-
 		if (IsGenrating) {
 			DataChunks = [];
 		}
+
+		VoxelChunk[] Children = [.. this.GetChildren().OfType<VoxelChunk>()];
+		foreach (VoxelChunk Chunk in Children) {
+			// Chunk.Delete(IsGenrating);
+			this.RemoveChild(Chunk);
+			Chunk.QueueFree();
+		}
+		VoxelChunks = [];
 		
 		GD.PrintRich($"[color=Yellow]MapManager-[/color] Deleted [color=gold]{Children.Length}[/color] children");
 	}

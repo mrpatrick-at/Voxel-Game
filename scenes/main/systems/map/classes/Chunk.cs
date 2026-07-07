@@ -18,7 +18,6 @@ public partial class VoxelChunk : MeshInstance3D {
 	// public vars
 	public Vector3I Coord {get; set;}
 	public ArrayMesh CubeMesh {get; set;}
-	public StaticBody3D StaticBody {get; set;}
 	public bool HasFaces {get; set;}
 	// private vars
 	// built-in override methods
@@ -37,6 +36,7 @@ public partial class VoxelChunk : MeshInstance3D {
 		this.GlobalPosition = new Godot.Vector3(Coord.X << 4, Coord.Y << 4, Coord.Z << 4);
 		if (HasFaces) {
 			this.Mesh = CubeMesh;
+			StaticBody3D StaticBody = MakeStaticBody(CubeMesh);
 			this.AddChild(StaticBody);
 		}
 
@@ -49,16 +49,23 @@ public partial class VoxelChunk : MeshInstance3D {
 
 	}
 	// public methods
-	public void Delete(bool IsGenrating) { // To Delete the Chunk duh
-		if (HasFaces) {
-			this.RemoveChild(StaticBody);
-
-			if (IsGenrating) {
-				StaticBody.QueueFree();
-			}
-		}
-	}
 	// private methods
+	private static StaticBody3D MakeStaticBody(ArrayMesh CubeMesh) {
+	 	ConcavePolygonShape3D ChunkCollison = CubeMesh.CreateTrimeshShape();
+		
+        CollisionShape3D CollisionShape = new() {
+            Shape = ChunkCollison
+        };
+
+        StaticBody3D StaticBody = new() {
+            CollisionLayer = 1,
+            CollisionMask = 1
+        };
+
+        StaticBody.AddChild(CollisionShape);
+
+		return StaticBody;
+	}
 }
 public partial class MakeChunkData {
 	// signals
@@ -74,7 +81,7 @@ public partial class MakeChunkData {
 		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Chunk [color=gold]{Coord}[/color] Starting Creation");
 
 		Godot.ArrayMesh CubeMesh = new();
-		StaticBody3D StaticBody = new();
+		// StaticBody3D StaticBody;
 
 		int[][][] Voxels = MakeVoxelData(Noise, Coord);
 
@@ -99,10 +106,10 @@ public partial class MakeChunkData {
 
 			CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
 
-			StaticBody = MakeStaticBody(CubeMesh);
+			// StaticBody = MakeStaticBody(CubeMesh);
 		}
 
-		ChunkData Chunk = new(Voxels, CubeMesh, StaticBody, HasFaces);
+		ChunkData Chunk = new(Voxels, CubeMesh, HasFaces);
 
 		float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Chunk in [color=gold]{EndTime}ms[/color]");
@@ -496,26 +503,25 @@ public partial class MakeChunkData {
 		];
 		return MeshFace;
 	}
-	public static StaticBody3D MakeStaticBody(ArrayMesh CubeMesh) {
-	 	ConcavePolygonShape3D ChunkCollison = CubeMesh.CreateTrimeshShape();
+	// public static StaticBody3D MakeStaticBody(ArrayMesh CubeMesh) {
+	//  	ConcavePolygonShape3D ChunkCollison = CubeMesh.CreateTrimeshShape();
 		
-        CollisionShape3D CollisionShape = new() {
-            Shape = ChunkCollison
-        };
+    //     CollisionShape3D CollisionShape = new() {
+    //         Shape = ChunkCollison
+    //     };
 
-        StaticBody3D StaticBody = new() {
-            CollisionLayer = 1,
-            CollisionMask = 1
-        };
+    //     StaticBody3D StaticBody = new() {
+    //         CollisionLayer = 1,
+    //         CollisionMask = 1
+    //     };
 
-        StaticBody.AddChild(CollisionShape);
+    //     StaticBody.AddChild(CollisionShape);
 
-		return StaticBody;
-	}
+	// 	return StaticBody;
+	// }
 }
-public readonly struct ChunkData(int[][][] voxels, ArrayMesh cubeMesh, StaticBody3D staticBody, bool hasFaces) {
+public readonly struct ChunkData(int[][][] voxels, ArrayMesh cubeMesh, bool hasFaces) {
         public int[][][] Voxels { get; } = voxels;
         public ArrayMesh CubeMesh { get; } = cubeMesh;
-        public StaticBody3D StaticBody { get; } = staticBody;
         public bool HasFaces { get; } = hasFaces;
     }
