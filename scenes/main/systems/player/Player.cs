@@ -4,18 +4,18 @@ using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
 // enums
-public partial class Player : Node3D {
+public partial class Player : CharacterBody3D {
 	// signals
 	// exports
 	// consts
-	const int MaxSpeed = 32;
+	const int MaxSpeed = 16;
 	const int MoveSpeed = 4;
+	const int JumpSpeed = 8;
 	const int SpeedDecay = 2;
 	const float MouseSensitivity = 0.5F;
 	// public vars
 	public float CamSpeedMod = 1;
-	public Vector3I Direction = Vector3I.Zero;
-	public Vector3 Speed = Vector3.Zero;
+	public Vector3I Input_Direction = Vector3I.Zero;
 	public Vector2 RotationSpeed = Vector2.Zero;
 	// private vars
 	private CenterContainer EscMenu;
@@ -32,14 +32,15 @@ public partial class Player : Node3D {
 		if (EscMenu.IsVisibleInTree()) {
 			return;
 		}
-		UpdatePos(delta);
+		UpdateRoation(delta);
 	}
 
     public override void _PhysicsProcess(double delta) { // Called 60 times a sec
 		if (EscMenu.IsVisibleInTree()) {
 				return;
 			}
-		Speed = CalcMovement();
+		// Speed = CalcMovement();
+		UpdatePos(delta);
     }
     public override void _Input(InputEvent @event) {
         base._Input(@event);
@@ -86,7 +87,8 @@ public partial class Player : Node3D {
 		if (KeyEvent.IsActionReleased("_input_menu_esc")) {
 			ToggleEscMenu();
 		}
-		// Movement
+
+		// Movement Keys
 		int XDir = 0;
 		int YDir = 0;
 		int ZDir = 0;
@@ -114,7 +116,7 @@ public partial class Player : Node3D {
 
 		int SpeedMod = Input.IsActionPressed("_input_mod_speed") ? 2 : 1;
 
-		Direction = new(XDir * SpeedMod, YDir * SpeedMod, ZDir * SpeedMod); // TODO: Adjust Max Speed to Increase when Speed Mod is active
+		Input_Direction = new(XDir * SpeedMod, YDir * SpeedMod, ZDir * SpeedMod);
 
 		// Misc Keys
 		if (Input.IsActionPressed("_input_spawn_debug")) {
@@ -124,23 +126,53 @@ public partial class Player : Node3D {
 			GD.PrintRich($"[color=lightblue]Player-[/color] Created Debug Cube");
 		}
 	}
-	private Vector3 CalcMovement() {
-		Vector3 NewSpeed = new(
-			Math.Clamp(Speed.X + (Direction.X * MoveSpeed) - Math.Sign(Speed.X) * SpeedDecay, -MaxSpeed, MaxSpeed),
-			Math.Clamp(Speed.Y + (Direction.Y * MoveSpeed) - Math.Sign(Speed.Y) * SpeedDecay, -MaxSpeed, MaxSpeed),
-			Math.Clamp(Speed.Z + (Direction.Z * MoveSpeed) - Math.Sign(Speed.Z) * SpeedDecay, -MaxSpeed, MaxSpeed)
-		);
-		return NewSpeed;
-	}
 	private void UpdatePos(double delta) {
-		Vector3 MoveDirection = (Transform.Basis.X * Speed.X) + (Transform.Basis.Z * Speed.Z);
-		Vector3 NewPos = new(
-			this.GlobalPosition.X + MoveDirection.X * (float)delta,
-			this.GlobalPosition.Y + Speed.Y * (float)delta,
-			this.GlobalPosition.Z + MoveDirection.Z * (float)delta
-			);
-		this.GlobalPosition = NewPos;
+		Vector3 NewVelocity = this.Velocity;
+
+		if (this.IsOnFloor()) {
+			// Movement
+			Vector3 Direction = (Transform.Basis * Input_Direction).Normalized();
+
+			Vector3 MovementVelocity = new();
+
+			if (Direction != Vector3.Zero) {
+				MovementVelocity = new(
+					Mathf.Clamp(this.Velocity.X + Direction.X, -MaxSpeed, MaxSpeed),
+					Mathf.Clamp(this.Velocity.Y + Direction.Y, -MaxSpeed, MaxSpeed),
+					Mathf.Clamp(this.Velocity.Z + Direction.Z, -MaxSpeed, MaxSpeed)
+				);
+			} else {
+				MovementVelocity = new(
+					Mathf.MoveToward(Velocity.X, 0, SpeedDecay),
+					Mathf.MoveToward(Velocity.Y, 0, SpeedDecay),
+					Mathf.MoveToward(Velocity.Z, 0, SpeedDecay)
+				);
+			}
+
+			NewVelocity = MovementVelocity;
+		} else {
+			// Gravity
+			GD.Print($"Not on Floor. Gravity:{this.GetGravity()}");
+			NewVelocity += this.GetGravity() * (float)delta;
+		}
+
+		this.Velocity = NewVelocity;
+
+		GD.Print($"Velocity: {Velocity}");
+		MoveAndSlide();
 		
+		// Vector3 XVelocity = Transform.Basis.X * Speed.X * (float)delta;
+
+		// Vector3 ZVelocity = Transform.Basis.Z * Speed.Z * (float)delta;
+
+		// float YVelocity = Speed.Y != 0 ? Speed.Y * (float)delta : CurrentVelocity.Y;
+
+		// Vector3 NewVelocity = XVelocity + ZVelocity;
+
+		// GD.Print($"Speed: {Speed}");
+		// this.LinearVelocity += NewVelocity;
+	}
+	private void UpdateRoation(double delta) {
 		float SmoothSpeed = 32f * (float)delta;
 
 		float FrameRotationSpeedX = RotationSpeed.X * SmoothSpeed;
@@ -160,7 +192,6 @@ public partial class Player : Node3D {
 			TargetRotationY,
 			0
 		);
-
 		RotationSpeed = Vector2.Zero;
 	}
 	private void ToggleEscMenu() {

@@ -1,8 +1,7 @@
 [gd_scene format=3 uid="uid://chl400oqcunq6"]
 
 [ext_resource type="Script" uid="uid://b67426wovkrq8" path="res://scenes/main/main.gd" id="1_b1x3f"]
-[ext_resource type="Script" uid="uid://cbondgukn0vt1" path="res://scenes/main/systems/player/Player.cs" id="2_a8run"]
-[ext_resource type="Shader" uid="uid://cxwek3blpr5t7" path="res://scenes/main/systems/map/shader/VoxelChunk.gdshader" id="3_b1x3f"]
+[ext_resource type="PackedScene" uid="uid://brbwbpc643esu" path="res://scenes/main/systems/player/player.tscn" id="2_b1x3f"]
 [ext_resource type="PackedScene" uid="uid://seb4ltvn7jae" path="res://ui/ingame_ui/main.tscn" id="4_l3cfh"]
 [ext_resource type="Script" uid="uid://bqml656al4dlx" path="res://ui/esc_menu/EscMenu.cs" id="5_a8run"]
 [ext_resource type="StyleBox" uid="uid://bfry6kmt4pklr" path="res://ui/esc_menu/styles/box_style.tres" id="5_yyfjg"]
@@ -10,18 +9,6 @@
 [ext_resource type="StyleBox" uid="uid://ds7uyodmpq8xf" path="res://ui/esc_menu/styles/button_pressed.tres" id="7_a8run"]
 [ext_resource type="StyleBox" uid="uid://bybl822ygnmc8" path="res://ui/esc_menu/styles/button_hover.tres" id="8_ouso4"]
 [ext_resource type="Script" uid="uid://dfa2blxv85nub" path="res://scenes/main/systems/map/MapManager.cs" id="9_b1x3f"]
-
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_b1x3f"]
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_yyfjg"]
-render_priority = 0
-shader = ExtResource("3_b1x3f")
-shader_parameter/TextureRowLength = 4.0
-
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_a8run"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xdea8"]
-albedo_color = Color(0.10980392, 0.10980392, 0.10980392, 1)
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_blune"]
 
@@ -34,25 +21,8 @@ shadow_enabled = true
 directional_shadow_mode = 0
 directional_shadow_max_distance = 200.0
 
-[node name="Player" type="Node3D" parent="." unique_id=393008323]
+[node name="Player" parent="." unique_id=465443365 instance=ExtResource("2_b1x3f")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 80, 0)
-script = ExtResource("2_a8run")
-
-[node name="RigidBody3D" type="RigidBody3D" parent="Player" unique_id=107806061]
-axis_lock_angular_x = true
-axis_lock_angular_z = true
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Player/RigidBody3D" unique_id=208924182]
-shape = SubResource("CylinderShape3D_b1x3f")
-
-[node name="Camera3D" type="Camera3D" parent="Player" unique_id=478426265]
-transform = Transform3D(1, 0, 0, 0, 0.49999997, 0.86602545, 0, -0.86602545, 0.49999997, 0, 0, 0)
-current = true
-
-[node name="Test Cube" type="MeshInstance3D" parent="Player" unique_id=942671774]
-material_override = SubResource("ShaderMaterial_yyfjg")
-mesh = SubResource("CapsuleMesh_a8run")
-surface_material_override/0 = SubResource("StandardMaterial3D_xdea8")
 
 [node name="IngameUi" parent="." unique_id=1629074791 instance=ExtResource("4_l3cfh")]
 
@@ -120,7 +90,6 @@ script = ExtResource("9_b1x3f")
 
 [connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonGenerate" to="Map" method="_OnGeneratePressed"]
 [connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonLoad" to="Map" method="_OnLoadPressed"]
-[connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonDeleteDebug" to="Player" method="_OnDeleteDebugPressed"]
 [connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonCloseMenu" to="EscMenu" method="_OnClosePressed"]
 [connection signal="pressed" from="EscMenu/PanelContainer/VBoxContainer/ButtonQuit" to="EscMenu" method="_OnQuitPressed"]
 [connection signal="NoiseUpdate" from="Map" to="IngameUi" method="_NoiseUpdate"]
