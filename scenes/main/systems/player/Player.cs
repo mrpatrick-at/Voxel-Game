@@ -9,8 +9,8 @@ public partial class Player : CharacterBody3D {
 	// exports
 	// consts
 	const int MaxSpeed = 16;
-	const int MoveSpeed = 4;
-	const int JumpSpeed = 8;
+	const int MoveSpeed = 256;
+	const int JumpSpeed = 512;
 	const int SpeedDecay = 2;
 	const float MouseSensitivity = 0.5F;
 	// public vars
@@ -133,13 +133,13 @@ public partial class Player : CharacterBody3D {
 			// Movement
 			Vector3 Direction = (Transform.Basis * Input_Direction).Normalized();
 
-			Vector3 MovementVelocity = new();
+			Vector3 MovementVelocity;
 
 			if (Direction != Vector3.Zero) {
 				MovementVelocity = new(
-					Mathf.Clamp(this.Velocity.X + Direction.X, -MaxSpeed, MaxSpeed),
-					Mathf.Clamp(this.Velocity.Y + Direction.Y, -MaxSpeed, MaxSpeed),
-					Mathf.Clamp(this.Velocity.Z + Direction.Z, -MaxSpeed, MaxSpeed)
+					Mathf.Clamp(Direction.X * (float)delta * MoveSpeed, -MaxSpeed, MaxSpeed),
+					Mathf.Clamp(Direction.Y * (float)delta * JumpSpeed, -MaxSpeed, MaxSpeed),
+					Mathf.Clamp(Direction.Z * (float)delta * MoveSpeed, -MaxSpeed, MaxSpeed)
 				);
 			} else {
 				MovementVelocity = new(
