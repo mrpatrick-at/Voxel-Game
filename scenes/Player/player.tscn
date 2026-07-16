@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://brbwbpc643esu"]
 
-[ext_resource type="Script" uid="uid://cbondgukn0vt1" path="res://scenes/main/systems/player/Player.cs" id="1_kgp8s"]
+[ext_resource type="Script" uid="uid://cbondgukn0vt1" path="res://scenes/Player/Player.cs" id="1_kgp8s"]
 [ext_resource type="Shader" uid="uid://cxwek3blpr5t7" path="res://scenes/main/systems/map/shader/VoxelChunk.gdshader" id="2_m8o4u"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_b1x3f"]
@@ -16,6 +16,9 @@ shader_parameter/TextureRowLength = 4.0
 albedo_color = Color(0.10980392, 0.10980392, 0.10980392, 1)
 
 [node name="Player" type="CharacterBody3D" unique_id=465443365]
+axis_lock_angular_x = true
+axis_lock_angular_y = true
+axis_lock_angular_z = true
 script = ExtResource("1_kgp8s")
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=978595386]

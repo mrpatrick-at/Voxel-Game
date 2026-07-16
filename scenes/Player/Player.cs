@@ -8,15 +8,14 @@ public partial class Player : CharacterBody3D {
 	// signals
 	// exports
 	// consts
-	const int MaxSpeed = 16;
-	const int MoveSpeed = 256;
-	const int JumpSpeed = 512;
+	const int MoveSpeed = 4;
+	const int JumpSpeed = 8;
 	const int SpeedDecay = 2;
 	const float MouseSensitivity = 0.5F;
 	// public vars
-	public float CamSpeedMod = 1;
 	public Vector3I Input_Direction = Vector3I.Zero;
 	public Vector2 RotationSpeed = Vector2.Zero;
+	public int SpeedMod = 1;
 	// private vars
 	private CenterContainer EscMenu;
 	private Camera3D Cam;
@@ -39,7 +38,6 @@ public partial class Player : CharacterBody3D {
 		if (EscMenu.IsVisibleInTree()) {
 				return;
 			}
-		// Speed = CalcMovement();
 		UpdatePos(delta);
     }
     public override void _Input(InputEvent @event) {
@@ -114,9 +112,9 @@ public partial class Player : CharacterBody3D {
 			ZDir -= 1;
 		}
 
-		int SpeedMod = Input.IsActionPressed("_input_mod_speed") ? 2 : 1;
+		SpeedMod = Input.IsActionPressed("_input_mod_speed") ? 2 : 1;
 
-		Input_Direction = new(XDir * SpeedMod, YDir * SpeedMod, ZDir * SpeedMod);
+		Input_Direction = new(XDir, YDir, ZDir);
 
 		// Misc Keys
 		if (Input.IsActionPressed("_input_spawn_debug")) {
@@ -129,48 +127,38 @@ public partial class Player : CharacterBody3D {
 	private void UpdatePos(double delta) {
 		Vector3 NewVelocity = this.Velocity;
 
+		Vector3 Direction = (Transform.Basis * Input_Direction);
+		Vector3 MovementVelocity = GetMovementVelocity(delta, Direction);
+
 		if (this.IsOnFloor()) {
-			// Movement
-			Vector3 Direction = (Transform.Basis * Input_Direction).Normalized();
-
-			Vector3 MovementVelocity;
-
-			if (Direction != Vector3.Zero) {
-				MovementVelocity = new(
-					Mathf.Clamp(Direction.X * (float)delta * MoveSpeed, -MaxSpeed, MaxSpeed),
-					Mathf.Clamp(Direction.Y * (float)delta * JumpSpeed, -MaxSpeed, MaxSpeed),
-					Mathf.Clamp(Direction.Z * (float)delta * MoveSpeed, -MaxSpeed, MaxSpeed)
-				);
-			} else {
-				MovementVelocity = new(
-					Mathf.MoveToward(Velocity.X, 0, SpeedDecay),
-					Mathf.MoveToward(Velocity.Y, 0, SpeedDecay),
-					Mathf.MoveToward(Velocity.Z, 0, SpeedDecay)
-				);
-			}
-
 			NewVelocity = MovementVelocity;
 		} else {
 			// Gravity
 			GD.Print($"Not on Floor. Gravity:{this.GetGravity()}");
-			NewVelocity += this.GetGravity() * (float)delta;
+			NewVelocity.X = MovementVelocity.X;
+			NewVelocity.Y += this.GetGravity().Y * (float)delta;
+			NewVelocity.Z = MovementVelocity.Z;
 		}
 
 		this.Velocity = NewVelocity;
 
 		GD.Print($"Velocity: {Velocity}");
 		MoveAndSlide();
-		
-		// Vector3 XVelocity = Transform.Basis.X * Speed.X * (float)delta;
-
-		// Vector3 ZVelocity = Transform.Basis.Z * Speed.Z * (float)delta;
-
-		// float YVelocity = Speed.Y != 0 ? Speed.Y * (float)delta : CurrentVelocity.Y;
-
-		// Vector3 NewVelocity = XVelocity + ZVelocity;
-
-		// GD.Print($"Speed: {Speed}");
-		// this.LinearVelocity += NewVelocity;
+	}
+	private Vector3 GetMovementVelocity(double delta ,Vector3 Direction) {
+		if (Direction != Vector3.Zero) {
+			return new(
+				Direction.X * MoveSpeed,
+				Direction.Y * JumpSpeed,
+				Direction.Z * MoveSpeed
+			);
+		} else {
+			return new(
+				Mathf.MoveToward(Velocity.X, 0, 1),
+				Mathf.MoveToward(Velocity.Y, 0, 1),
+				Mathf.MoveToward(Velocity.Z, 0, 1)
+			);
+		}
 	}
 	private void UpdateRoation(double delta) {
 		float SmoothSpeed = 32f * (float)delta;
