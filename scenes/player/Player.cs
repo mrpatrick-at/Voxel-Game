@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 // enums
 public partial class Player : CharacterBody3D {
 	// signals
-	// exports
+	// Movement Vars
 	[Export]
 	public int WalkSpeed = 4;
 	[Export]
@@ -17,10 +17,15 @@ public partial class Player : CharacterBody3D {
 	public int SpeedDecay = 2;
 	[Export]
 	public float MouseSensitivity = 0.5F;
-	// consts
-	// public vars
 	public Vector3 WishDirection = Vector3.Zero;
 	public Vector2 RotationSpeed = Vector2.Zero;
+	// Animation Vars
+	[Export]
+	public float HeadbobMoveAmount = 0.06F;
+	[Export]
+	public float HeadbobFrequency = 2.4F;
+	public float HeadbobTime = 0F;
+	// public vars
 	// private vars
 	PackedScene DebugCubeScene = GD.Load<PackedScene>("res://scenes/debug/debug_cube.tscn");
 	// External Nodes
@@ -121,7 +126,7 @@ public partial class Player : CharacterBody3D {
 		if (EscMenu.IsVisibleInTree()) {
 			return;
 		}
-		UpdateRoation(delta);
+		UpdateRoation((float)delta);
 	}
 	// Physics
     public override void _PhysicsProcess(double delta) { // Called 60 times a sec
@@ -129,14 +134,14 @@ public partial class Player : CharacterBody3D {
 				return;
 			}
 		if (this.IsOnFloor()) {
-			HandleGroundPhysics(delta);
+			HandleGroundPhysics((float)delta);
 		} else {
-			HandleAirPhysics(delta);
+			HandleAirPhysics((float)delta);
 		}
 		GD.Print($"Velocity: {this.Velocity}");
 		MoveAndSlide();
     }
-	private void HandleGroundPhysics(double delta) {
+	private void HandleGroundPhysics(float delta) {
 		// Vector3 NewVelocity = GetMovementVelocity(delta, WishDirection);
 		int MoveSpeed = GetMoveSpeed();
 		Vector3 NewVelocity = WishDirection != Vector3.Zero ? 
@@ -150,9 +155,11 @@ public partial class Player : CharacterBody3D {
 				Mathf.MoveToward(Velocity.Z, 0, 1)
 			);
 
+		HeadbobEffect(delta);
+
 		this.Velocity = NewVelocity;
 	}
-	private void HandleAirPhysics(double delta) {
+	private void HandleAirPhysics(float delta) {
 		Vector3 NewVelocity = this.Velocity;
 
 		float Gravity = (float)ProjectSettings.GetSetting("physics/3d/default_gravity");
@@ -160,10 +167,23 @@ public partial class Player : CharacterBody3D {
 
 		this.Velocity = NewVelocity;
 	}
+	// Animations
+	private void HeadbobEffect(float delta) {
+		HeadbobTime += delta * this.Velocity.Length();
+
+		Transform3D NewTransform = Cam.Transform;
+		NewTransform.Origin = new Vector3(
+			Mathf.Cos(HeadbobTime * HeadbobFrequency * 0.5F) * HeadbobMoveAmount,
+			Mathf.Cos(HeadbobTime * HeadbobFrequency) * HeadbobMoveAmount,
+			0
+		);
+
+		Cam.Transform = NewTransform;
+	}
 	// public methods
 	// private methods
-	private void UpdateRoation(double delta) {
-		float SmoothSpeed = 32f * (float)delta;
+	private void UpdateRoation(float delta) {
+		float SmoothSpeed = 32f * delta;
 
 		float FrameRotationSpeedX = RotationSpeed.X * SmoothSpeed;
 		float FrameRotationSpeedY = RotationSpeed.Y * SmoothSpeed;
