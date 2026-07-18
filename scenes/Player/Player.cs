@@ -17,15 +17,28 @@ public partial class Player : CharacterBody3D {
 	public Vector2 RotationSpeed = Vector2.Zero;
 	public int SpeedMod = 1;
 	// private vars
-	private CenterContainer EscMenu;
-	private Camera3D Cam;
-	private Node3D DebugNode;
 	PackedScene DebugCubeScene = GD.Load<PackedScene>("res://scenes/debug_cube.tscn");
+	// External Nodes
+	private CenterContainer EscMenu;
+	private Node3D DebugNode;
+	// Internal Nodes
+	private Node3D WorldModel;
+	private Node3D Head;
+	private Camera3D Cam;
 	// built-in override methods
 	public override void _Ready() {
+		// External Nodes
 		EscMenu = GetNode<CenterContainer>("../EscMenu");
-		Cam = GetNode<Camera3D>("Camera3D");
 		DebugNode = GetNode<Node3D>("../DebugNode");
+		// Internal Nodes
+		WorldModel = GetNode<Node3D>("WorldModel");
+		Head = GetNode<Node3D>("Head");
+		Cam = GetNode<Camera3D>("Head/Camera3D");
+
+		foreach (VisualInstance3D Child in WorldModel.FindChildren("*", "VisualInstance3D").Cast<VisualInstance3D>()) {
+			Child.SetLayerMaskValue(1, false);
+			Child.SetLayerMaskValue(2, true);
+		}
 	}
 	public override void _Process(double delta) { // Called for Every Frame
 		if (EscMenu.IsVisibleInTree()) {
@@ -166,10 +179,10 @@ public partial class Player : CharacterBody3D {
 		float FrameRotationSpeedX = RotationSpeed.X * SmoothSpeed;
 		float FrameRotationSpeedY = RotationSpeed.Y * SmoothSpeed;
 
-		float TargetRotationX = Mathf.Clamp(Cam.Rotation.X + FrameRotationSpeedX, Mathf.DegToRad(-90f), Mathf.DegToRad(90f));
+		float TargetRotationX = Mathf.Clamp(Head.Rotation.X + FrameRotationSpeedX, Mathf.DegToRad(-90f), Mathf.DegToRad(90f));
 		float TargetRotationY = this.Rotation.Y + FrameRotationSpeedY;
 
-		Cam.Rotation = new Vector3(
+		Head.Rotation = new Vector3(
 			TargetRotationX,
 			0,
 			0
