@@ -53,11 +53,20 @@ public partial class Player : CharacterBody3D {
 	// Input Handling
 	public override void _Input(InputEvent @event) {
         base._Input(@event);
+
 		if (@event is InputEventMouse MouseEvent) {
 			HandleMouseInput(MouseEvent);
 		} else if (@event is InputEventKey KeyEvent) {
 			HandleKeyInput(KeyEvent);
 		}
+
+		// Movement
+		Vector2 InputDirection = Input.GetVector("_input_move_left","_input_move_right","_input_move_up","_input_move_down").Normalized();
+		float YDir = 0;
+		if (Input.IsActionPressed("_input_move_jump")) {
+			YDir = 1;
+		}
+		WishDirection = this.GlobalTransform.Basis * new Vector3(InputDirection.X, YDir, InputDirection.Y);
     }
 	public void _OnDeleteDebugPressed() {
 		RigidBody3D[] Children = [.. DebugNode.GetChildren().OfType<RigidBody3D>()];
@@ -95,22 +104,6 @@ public partial class Player : CharacterBody3D {
 			ToggleEscMenu();
 		}
 
-		// Movement Keys
-
-		Vector2 InputDirection = Input.GetVector("_input_move_left","_input_move_right","_input_move_up","_input_move_down").Normalized();
-
-		float YDir = 0;
-
-		if (Input.IsActionPressed("_input_move_jump")) {
-			YDir = 1;
-		}
-		// if (Input.IsActionPressed("_input_move_crouch")) {
-		// 	YDir -= 1;
-		// }
-
-		WishDirection = this.GlobalTransform.Basis * new Vector3(InputDirection.X, YDir, InputDirection.Y);
-
-		// Misc Keys
 		if (Input.IsActionPressed("_input_spawn_debug")) {
 			RigidBody3D DebugCube = (RigidBody3D)DebugCubeScene.Instantiate();
 			DebugNode.AddChild(DebugCube);
