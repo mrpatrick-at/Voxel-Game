@@ -7,17 +7,22 @@ using System.Runtime.CompilerServices;
 public partial class Player : CharacterBody3D {
 	// signals
 	// exports
+	[Export]
+	public int WalkSpeed = 4;
+	[Export]
+	public int SprintSpeed = 6;
+	[Export]
+	public int JumpSpeed = 6;
+	[Export]
+	public int SpeedDecay = 2;
+	[Export]
+	public float MouseSensitivity = 0.5F;
 	// consts
-	const int MoveSpeed = 4;
-	const int JumpSpeed = 8;
-	const int SpeedDecay = 2;
-	const float MouseSensitivity = 0.5F;
 	// public vars
-	public Vector3I Input_Direction = Vector3I.Zero;
+	public Vector3 WishDirection = Vector3.Zero;
 	public Vector2 RotationSpeed = Vector2.Zero;
-	public int SpeedMod = 1;
 	// private vars
-	PackedScene DebugCubeScene = GD.Load<PackedScene>("res://scenes/debug_cube.tscn");
+	PackedScene DebugCubeScene = GD.Load<PackedScene>("res://scenes/debug/debug_cube.tscn");
 	// External Nodes
 	private CenterContainer EscMenu;
 	private Node3D DebugNode;
@@ -40,20 +45,8 @@ public partial class Player : CharacterBody3D {
 			Child.SetLayerMaskValue(2, true);
 		}
 	}
-	public override void _Process(double delta) { // Called for Every Frame
-		if (EscMenu.IsVisibleInTree()) {
-			return;
-		}
-		UpdateRoation(delta);
-	}
-
-    public override void _PhysicsProcess(double delta) { // Called 60 times a sec
-		if (EscMenu.IsVisibleInTree()) {
-				return;
-			}
-		UpdatePos(delta);
-    }
-    public override void _Input(InputEvent @event) {
+	// Input Handling
+	public override void _Input(InputEvent @event) {
         base._Input(@event);
 		if (@event is InputEventMouse MouseEvent) {
 			HandleMouseInput(MouseEvent);
@@ -69,8 +62,6 @@ public partial class Player : CharacterBody3D {
 		}
 		GD.PrintRich($"[color=lightblue]Player-[/color] Deleted [color=gold]{Children.Length}[/color] Debug Objects");
 		}
-	// public methods
-	// private methods
 	private void HandleMouseInput(InputEventMouse MouseEvent) {
 		if (MouseEvent is InputEventMouseMotion MouseMotion) {
 
@@ -100,34 +91,19 @@ public partial class Player : CharacterBody3D {
 		}
 
 		// Movement Keys
-		int XDir = 0;
-		int YDir = 0;
-		int ZDir = 0;
 
-		if (Input.IsActionPressed("_input_move_right")) {
-			XDir = 1;
-		}
-		if (Input.IsActionPressed("_input_move_left")) {
-			XDir -= 1;
-		}
+		Vector2 InputDirection = Input.GetVector("_input_move_left","_input_move_right","_input_move_up","_input_move_down").Normalized();
 
-		if (Input.IsActionPressed("_input_move_up")) {
+		float YDir = 0;
+
+		if (Input.IsActionPressed("_input_move_jump")) {
 			YDir = 1;
 		}
-		if (Input.IsActionPressed("_input_move_down")) {
-			YDir -= 1;
-		}
+		// if (Input.IsActionPressed("_input_move_crouch")) {
+		// 	YDir -= 1;
+		// }
 
-		if (Input.IsActionPressed("_input_move_backward")) {
-			ZDir = 1;
-		}
-		if (Input.IsActionPressed("_input_move_forward")) {
-			ZDir -= 1;
-		}
-
-		SpeedMod = Input.IsActionPressed("_input_mod_speed") ? 2 : 1;
-
-		Input_Direction = new(XDir, YDir, ZDir);
+		WishDirection = this.GlobalTransform.Basis * new Vector3(InputDirection.X, YDir, InputDirection.Y);
 
 		// Misc Keys
 		if (Input.IsActionPressed("_input_spawn_debug")) {
@@ -137,42 +113,55 @@ public partial class Player : CharacterBody3D {
 			GD.PrintRich($"[color=lightblue]Player-[/color] Created Debug Cube");
 		}
 	}
-	private void UpdatePos(double delta) {
-		Vector3 NewVelocity = this.Velocity;
-
-		Vector3 Direction = (Transform.Basis * Input_Direction);
-		Vector3 MovementVelocity = GetMovementVelocity(delta, Direction);
-
-		if (this.IsOnFloor()) {
-			NewVelocity = MovementVelocity;
-		} else {
-			// Gravity
-			GD.Print($"Not on Floor. Gravity:{this.GetGravity()}");
-			NewVelocity.X = MovementVelocity.X;
-			NewVelocity.Y += this.GetGravity().Y * (float)delta;
-			NewVelocity.Z = MovementVelocity.Z;
-		}
-
-		this.Velocity = NewVelocity;
-
-		GD.Print($"Velocity: {Velocity}");
-		MoveAndSlide();
+	private int GetMoveSpeed() {
+		return Input.IsActionPressed("_input_move_sprint") ? SprintSpeed : WalkSpeed;
 	}
-	private Vector3 GetMovementVelocity(double delta ,Vector3 Direction) {
-		if (Direction != Vector3.Zero) {
-			return new(
-				Direction.X * MoveSpeed,
-				Direction.Y * JumpSpeed,
-				Direction.Z * MoveSpeed
-			);
+	// Process
+	public override void _Process(double delta) { // Called for Every Frame
+		if (EscMenu.IsVisibleInTree()) {
+			return;
+		}
+		UpdateRoation(delta);
+	}
+	// Physics
+    public override void _PhysicsProcess(double delta) { // Called 60 times a sec
+		if (EscMenu.IsVisibleInTree()) {
+				return;
+			}
+		if (this.IsOnFloor()) {
+			HandleGroundPhysics(delta);
 		} else {
-			return new(
+			HandleAirPhysics(delta);
+		}
+		GD.Print($"Velocity: {this.Velocity}");
+		MoveAndSlide();
+    }
+	private void HandleGroundPhysics(double delta) {
+		// Vector3 NewVelocity = GetMovementVelocity(delta, WishDirection);
+		int MoveSpeed = GetMoveSpeed();
+		Vector3 NewVelocity = WishDirection != Vector3.Zero ? 
+			new(
+				WishDirection.X * MoveSpeed,
+				WishDirection.Y * JumpSpeed,
+				WishDirection.Z * MoveSpeed
+			) : new(
 				Mathf.MoveToward(Velocity.X, 0, 1),
 				Mathf.MoveToward(Velocity.Y, 0, 1),
 				Mathf.MoveToward(Velocity.Z, 0, 1)
 			);
-		}
+
+		this.Velocity = NewVelocity;
 	}
+	private void HandleAirPhysics(double delta) {
+		Vector3 NewVelocity = this.Velocity;
+
+		float Gravity = (float)ProjectSettings.GetSetting("physics/3d/default_gravity");
+       	NewVelocity.Y -= Gravity * (float)delta;
+
+		this.Velocity = NewVelocity;
+	}
+	// public methods
+	// private methods
 	private void UpdateRoation(double delta) {
 		float SmoothSpeed = 32f * (float)delta;
 
