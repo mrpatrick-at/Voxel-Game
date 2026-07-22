@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://chl400oqcunq6"]
 
 [ext_resource type="Script" uid="uid://b67426wovkrq8" path="res://scenes/main/main.gd" id="1_b1x3f"]
-[ext_resource type="PackedScene" uid="uid://brbwbpc643esu" path="res://scenes/Player/player.tscn" id="2_a8run"]
+[ext_resource type="PackedScene" uid="uid://brbwbpc643esu" path="res://scenes/player/player.tscn" id="2_a8run"]
 [ext_resource type="PackedScene" uid="uid://seb4ltvn7jae" path="res://ui/ingame_ui/main.tscn" id="4_l3cfh"]
 [ext_resource type="Script" uid="uid://bqml656al4dlx" path="res://ui/esc_menu/EscMenu.cs" id="5_a8run"]
 [ext_resource type="StyleBox" uid="uid://bfry6kmt4pklr" path="res://ui/esc_menu/styles/box_style.tres" id="5_yyfjg"]
@@ -9,7 +9,7 @@
 [ext_resource type="StyleBox" uid="uid://ds7uyodmpq8xf" path="res://ui/esc_menu/styles/button_pressed.tres" id="7_a8run"]
 [ext_resource type="StyleBox" uid="uid://bybl822ygnmc8" path="res://ui/esc_menu/styles/button_hover.tres" id="8_ouso4"]
 [ext_resource type="Script" uid="uid://dfa2blxv85nub" path="res://scenes/main/systems/map/MapManager.cs" id="9_b1x3f"]
-[ext_resource type="PackedScene" uid="uid://c02pxcnpbehfj" path="res://scenes/Debug/debug_level.tscn" id="10_ouso4"]
+[ext_resource type="PackedScene" uid="uid://c02pxcnpbehfj" path="res://scenes/debug/debug_level.tscn" id="10_ouso4"]
 [ext_resource type="PackedScene" uid="uid://delu2qjrw6teu" path="res://addons/Mirror3D/Mirror3D.tscn" id="11_ouso4"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_blune"]
@@ -24,7 +24,7 @@ directional_shadow_mode = 0
 directional_shadow_max_distance = 200.0
 
 [node name="Player" parent="." unique_id=465443365 instance=ExtResource("2_a8run")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 80.261986, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 80, 0)
 
 [node name="IngameUi" parent="." unique_id=1629074791 instance=ExtResource("4_l3cfh")]
 

@@ -6,28 +6,29 @@ using System.Runtime.CompilerServices;
 // enums
 public partial class Player : CharacterBody3D {
 	// signals
-	// Movement Vars
-	[Export]
-	public int WalkSpeed = 4;
-	[Export]
-	public int SprintSpeed = 6;
-	[Export]
-	public int JumpSpeed = 6;
-	[Export]
-	public int SpeedDecay = 2;
-	[Export]
-	public float MouseSensitivity = 0.5F;
+	// Ground Movement Vars
+	[Export] public int WalkSpeed = 6;
+	[Export] public int SprintSpeed = 8;
+	[Export] public int JumpSpeed = 8;
+	[Export] public int SpeedDecay = 2;
+	[Export] public int GroundAcceleration = 14;
+	[Export] public int GroundDeceleration = 10;
+	[Export] public int GroundFriction = 6;
+	// Air Movement Vars
+	[Export] public float AirCap = 0.85F;
+	[Export] public int AirAccelaration = 800;
+	[Export] public int AirMoveSpeed = 500;
+	// Misc Movement Vars
 	public Vector3 WishDirection = Vector3.Zero;
 	public Vector2 RotationSpeed = Vector2.Zero;
+	// Mouse Vars
+	[Export] public float MouseSensitivity = 0.5F;
 	// Animation Vars
-	[Export]
-	public float HeadbobMoveAmount = 0.06F;
-	[Export]
-	public float HeadbobFrequency = 2.4F;
+	[Export] public float HeadbobMoveAmount = 0.06F;
+	[Export] public float HeadbobFrequency = 2.4F;
 	public float HeadbobTime = 0F;
-	// public vars
 	// private vars
-	PackedScene DebugCubeScene = GD.Load<PackedScene>("res://scenes/debug/debug_cube.tscn");
+	private PackedScene DebugCubeScene = GD.Load<PackedScene>("res://scenes/debug/debug_cube.tscn");
 	// External Nodes
 	private CenterContainer EscMenu;
 	private Node3D DebugNode;
@@ -62,11 +63,7 @@ public partial class Player : CharacterBody3D {
 
 		// Movement
 		Vector2 InputDirection = Input.GetVector("_input_move_left","_input_move_right","_input_move_up","_input_move_down").Normalized();
-		float YDir = 0;
-		if (Input.IsActionPressed("_input_move_jump")) {
-			YDir = 1;
-		}
-		WishDirection = this.GlobalTransform.Basis * new Vector3(InputDirection.X, YDir, InputDirection.Y);
+		WishDirection = this.GlobalTransform.Basis * new Vector3(InputDirection.X, 0, InputDirection.Y);
     }
 	public void _OnDeleteDebugPressed() {
 		RigidBody3D[] Children = [.. DebugNode.GetChildren().OfType<RigidBody3D>()];
@@ -135,18 +132,30 @@ public partial class Player : CharacterBody3D {
 		MoveAndSlide();
     }
 	private void HandleGroundPhysics(float delta) {
-		// Vector3 NewVelocity = GetMovementVelocity(delta, WishDirection);
+		Vector3 NewVelocity = this.Velocity;
 		int MoveSpeed = GetMoveSpeed();
-		Vector3 NewVelocity = WishDirection != Vector3.Zero ? 
-			new(
-				WishDirection.X * MoveSpeed,
-				WishDirection.Y * JumpSpeed,
-				WishDirection.Z * MoveSpeed
-			) : new(
-				Mathf.MoveToward(Velocity.X, 0, 1),
-				Mathf.MoveToward(Velocity.Y, 0, 1),
-				Mathf.MoveToward(Velocity.Z, 0, 1)
-			);
+
+		float SpeedInWishDirection = NewVelocity.Dot(WishDirection);
+		float SpeedLeftTillCap = MoveSpeed - SpeedInWishDirection;
+
+		if (SpeedLeftTillCap > 0) {
+			float AccelarationSpeed = Mathf.Min(GroundAcceleration * MoveSpeed * delta, SpeedLeftTillCap);
+			GD.Print($"AccelarationSpeed: {AccelarationSpeed}");
+			NewVelocity += AccelarationSpeed * WishDirection;
+		}
+		
+		float Control = Mathf.Max(NewVelocity.Length(), GroundDeceleration);
+		float Drop = Control * GroundFriction * delta;
+		float NewSpeed = Mathf.Max(NewVelocity.Length() - Drop, 0);
+		if (NewVelocity.Length() > 0) {
+			NewSpeed /= NewVelocity.Length();
+		}
+		NewVelocity *= NewSpeed;
+
+		// Jumping
+		if (Input.IsActionPressed("_input_move_jump")) {
+			NewVelocity.Y += JumpSpeed;
+		}
 
 		HeadbobEffect(delta);
 
@@ -157,6 +166,17 @@ public partial class Player : CharacterBody3D {
 
 		float Gravity = (float)ProjectSettings.GetSetting("physics/3d/default_gravity");
        	NewVelocity.Y -= Gravity * (float)delta;
+
+		float SpeedInWishDirection = NewVelocity.Dot(WishDirection);
+		float CappedSpeed = Mathf.Min(WishDirection.Length(), AirCap); // CappedSpeed = AirCap, Unless WishDir is 0 / cancels out.
+		float SpeedLeftTillCap = CappedSpeed - SpeedInWishDirection;
+		GD.Print($"CurrentSpeedInWIshDirection: {SpeedInWishDirection}, CappedSpeed: {CappedSpeed}, SpeedLeftTillCap: {SpeedLeftTillCap}");
+
+		if (SpeedLeftTillCap > 0) {
+			// float AccelarationSpeed = Mathf.Min(AirAccelaration * AirMoveSpeed * delta, SpeedLeftTillCap);
+			// GD.Print($"AccelarationSpeed: {AccelarationSpeed}");
+			NewVelocity += SpeedLeftTillCap * WishDirection;
+		}
 
 		this.Velocity = NewVelocity;
 	}
