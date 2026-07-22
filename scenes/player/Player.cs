@@ -179,7 +179,33 @@ public partial class Player : CharacterBody3D {
 			NewVelocity += AccelarationSpeed * WishDirection;
 		}
 
+		if (this.IsOnWall()) {
+			Vector3 Normal = GetWallNormal();
+			if (IsSurfaceTooSteep(Normal)) this.MotionMode = CharacterBody3D.MotionModeEnum.Floating;
+			else this.MotionMode = CharacterBody3D.MotionModeEnum.Grounded;
+			
+			NewVelocity = ClipVelocity(Normal, 1, NewVelocity, delta);
+		}
 		this.Velocity = NewVelocity;
+	}
+	private Vector3 ClipVelocity(Vector3 Normal, float Overbounce, Vector3 NewVelocity, float delta) {
+		float Backoff = NewVelocity.Dot(Normal) * Overbounce;
+
+		if (Backoff >= 0) return Vector3.Zero;
+
+		NewVelocity -= Normal * Backoff;
+
+		// Second Iteration to make sure not clipping thru Plane. Not Sure why this is Necesarry, but it Was in the Original
+		float Adjust = NewVelocity.Dot(Normal);
+		if (Adjust < 0) {
+			NewVelocity -= Normal * Adjust;
+		}
+		return NewVelocity;
+	}
+	private bool IsSurfaceTooSteep(Vector3 Normal) {
+		float MaxSlopeAngleDot = Vector3.Up.Rotated(Vector3.Right, this.FloorMaxAngle).Dot(Vector3.Up);
+		if ((Normal.Dot(Vector3.Up)) < MaxSlopeAngleDot) return true;
+		return false;
 	}
 	// Animations
 	private void HeadbobEffect(float delta) {
