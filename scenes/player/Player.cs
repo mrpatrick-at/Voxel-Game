@@ -140,10 +140,11 @@ public partial class Player : CharacterBody3D {
 
 		if (SpeedLeftTillCap > 0) {
 			float AccelarationSpeed = Mathf.Min(GroundAcceleration * MoveSpeed * delta, SpeedLeftTillCap);
-			GD.Print($"AccelarationSpeed: {AccelarationSpeed}");
+			// GD.Print($"AccelarationSpeed: {AccelarationSpeed} Is same as Cap? {AccelarationSpeed == SpeedLeftTillCap}");
 			NewVelocity += AccelarationSpeed * WishDirection;
 		}
 		
+		// Deceleration
 		float Control = Mathf.Max(NewVelocity.Length(), GroundDeceleration);
 		float Drop = Control * GroundFriction * delta;
 		float NewSpeed = Mathf.Max(NewVelocity.Length() - Drop, 0);
@@ -170,12 +171,12 @@ public partial class Player : CharacterBody3D {
 		float SpeedInWishDirection = NewVelocity.Dot(WishDirection);
 		float CappedSpeed = Mathf.Min(WishDirection.Length(), AirCap); // CappedSpeed = AirCap, Unless WishDir is 0 / cancels out.
 		float SpeedLeftTillCap = CappedSpeed - SpeedInWishDirection;
-		GD.Print($"CurrentSpeedInWIshDirection: {SpeedInWishDirection}, CappedSpeed: {CappedSpeed}, SpeedLeftTillCap: {SpeedLeftTillCap}");
+		// GD.Print($"CurrentSpeedInWIshDirection: {SpeedInWishDirection}, CappedSpeed: {CappedSpeed}, SpeedLeftTillCap: {SpeedLeftTillCap}");
 
 		if (SpeedLeftTillCap > 0) {
-			// float AccelarationSpeed = Mathf.Min(AirAccelaration * AirMoveSpeed * delta, SpeedLeftTillCap);
-			// GD.Print($"AccelarationSpeed: {AccelarationSpeed}");
-			NewVelocity += SpeedLeftTillCap * WishDirection;
+			float AccelarationSpeed = Mathf.Min(AirAccelaration * AirMoveSpeed * delta, SpeedLeftTillCap); // Note: Adjust Later
+			GD.Print($"AccelarationSpeed: {AccelarationSpeed} Is same as Cap? {AccelarationSpeed == SpeedLeftTillCap}");
+			NewVelocity += AccelarationSpeed * WishDirection;
 		}
 
 		this.Velocity = NewVelocity;
