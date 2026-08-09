@@ -1,7 +1,11 @@
 using Godot;
 using Godot.Collections;
 using System;
+using System.Runtime.CompilerServices;
 namespace VoxelGame.ChunkGenerator;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
 using VoxelGame.Consts;
 // enums
 public static class ChunkGenerator {
@@ -12,15 +16,27 @@ public static class ChunkGenerator {
 		Godot.ArrayMesh CubeMesh = new();
 		// StaticBody3D StaticBody;
 
-		int[][][] Voxels = MakeVoxelData(Noise, Coord);
+		int[] Voxels = MakeVoxelData(Noise, Coord);
+
+		float EndTime2 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Voxel Data in [color=gold]{EndTime2}ms[/color]");
 
 		bool HasFaces = CheckIfFaces(Voxels);
 
+		float EndTime3 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Checked for Faces in [color=gold]{EndTime3 - EndTime2}ms[/color]");
+
 		if (HasFaces) {
 
-			ulong[][][] BitVoxels = MakeBitVoxels(Voxels);
+			ulong[] BitVoxels = MakeBitVoxels(Voxels);
 
-			System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] Faces = MakeGreedyFaces(BitVoxels);
+			float EndTime4 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+			GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created BitVoxels in [color=gold]{EndTime4 - EndTime3}ms[/color]");
+
+			List<FaceData> Faces = MakeGreedyFaces(BitVoxels);
+
+			float EndTime5 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+			GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Greedy Faces in [color=gold]{EndTime5 - EndTime4}ms[/color]");
 		
 			Godot.Collections.Array MeshArray = MakeMesh(Faces);
 			Mesh.ArrayFormat FormatFlags = Mesh.ArrayFormat.FormatVertex
@@ -33,7 +49,13 @@ public static class ChunkGenerator {
 			int Custom0FormatShift = (int)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift;
 			FormatFlags |= (Mesh.ArrayFormat)Custom0FormatShift;
 
+			// float EndTime6 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+			// GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Mesh in [color=gold]{EndTime6 - EndTime5}ms[/color]");
+
 			CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
+
+			// float EndTime7 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+			// GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created CubeMesh in [color=gold]{EndTime7 - EndTime6}ms[/color]");
 
 			// StaticBody = MakeStaticBody(CubeMesh);
 		}
@@ -45,15 +67,8 @@ public static class ChunkGenerator {
 		return Chunk;
 	}
 	// private methods
-	private static int[][][] MakeVoxelData(FastNoiseLite Noise, Vector3I Coord) {
-		int[][][] Voxels = new int[18][][];
-
-		for (int x = 0; x < Consts.Chunk.ExtendedSize; x++) {
-			Voxels[x] = new int[18][];
-			for (int y = 0; y < Consts.Chunk.ExtendedSize; y++) {
-				Voxels[x][y] = new int[18];
-			}
-		}
+	private static int[] MakeVoxelData(FastNoiseLite Noise, Vector3I Coord) {
+		int[] Voxels = new int[Consts.Chunk.CubExtendedSize];
 		
 		for (int x = 0; x < Consts.Chunk.ExtendedSize; x++) {
 			for (int z = 0; z < Consts.Chunk.ExtendedSize; z++) {
@@ -69,13 +84,17 @@ public static class ChunkGenerator {
                         < 3 => (int)Consts.Voxel.Type.Dirt,
                         _ => (int)Consts.Voxel.Type.Stone,
                     };
-                    Voxels[x][y][z] = Block;					
+                    Voxels[GetVoxelIndex(x, y, z)] = Block;					
 				}
 			}
 		}
 		return Voxels;
 	}
-	private static bool CheckIfFaces(int[][][] Voxels) {
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static int GetVoxelIndex(int x, int y, int z) {
+		return x + Consts.Chunk.ExtendedSize * (y + Consts.Chunk.ExtendedSize * z);
+	}
+	private static bool CheckIfFaces(int[] Voxels) {
 		bool IsEmpty = CheckIfEmpty();
 		bool IsFull = CheckIfFull();
 
@@ -83,7 +102,7 @@ public static class ChunkGenerator {
 			for (int x = 1; x <= Consts.Chunk.Size; x++) {
 				for (int y = 1; y <= Consts.Chunk.Size; y++) {
 					for (int z = 1; z <= Consts.Chunk.Size; z++) {
-						if (Voxels[x][y][z] != 0) {
+						if (Voxels[GetVoxelIndex(x, y, z)] != 0) {
 							return false;
 						}
 					}
@@ -108,7 +127,7 @@ public static class ChunkGenerator {
 							continue;
 						}
 
-						if (Voxels[x][y][z] == 0) {
+						if (Voxels[GetVoxelIndex(x, y, z)] == 0) {
 							return false;
 						}
 					}
@@ -119,74 +138,47 @@ public static class ChunkGenerator {
 	
 	return !IsEmpty && !IsFull;
 	}
-	private static ulong[][][] MakeBitVoxels(int[][][] Voxels) {
-		ulong[][][] TmpBitVoxels = new ulong[Consts.Voxel.Amount][][];
-
-		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
-			TmpBitVoxels[VoxelType] = new ulong[3][];
-
-			for (int Axis = 0; Axis < 3; Axis++) {
-				TmpBitVoxels[VoxelType][Axis] = new ulong[72];
-			}
-		}
+	private static ulong[] MakeBitVoxels(int[] Voxels) {
+		ulong[] BitVoxels = new ulong[Consts.Voxel.BitVoxelAmount];
 
 		for (int LayerIndex = 0; LayerIndex < Consts.Chunk.ExtendedSize; LayerIndex++) {
 			for (int FaceIndex = 0; FaceIndex < 256; FaceIndex++) {
-				int I = FaceIndex % 16;
-				int N = FaceIndex / 16;
+				int I = FaceIndex & 15;
+				int N = FaceIndex >> 4;
 
 				int UlongIndex = (FaceIndex >> 6) + (LayerIndex << 2);
 
-				int BitIndex = FaceIndex % 64;
+				int BitIndex = FaceIndex & 63;
 				ulong Bitmask = 1UL << BitIndex;
 
+				int J = I + 1;
+				int K = N + 1;
+
 				for (int Axis = 0; Axis < 3; Axis++) {
-					Vector3I Pos = GetPosition(I + 1, LayerIndex, N + 1, Axis);
+					Vector3I Pos = GetPosition(J, LayerIndex, K, Axis);
 					// GD.Print($"Coord: {Pos}, Axis: {Axis}");
-					int VoxelType = Voxels[Pos.X][Pos.Y][Pos.Z];
+					int VoxelType = Voxels[GetVoxelIndex(Pos.X, Pos.Y, Pos.Z)];
 
 					if (VoxelType != 0) {
-						TmpBitVoxels[VoxelType][Axis][UlongIndex] |= Bitmask;
+						int Index = GetBitVoxelIndex(VoxelType, Axis, UlongIndex);
+						BitVoxels[Index] |= Bitmask;
 					}
 
 				}
 			}
 		}
-		return TmpBitVoxels;
+		return BitVoxels;
 	}
-	// private static bool IsCoordGood(int Axis, Vector3I VoxelCoord) {
-    //     return Axis switch {
-    //         (int)AXIS.X => VoxelCoord.Y is >= 0 and < 16 && VoxelCoord.Z is >= 0 and < 16,
-    //         (int)AXIS.Y => VoxelCoord.X is >= 0 and < 16 && VoxelCoord.Z is >= 0 and < 16,
-    //         // Axis Z
-    //         _ => VoxelCoord.X is >= 0 and < 16 && VoxelCoord.Y is >= 0 and < 16,
-    //     };
-    // }
-	// private static int GetUlongIndex(int Axis, Vector3I VoxelCoord) { // returns -1 if number invalid
-
-    //     return Axis switch {
-    //         (int)AXIS.X => (VoxelCoord.Y >> 2) + ((VoxelCoord.X + 1) << 2),
-    //         (int)AXIS.Y => (VoxelCoord.Z >> 2) + ((VoxelCoord.Y + 1) << 2),
-    //         // Axis Z
-    //         _ => (VoxelCoord.X >> 2) + ((VoxelCoord.Z + 1) << 2),
-    //     };
-    // }
-	// private static int GetBitIndex(int Axis, Vector3I VoxelCoord) {
-    //     return Axis switch {
-    //         (int)AXIS.X => VoxelCoord.Z + ((VoxelCoord.Y % 4) << 4),
-    //         (int)AXIS.Y => VoxelCoord.X + ((VoxelCoord.Z % 4) << 4),
-	// 		// Axis Z
-    //         _ => VoxelCoord.Y + ((VoxelCoord.X % 4) << 4),
-    //     };
-    // }
-	private static System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] MakeGreedyFaces(ulong[][][] BitVoxels) {
-		System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] TMPFaces = new System.Collections.Generic.Dictionary<Vector3I,Vector3I>[Consts.Voxel.Amount][];
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static int GetBitVoxelIndex(int VoxelType, int Axis, int UlongIndex) {
+		return (VoxelType * 216) + (Axis * 72) + UlongIndex;
+	}
+	private static List<FaceData> MakeGreedyFaces(ulong[] BitVoxels) {
+		List<FaceData> FaceList = [];
 
 		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
-			TMPFaces[VoxelType] = new System.Collections.Generic.Dictionary<Vector3I,Vector3I>[6];
 
 			for (int Dir = 0; Dir < 6; Dir++) {
-				TMPFaces[VoxelType][Dir] = [];
 				int Axis = Dir / 2;
 
 				for (int LayerIndex = 0; LayerIndex < Consts.Chunk.Size; LayerIndex++) {
@@ -196,53 +188,50 @@ public static class ChunkGenerator {
 						int UlongIndex = LayerUlongIndex + (LayerIndex << 2) + 4;
 						int ComparisonUlongIndex = (Dir & 1) == 0 ? UlongIndex + 4 : UlongIndex -4;
 
-						ulong Ulong = BitVoxels[VoxelType][Axis][UlongIndex];
+						ulong Ulong = BitVoxels[GetBitVoxelIndex(VoxelType, Axis, UlongIndex)];
 						ulong ComparisonUlong = 0UL;
 						for (int LoopVoxelType = 0; LoopVoxelType < Consts.Voxel.Amount; LoopVoxelType++) {
-							ComparisonUlong |= BitVoxels[LoopVoxelType][Axis][ComparisonUlongIndex];
+							ComparisonUlong |= BitVoxels[GetBitVoxelIndex(LoopVoxelType, Axis, ComparisonUlongIndex)];
 						}
 
 						VisibleFaces[LayerUlongIndex] = Ulong & ~ComparisonUlong; // All Faces Visible
-					}
 
-					for (int FaceIndex = 0; FaceIndex < 256; FaceIndex++) {
+						while (VisibleFaces[LayerUlongIndex] != 0) {
+							int BitIndex = System.Numerics.BitOperations.TrailingZeroCount(VisibleFaces[LayerUlongIndex]);
+							ulong BitMask = 1UL << BitIndex;
 
-						int UlongIndex = FaceIndex / 64;
-						int BitIndex = FaceIndex % 64;
-						ulong Bitmask = 1UL << (BitIndex);
+							int FaceIndex = (LayerUlongIndex << 6) + BitIndex;
 
-						if ((VisibleFaces[UlongIndex] & Bitmask) != 0) {
-							int StartingI = FaceIndex % 16;
-							int StartingN = FaceIndex / 16;
+							int StartingI = FaceIndex & 15;
+							int StartingN = FaceIndex >> 4;
 							Vector3I StartingPosition = GetPosition(StartingI, LayerIndex, StartingN, Axis);
 							
 							int NextI = StartingI + 1;
 
+							// Horizontal Greedy Expansion
 							while (NextI < 16) {
-								ulong NextBitmask = Bitmask << (NextI - StartingI);
+								ulong NextBitmask = BitMask << (NextI - StartingI);
 
-								if ((VisibleFaces[UlongIndex] & NextBitmask) == 0) {
+								if ((VisibleFaces[LayerUlongIndex] & NextBitmask) == 0) {
 									break;
 								}
-								VisibleFaces[UlongIndex] &= ~NextBitmask;
+								VisibleFaces[LayerUlongIndex] &= ~NextBitmask;
 
 								NextI++;
 							}
 							int EndingI = NextI - 1;
 
 							ulong CountedBits = 0UL;
-
 							for (int Shift = StartingI; Shift < EndingI + 1; Shift++) {
 								CountedBits |= 1UL << Shift;
 							}
 
+							// Vertical Greedy Expansion
 							int NextN = StartingN + 1;
-							
 							while (NextN < 16) {
-								int LoopUlongIndex = NextN / 4;
-
-								int RowIndex = NextN % 4;
-								ulong NextBitmask = CountedBits << (16 * RowIndex);
+								int LoopUlongIndex = NextN >> 2;
+								int RowIndex = NextN & 3;
+								ulong NextBitmask = CountedBits << (RowIndex << 4);
 
 								if ((VisibleFaces[LoopUlongIndex] & NextBitmask) != NextBitmask) {
 									break;
@@ -253,19 +242,20 @@ public static class ChunkGenerator {
 							}
 							int EndingN = NextN - 1;
 
-							Vector3I EndingPosition = GetPosition(EndingI, LayerIndex, EndingN, Axis);
-							// GD.Print($"Start: {StartingPosition}, End: {EndingPosition}");
+							// Clear the starting bit itself (since greedy expansion clears the rest of the quad)
+							VisibleFaces[LayerUlongIndex] &= ~BitMask;
 
-							TMPFaces[VoxelType][Dir].Add(StartingPosition, EndingPosition);
+							Vector3I EndingPosition = GetPosition(EndingI, LayerIndex, EndingN, Axis);
+							FaceList.Add(new(VoxelType, Dir, StartingPosition, EndingPosition));
 						}
-						
 					}
 				}
 			}
 		}
 
-		return TMPFaces;
+		return FaceList;
 	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static Vector2I GetTilingData(int Direction, Vector3I StartingPos, Vector3I EndingPos) {
         Vector2I GetFaceDimensions(Vector3I FaceStart, Vector3I FaceEnd) => (Direction / 2) switch {
 			0 => new Vector2I(FaceEnd.Z - FaceStart.Z + 1, FaceEnd.Y - FaceStart.Y + 1),
@@ -277,6 +267,7 @@ public static class ChunkGenerator {
 
 		return (Direction & 1) == 0 ? FaceDimensions : new(FaceDimensions.Y, FaceDimensions.X);
 	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static Vector3I GetPosition(int StartingI, int LayerIndex, int StartingN, int Axis) {
         return Axis switch {
             (int)AXIS.X => new(LayerIndex, StartingN, StartingI),
@@ -285,15 +276,16 @@ public static class ChunkGenerator {
             _ => new(StartingN, StartingI, LayerIndex),
         };
     }
-	private static Godot.Collections.Array MakeMesh(System.Collections.Generic.Dictionary<Vector3I,Vector3I>[][] Faces) {
+	private static Godot.Collections.Array MakeMesh(List<FaceData> FaceList) {
 
-		int FaceAmount = 0;
+		int FaceAmount = FaceList.Count;
+		GD.Print($"Face Amount: {FaceAmount}");
 
-		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
-			for (int dir = 0; dir < 6; dir++) {
-				FaceAmount += Faces[VoxelType][dir].Count;
-			}
-		}
+		// for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
+		// 	for (int dir = 0; dir < 6; dir++) {
+		// 		FaceAmount += Faces[VoxelType][dir].Count;
+		// 	}
+		// }
 
 		int VertexSize = FaceAmount * 4;
 		Godot.Vector3[] VertexArray = new Godot.Vector3[VertexSize];
@@ -304,52 +296,37 @@ public static class ChunkGenerator {
 		int IndicesSize = FaceAmount * 6;
 		int[] IndicesArray = new int[IndicesSize];
 
-		int Index = 0;
-		for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
+		Godot.Vector2[] TmpUvs = [new(0, 0), new(1, 0), new(1, 1), new(0, 1)];
 
+		for(int Index = 0; Index < FaceAmount; Index++) {
+			FaceData Face = FaceList[Index];
 
-			for (int Dir = 0; Dir < 6; Dir++) {
+			Godot.Vector3[][] MeshFace = CreateFace(Face.Direction, Face.StartingPos, Face.EndingPos);
+			// Vector2I FaceLength = FaceLengths[Dir][StartingPos];
+			Vector2I FaceLength = GetTilingData(Face.Direction, Face.StartingPos, Face.EndingPos);
 
-				// Color color = Color.Color8(0,255,0);
-				// if (Dir > 3) {
-				// 	color = Color.Color8(0,0,255);
-				// } else if (Dir < 2) {
-				// 	color = Color.Color8(255,0,0);
-				// }
+			int IndexOffset = Index * 4;
+			int IndicesIndex = Index * 6;
 
-				foreach (var(StartingPos, EndingPos) in Faces[VoxelType][Dir]) {
-					Godot.Vector3[][] MeshFace = CreateFace(Dir, StartingPos, EndingPos);
-					// Vector2I FaceLength = FaceLengths[Dir][StartingPos];
-					Vector2I FaceLength = GetTilingData(Dir, StartingPos, EndingPos);
+			for (int i = 0; i < 4; i++) {
+				int ArrayIndex = i + IndexOffset;
+				VertexArray[ArrayIndex] = MeshFace[(int)MESH.VERTICES][i];
+				NormalArray[ArrayIndex] = MeshFace[(int)MESH.Normals][i];
+				UvArray[ArrayIndex] = TmpUvs[i];
 
-					int IndexOffset = Index << 2;
-					int IndicesIndex = IndexOffset + (Index << 1);
-
-					Godot.Vector2[] TmpUvs = [new(0, 0), new(1, 0), new(1, 1), new(0, 1)];
-
-					for (int i = 0; i < 4; i++) {
-						int ArrayIndex = i + IndexOffset;
-						VertexArray[ArrayIndex] = MeshFace[(int)MESH.VERTICES][i];
-						NormalArray[ArrayIndex] = MeshFace[(int)MESH.Normals][i];
-						UvArray[ArrayIndex] = TmpUvs[i];
-
-						int CustomArrayIndex = ArrayIndex << 2;
-						Custom0Array[CustomArrayIndex] = (float)VoxelType - 1;
-						Custom0Array[CustomArrayIndex + 1] = (float)FaceLength.X; // Face Length X
-						Custom0Array[CustomArrayIndex + 2] = (float)FaceLength.Y; // Face Length Y
-						// Custom0Array[CustomArrayIndex + 3] = (float)VoxelType; // placeholder
-					}
-
-				IndicesArray[IndicesIndex] = IndexOffset;
-				IndicesArray[IndicesIndex + 1] = IndexOffset + 1;
-				IndicesArray[IndicesIndex + 2] = IndexOffset + 2;
-				IndicesArray[IndicesIndex + 3] = IndexOffset;
-				IndicesArray[IndicesIndex + 4] = IndexOffset + 2;
-				IndicesArray[IndicesIndex + 5] = IndexOffset + 3;
-				
-				Index++;
-				}
+				int CustomArrayIndex = ArrayIndex * 4;
+				Custom0Array[CustomArrayIndex] = (float)Face.VoxelType - 1;
+				Custom0Array[CustomArrayIndex + 1] = (float)FaceLength.X; // Face Length X
+				Custom0Array[CustomArrayIndex + 2] = (float)FaceLength.Y; // Face Length Y
+				// Custom0Array[CustomArrayIndex + 3] = (float)VoxelType; // placeholder
 			}
+
+			IndicesArray[IndicesIndex] = IndexOffset;
+			IndicesArray[IndicesIndex + 1] = IndexOffset + 1;
+			IndicesArray[IndicesIndex + 2] = IndexOffset + 2;
+			IndicesArray[IndicesIndex + 3] = IndexOffset;
+			IndicesArray[IndicesIndex + 4] = IndexOffset + 2;
+			IndicesArray[IndicesIndex + 5] = IndexOffset + 3;
 		}
 		Godot.Collections.Array MeshArray = [];
 		MeshArray.Resize((int)Mesh.ArrayType.Max);
@@ -443,8 +420,14 @@ public static class ChunkGenerator {
 	// 	return StaticBody;
 	// }
 }
-public readonly struct ChunkData(int[][][] voxels, ArrayMesh cubeMesh, bool hasFaces) {
-        public int[][][] Voxels { get; } = voxels;
+public readonly struct FaceData(int VoxelType, int direction, Vector3I startingPos, Vector3I endingPos) {
+    public int VoxelType { get; } = VoxelType;
+    public int Direction { get; } = direction;
+    public Vector3I StartingPos { get; } = startingPos;
+    public Vector3I EndingPos { get; } = endingPos;
+}
+public readonly struct ChunkData(int[] voxels, ArrayMesh cubeMesh, bool hasFaces) {
+        public int[] Voxels { get; } = voxels;
         public ArrayMesh CubeMesh { get; } = cubeMesh;
         public bool HasFaces { get; } = hasFaces;
     }
