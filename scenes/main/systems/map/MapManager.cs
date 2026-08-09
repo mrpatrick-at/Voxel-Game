@@ -6,6 +6,7 @@ using System.Linq;
 namespace VoxelGame.MapManager;
 using VoxelGame.Consts;
 using VoxelGame.Chunk;
+using VoxelGame.ChunkGenerator;
 [Tool]
 // enums
 public partial class MapManager : Node {
@@ -74,7 +75,7 @@ public partial class MapManager : Node {
 		if (DataChunks.ContainsKey(ChunkCoord)) {
 			Data = DataChunks[ChunkCoord];
 		} else {
-			Data = MakeChunkData.Generate(Noise, ChunkCoord);
+			Data = ChunkGenerator.Generate(Noise, ChunkCoord);
 			DataChunks[ChunkCoord] = Data;
 		}
 
