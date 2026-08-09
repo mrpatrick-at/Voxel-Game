@@ -35,6 +35,9 @@ public partial class MapManager : Node {
 		public override void _Process(double delta) {
 			
 		}
+		public override void _ExitTree() {
+			ClearChunks(true);
+		}
 
 		public void _OnGeneratePressed() {
 			MakeMap(true);
@@ -82,6 +85,7 @@ public partial class MapManager : Node {
 		VoxelChunk Chunk = new() {
 			Coord = ChunkCoord,
 			CubeMesh = Data.CubeMesh,
+			Triangles = Data.Triangles,
 			HasFaces = Data.HasFaces,
 		};
 
@@ -90,19 +94,19 @@ public partial class MapManager : Node {
 	}
 	// private methods
 	private void ClearChunks(bool IsGenrating) {
+		int ChunkAmount = VoxelChunks.Values.Count;
 		if (IsGenrating) {
-			DataChunks = [];
+			DataChunks.Clear();
 		}
 
-		VoxelChunk[] Children = [.. this.GetChildren().OfType<VoxelChunk>()];
-		foreach (VoxelChunk Chunk in Children) {
-			// Chunk.Delete(IsGenrating);
+        foreach (VoxelChunk Chunk in VoxelChunks.Values) {
 			this.RemoveChild(Chunk);
 			Chunk.QueueFree();
 		}
-		VoxelChunks = [];
+
+		VoxelChunks.Clear();
 		
-		GD.PrintRich($"[color=Yellow]MapManager-[/color] Deleted [color=gold]{Children.Length}[/color] children");
+		GD.PrintRich($"[color=Yellow]MapManager-[/color] Deleted [color=gold]{ChunkAmount}[/color] children");
 	}
 	private FastNoiseLite MakeNoise() {
         FastNoiseLite TmpNoise = new() {

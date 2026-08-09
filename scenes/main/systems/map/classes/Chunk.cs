@@ -18,6 +18,7 @@ public partial class VoxelChunk : MeshInstance3D {
 	// public vars
 	public Vector3I Coord {get; set;}
 	public ArrayMesh CubeMesh {get; set;}
+	public Godot.Vector3[] Triangles {get; set;}
 	public bool HasFaces {get; set;}
 	// private vars
 	// built-in override methods
@@ -36,7 +37,7 @@ public partial class VoxelChunk : MeshInstance3D {
 		this.GlobalPosition = new Godot.Vector3(Coord.X << 4, Coord.Y << 4, Coord.Z << 4);
 		if (HasFaces) {
 			this.Mesh = CubeMesh;
-			StaticBody3D StaticBody = MakeStaticBody(CubeMesh);
+			StaticBody3D StaticBody = MakeStaticBodyFromTriangles(Triangles);
 			this.AddChild(StaticBody);
 		}
 
@@ -50,20 +51,20 @@ public partial class VoxelChunk : MeshInstance3D {
 	}
 	// public methods
 	// private methods
-	private static StaticBody3D MakeStaticBody(ArrayMesh CubeMesh) {
-	 	ConcavePolygonShape3D ChunkCollison = CubeMesh.CreateTrimeshShape();
-		
-        CollisionShape3D CollisionShape = new() {
-            Shape = ChunkCollison
-        };
+	private static StaticBody3D MakeStaticBodyFromTriangles(Godot.Vector3[] Triangles) {
+		ConcavePolygonShape3D Shape = new();
+		Shape.SetFaces(Triangles); // Expects an array of vertices where every 3 vertices make a triangle
 
-        StaticBody3D StaticBody = new() {
-            CollisionLayer = 1,
-            CollisionMask = 1
-        };
+		CollisionShape3D CollisionShape = new() {
+			Shape = Shape
+		};
 
-        StaticBody.AddChild(CollisionShape);
+		StaticBody3D StaticBody = new() {
+			CollisionLayer = 1,
+			CollisionMask = 1
+		};
 
+		StaticBody.AddChild(CollisionShape);
 		return StaticBody;
 	}
 }

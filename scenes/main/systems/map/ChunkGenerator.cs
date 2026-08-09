@@ -14,31 +14,32 @@ public static class ChunkGenerator {
 		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Chunk [color=gold]{Coord}[/color] Starting Creation");
 
 		Godot.ArrayMesh CubeMesh = new();
+		Vector3[] Triangles = [];
 		// StaticBody3D StaticBody;
 
 		int[] Voxels = MakeVoxelData(Noise, Coord);
 
-		float EndTime2 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Voxel Data in [color=gold]{EndTime2}ms[/color]");
+		// float EndTime2 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+		// GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Voxel Data in [color=gold]{EndTime2}ms[/color]");
 
 		bool HasFaces = CheckIfFaces(Voxels);
 
-		float EndTime3 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Checked for Faces in [color=gold]{EndTime3 - EndTime2}ms[/color]");
+		// float EndTime3 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+		// GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Checked for Faces in [color=gold]{EndTime3 - EndTime2}ms[/color]");
 
 		if (HasFaces) {
 
 			ulong[] BitVoxels = MakeBitVoxels(Voxels);
 
-			float EndTime4 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-			GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created BitVoxels in [color=gold]{EndTime4 - EndTime3}ms[/color]");
+			// float EndTime4 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+			// GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created BitVoxels in [color=gold]{EndTime4 - EndTime3}ms[/color]");
 
-			List<FaceData> Faces = MakeGreedyFaces(BitVoxels);
+			List<FaceData> FaceList = MakeGreedyFaces(BitVoxels);
 
-			float EndTime5 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-			GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Greedy Faces in [color=gold]{EndTime5 - EndTime4}ms[/color]");
+			// float EndTime5 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+			// GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Greedy Faces in [color=gold]{EndTime5 - EndTime4}ms[/color]");
 		
-			Godot.Collections.Array MeshArray = MakeMesh(Faces);
+			Godot.Collections.Array MeshArray = MakeMesh(FaceList);
 			Mesh.ArrayFormat FormatFlags = Mesh.ArrayFormat.FormatVertex
 										| Mesh.ArrayFormat.FormatNormal
 										| Mesh.ArrayFormat.FormatTexUV
@@ -53,17 +54,31 @@ public static class ChunkGenerator {
 			// GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Mesh in [color=gold]{EndTime6 - EndTime5}ms[/color]");
 
 			CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
+			float EndTime6 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 
-			// float EndTime7 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-			// GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created CubeMesh in [color=gold]{EndTime7 - EndTime6}ms[/color]");
+			int FaceAmount = FaceList.Count;
 
-			// StaticBody = MakeStaticBody(CubeMesh);
+			Vector3[] Vertices = (Vector3[])MeshArray[(int)Mesh.ArrayType.Vertex];
+			Triangles = new Vector3[FaceAmount * 6];
+
+			for (int FaceIndex = 0; FaceIndex < FaceAmount; FaceIndex++) {
+				Triangles[FaceIndex * 6] = Vertices[FaceIndex * 4];
+				Triangles[FaceIndex * 6 + 1] = Vertices[FaceIndex * 4 + 1];
+				Triangles[FaceIndex * 6 + 2] = Vertices[FaceIndex * 4 + 2];
+				Triangles[FaceIndex * 6 + 3] = Vertices[FaceIndex * 4];
+				Triangles[FaceIndex * 6 + 4] = Vertices[FaceIndex * 4 + 2];
+				Triangles[FaceIndex * 6 + 5] = Vertices[FaceIndex * 4 + 3];
+			}
+
+		
+			float EndTime7 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+			GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created CubeMesh in [color=gold]{EndTime7 - EndTime6}ms[/color]");
 		}
 
-		ChunkData Chunk = new(Voxels, CubeMesh, HasFaces);
+		ChunkData Chunk = new(Voxels, CubeMesh, Triangles, HasFaces);
 
 		float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Chunk in [color=gold]{EndTime}ms[/color]");
+		GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Chunk Data in [color=gold]{EndTime}ms[/color]");
 		return Chunk;
 	}
 	// private methods
@@ -279,13 +294,6 @@ public static class ChunkGenerator {
 	private static Godot.Collections.Array MakeMesh(List<FaceData> FaceList) {
 
 		int FaceAmount = FaceList.Count;
-		GD.Print($"Face Amount: {FaceAmount}");
-
-		// for (int VoxelType = 0; VoxelType < Consts.Voxel.Amount; VoxelType++) {
-		// 	for (int dir = 0; dir < 6; dir++) {
-		// 		FaceAmount += Faces[VoxelType][dir].Count;
-		// 	}
-		// }
 
 		int VertexSize = FaceAmount * 4;
 		Godot.Vector3[] VertexArray = new Godot.Vector3[VertexSize];
@@ -421,14 +429,15 @@ public static class ChunkGenerator {
 	// }
 }
 public readonly struct FaceData(int VoxelType, int direction, Vector3I startingPos, Vector3I endingPos) {
-    public int VoxelType { get; } = VoxelType;
-    public int Direction { get; } = direction;
-    public Vector3I StartingPos { get; } = startingPos;
-    public Vector3I EndingPos { get; } = endingPos;
+	public int VoxelType { get; } = VoxelType;
+	public int Direction { get; } = direction;
+	public Vector3I StartingPos { get; } = startingPos;
+	public Vector3I EndingPos { get; } = endingPos;
 }
-public readonly struct ChunkData(int[] voxels, ArrayMesh cubeMesh, bool hasFaces) {
-        public int[] Voxels { get; } = voxels;
-        public ArrayMesh CubeMesh { get; } = cubeMesh;
-        public bool HasFaces { get; } = hasFaces;
-    }
+public readonly struct ChunkData(int[] voxels, ArrayMesh cubeMesh, Vector3[] triangles, bool hasFaces) {
+	public int[] Voxels { get; } = voxels;
+	public ArrayMesh CubeMesh { get; } = cubeMesh;
+	public Vector3[] Triangles { get; } = triangles;
+	public bool HasFaces { get; } = hasFaces;
+}
 
