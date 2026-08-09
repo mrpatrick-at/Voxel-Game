@@ -21,6 +21,9 @@ public partial class Player : CharacterBody3D {
 	// Misc Movement Vars
 	public Vector3 WishDirection = Vector3.Zero;
 	public Vector2 RotationSpeed = Vector2.Zero;
+	public Vector3 CamAlignedWishDirection = Vector3.Zero;
+	public int NoclipSpeedMult = 3;
+	public bool NoclipEnabled = false;
 	// Mouse Vars
 	[Export] public float MouseSensitivity = 0.5F;
 	// Animation Vars
@@ -36,6 +39,7 @@ public partial class Player : CharacterBody3D {
 	private Node3D WorldModel;
 	private Node3D Head;
 	private Camera3D Cam;
+	private CollisionShape3D Collision;
 	// built-in override methods
 	public override void _Ready() {
 		// External Nodes
@@ -45,6 +49,7 @@ public partial class Player : CharacterBody3D {
 		WorldModel = GetNode<Node3D>("WorldModel");
 		Head = GetNode<Node3D>("Head");
 		Cam = GetNode<Camera3D>("Head/Camera3D");
+		Collision = GetNode<CollisionShape3D>("CollisionShape3D");
 
 		foreach (VisualInstance3D Child in WorldModel.FindChildren("*", "VisualInstance3D").Cast<VisualInstance3D>()) {
 			Child.SetLayerMaskValue(1, false);
@@ -64,6 +69,7 @@ public partial class Player : CharacterBody3D {
 		// Movement
 		Vector2 InputDirection = Input.GetVector("_input_move_left","_input_move_right","_input_move_up","_input_move_down").Normalized();
 		WishDirection = this.GlobalTransform.Basis * new Vector3(InputDirection.X, 0, InputDirection.Y);
+		CamAlignedWishDirection = Cam.GlobalTransform.Basis * new Vector3(InputDirection.X, 0, InputDirection.Y); // For Noclip
     }
 	public void _OnDeleteDebugPressed() {
 		RigidBody3D[] Children = [.. DebugNode.GetChildren().OfType<RigidBody3D>()];
@@ -107,6 +113,12 @@ public partial class Player : CharacterBody3D {
 			DebugCube.GlobalPosition = this.GlobalPosition;
 			GD.PrintRich($"[color=lightblue]Player-[/color] Created Debug Cube");
 		}
+
+		if (Input.IsActionPressed("_input_move_noclip")) {
+			NoclipEnabled = !NoclipEnabled;
+			Collision.Disabled = NoclipEnabled;
+			GD.PrintRich($"[color=lightblue]Player-[/color] Noclip Enabled: [color=gold]{NoclipEnabled}");
+		}
 	}
 	private int GetMoveSpeed() {
 		return Input.IsActionPressed("_input_move_sprint") ? SprintSpeed : WalkSpeed;
@@ -123,14 +135,26 @@ public partial class Player : CharacterBody3D {
 		if (EscMenu.IsVisibleInTree()) {
 				return;
 			}
-		if (this.IsOnFloor()) {
-			HandleGroundPhysics((float)delta);
+
+		if (NoclipEnabled) {
+			HandeNoclip((float)delta);
 		} else {
-			HandleAirPhysics((float)delta);
+			if (this.IsOnFloor()) {
+			HandleGroundPhysics((float)delta);
+			} else {
+				HandleAirPhysics((float)delta);
+			}
+			MoveAndSlide();
 		}
+		
 		GD.Print($"Velocity: {this.Velocity}");
-		MoveAndSlide();
     }
+	private void HandeNoclip(float delta) {
+		int Speed = GetMoveSpeed() * NoclipSpeedMult;
+
+		this.Velocity = CamAlignedWishDirection * Speed;
+		this.GlobalPosition += this.Velocity * delta;
+	}
 	private void HandleGroundPhysics(float delta) {
 		Vector3 NewVelocity = this.Velocity;
 		int MoveSpeed = GetMoveSpeed();
