@@ -89,6 +89,7 @@ script = ExtResource("9_b1x3f")
 
 [node name="DebugLevel" parent="." unique_id=538908687 instance=ExtResource("10_ouso4")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 80, 0)
+visible = false
 
 [node name="DebugNode" type="Node3D" parent="." unique_id=1259004223]
 

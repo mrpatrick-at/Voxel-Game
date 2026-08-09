@@ -338,21 +338,15 @@ public partial class MakeChunkData {
 		return TMPFaces;
 	}
 	private static Vector2I GetTilingData(int Direction, Vector3I StartingPos, Vector3I EndingPos) {
-        static Vector2I GetFaceData(int Direction, Vector3I Coord) {
-			Godot.Vector2I[] FaceArray = [
-			new(Coord.Y, Coord.Z),
-			new(Coord.X, Coord.Z),
-			new(Coord.X, Coord.Y),
-		];
-		return FaceArray[Direction / 2];
-		}
+        Vector2I GetFaceDimensions(Vector3I FaceStart, Vector3I FaceEnd) => (Direction / 2) switch {
+			0 => new Vector2I(FaceEnd.Z - FaceStart.Z + 1, FaceEnd.Y - FaceStart.Y + 1),
+			1 => new Vector2I(FaceEnd.X - FaceStart.X + 1, FaceEnd.Z - FaceStart.Z + 1),
+			_ => new Vector2I(FaceEnd.Y - FaceStart.Y + 1, FaceEnd.X - FaceStart.X + 1)
+		};
 
-		Vector2I FaceStart = GetFaceData(Direction, StartingPos);
-		Vector2I FaceEnd = GetFaceData(Direction, EndingPos);
+		Vector2I FaceDimensions = GetFaceDimensions(StartingPos, EndingPos);
 
-		Vector2I TilingData = (Direction & 1) == 0 ? new(FaceEnd.X - FaceStart.X + 1, FaceEnd.Y - FaceStart.Y + 1): new(FaceEnd.Y - FaceStart.Y + 1, FaceEnd.X - FaceStart.X + 1);
-
-		return TilingData;
+		return (Direction & 1) == 0 ? FaceDimensions : new(FaceDimensions.Y, FaceDimensions.X);
 	}
 	private static Vector3I GetPosition(int StartingI, int LayerIndex, int StartingN, int Axis) {
         return Axis switch {

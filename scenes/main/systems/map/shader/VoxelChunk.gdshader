@@ -24,9 +24,6 @@ void fragment() {
 	vec4 Texture = texture(TextureAtlas, AtlasUv);
 	//vec4 FinalTex = Texture / FaceDimensions;
 	
-	
-	
-	
 	ALBEDO = Texture.rgb;
 	
 	//ALBEDO += COLOR.rgb;
