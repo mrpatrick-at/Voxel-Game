@@ -22,7 +22,7 @@ public partial class Player : CharacterBody3D {
 	public Vector3 WishDirection = Vector3.Zero;
 	public Vector2 RotationSpeed = Vector2.Zero;
 	public Vector3 CamAlignedWishDirection = Vector3.Zero;
-	public int NoclipSpeedMult = 3;
+	public float NoclipSpeedMult = 3F;
 	public bool NoclipEnabled = false;
 	// Mouse Vars
 	[Export] public float MouseSensitivity = 0.5F;
@@ -80,6 +80,7 @@ public partial class Player : CharacterBody3D {
 		GD.PrintRich($"[color=lightblue]Player-[/color] Deleted [color=gold]{Children.Length}[/color] Debug Objects");
 		}
 	private void HandleMouseInput(InputEventMouse MouseEvent) {
+		// Mouse Motion
 		if (MouseEvent is InputEventMouseMotion MouseMotion) {
 
 			RotationSpeed = new(
@@ -87,19 +88,28 @@ public partial class Player : CharacterBody3D {
 				-MouseMotion.Relative.X * MouseSensitivity
 			);
 		}
-		bool PressedLeft = (MouseEvent.ButtonMask & MouseButtonMask.Left) != 0;
-		bool PressedRight = (MouseEvent.ButtonMask & MouseButtonMask.Right) != 0;
-		bool PressedMiddle = (MouseEvent.ButtonMask & MouseButtonMask.Middle) != 0;
+		// Mouse Buttons
+		if (MouseEvent is InputEventMouseButton MouseButtonEvent) {
 
-		if (PressedLeft) {
-			GD.PrintRich("[color=lightblue]Player-[/color] LMB Pressed");
+			if (MouseButtonEvent.ButtonIndex == MouseButton.Left) {
+				GD.PrintRich("[color=lightblue]Player-[/color] LMB Pressed");
+			}
+			if (MouseButtonEvent.ButtonIndex == MouseButton.Right) {
+				GD.PrintRich("[color=lightblue]Player-[/color] RMB Pressed");
+			}
+			if (MouseButtonEvent.ButtonIndex == MouseButton.Middle) {
+				GD.PrintRich("[color=lightblue]Player-[/color] MMB Pressed");
+			}
+			// Mouse Scroll
+			if (MouseButtonEvent.ButtonIndex == MouseButton.WheelUp) {
+				NoclipSpeedMult = Mathf.Min(30F, NoclipSpeedMult * 1.1F);
+				// GD.Print("Increasing Noclip Speed");
+			} else if (MouseButtonEvent.ButtonIndex == MouseButton.WheelDown) {
+				NoclipSpeedMult = Mathf.Max(1F, NoclipSpeedMult * 0.9F);
+				// GD.Print("Decreasing Noclip Speed");
+			}
 		}
-		if (PressedRight) {
-			GD.PrintRich("[color=lightblue]Player-[/color] RMB Pressed");
-		}
-		if (PressedMiddle) {
-			GD.PrintRich("[color=lightblue]Player-[/color] MMB Pressed");
-		}
+
 
 	}
 	private void HandleKeyInput(InputEventKey KeyEvent) {
@@ -117,6 +127,7 @@ public partial class Player : CharacterBody3D {
 		if (Input.IsActionPressed("_input_move_noclip")) {
 			NoclipEnabled = !NoclipEnabled;
 			Collision.Disabled = NoclipEnabled;
+			NoclipSpeedMult = 3F;
 			GD.PrintRich($"[color=lightblue]Player-[/color] Noclip Enabled: [color=gold]{NoclipEnabled}");
 		}
 	}
@@ -150,7 +161,7 @@ public partial class Player : CharacterBody3D {
 		GD.Print($"Velocity: {this.Velocity}");
     }
 	private void HandeNoclip(float delta) {
-		int Speed = GetMoveSpeed() * NoclipSpeedMult;
+		float Speed = GetMoveSpeed() * NoclipSpeedMult;
 
 		this.Velocity = CamAlignedWishDirection * Speed;
 		this.GlobalPosition += this.Velocity * delta;
