@@ -7,13 +7,12 @@ using System.Runtime.CompilerServices;
 public partial class Player : CharacterBody3D {
 	// signals
 	// Ground Movement Vars
-	[Export] public int WalkSpeed = 6;
-	[Export] public int SprintSpeed = 8;
-	[Export] public int JumpSpeed = 8;
-	[Export] public int SpeedDecay = 2;
+	[Export] public int WalkSpeed = 5;
+	[Export] public int SprintSpeed = 7;
+	[Export] public int JumpSpeed = 5;
 	[Export] public int GroundAcceleration = 14;
 	[Export] public int GroundDeceleration = 10;
-	[Export] public int GroundFriction = 6;
+	[Export] public int GroundFriction = 2;
 	// Air Movement Vars
 	[Export] public float AirCap = 0.85F;
 	[Export] public int AirAccelaration = 800;
@@ -158,7 +157,7 @@ public partial class Player : CharacterBody3D {
 			MoveAndSlide();
 		}
 		
-		GD.Print($"Velocity: {this.Velocity}");
+		// GD.Print($"Velocity: {this.Velocity}");
     }
 	private void HandeNoclip(float delta) {
 		float Speed = GetMoveSpeed() * NoclipSpeedMult;

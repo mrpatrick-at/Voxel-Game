@@ -20,6 +20,7 @@ public partial class VoxelChunk : MeshInstance3D {
 	public ArrayMesh CubeMesh {get; set;}
 	public Godot.Vector3[] Triangles {get; set;}
 	public bool HasFaces {get; set;}
+	public StaticBody3D Collision;
 	// private vars
 	// built-in override methods
 	public override void _Ready() {
@@ -33,13 +34,10 @@ public partial class VoxelChunk : MeshInstance3D {
 		(ChunkMaterial as ShaderMaterial).SetShaderParameter("TextureAtlas", TextureAtlas);
 
 		this.MaterialOverride = ChunkMaterial;
-
-		this.GlobalPosition = new Godot.Vector3(Coord.X << 4, Coord.Y << 4, Coord.Z << 4);
 		if (HasFaces) {
-			this.Mesh = CubeMesh;
-			StaticBody3D StaticBody = MakeStaticBodyFromTriangles(Triangles);
-			this.AddChild(StaticBody);
+			Reload();
 		}
+		this.AddChild(Collision);
 
 		float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 		GD.PrintRich($"[color=Springgreen]VoxelChunk-[/color] Created VoxelChunk in [color=gold]{EndTime}ms[/color]");
@@ -50,6 +48,11 @@ public partial class VoxelChunk : MeshInstance3D {
 
 	}
 	// public methods
+	public void Reload() {
+		this.GlobalPosition = new Godot.Vector3(Coord.X << 4, Coord.Y << 4, Coord.Z << 4);
+		this.Mesh = CubeMesh;
+		Collision = MakeStaticBodyFromTriangles(Triangles);
+	}
 	// private methods
 	private static StaticBody3D MakeStaticBodyFromTriangles(Godot.Vector3[] Triangles) {
 		ConcavePolygonShape3D Shape = new();

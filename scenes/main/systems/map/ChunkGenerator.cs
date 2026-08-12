@@ -54,7 +54,6 @@ public static class ChunkGenerator {
 			// GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Mesh in [color=gold]{EndTime6 - EndTime5}ms[/color]");
 
 			CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
-			float EndTime6 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
 
 			int FaceAmount = FaceList.Count;
 
@@ -69,10 +68,6 @@ public static class ChunkGenerator {
 				Triangles[FaceIndex * 6 + 4] = Vertices[FaceIndex * 4 + 2];
 				Triangles[FaceIndex * 6 + 5] = Vertices[FaceIndex * 4 + 3];
 			}
-
-		
-			float EndTime7 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-			GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created CubeMesh in [color=gold]{EndTime7 - EndTime6}ms[/color]");
 		}
 
 		ChunkData Chunk = new(Voxels, CubeMesh, Triangles, HasFaces);
