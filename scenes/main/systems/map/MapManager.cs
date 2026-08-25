@@ -7,6 +7,7 @@ namespace VoxelGame.MapManager;
 using VoxelGame.Consts;
 using VoxelGame.Chunk;
 using VoxelGame.ChunkGenerator;
+using VoxelGame.NoiseGenerator;
 [Tool]
 // enums
 public partial class MapManager : Node {
@@ -28,13 +29,12 @@ public partial class MapManager : Node {
     // Called when the node enters the scene tree for the first time.
     public override void _Ready() {
         GD.Randomize();
-        if (Engine.IsEditorHint()) {
-            MakeMap(true);
-        } else {
+        if (!Engine.IsEditorHint()) {
             Player = GetNode<CharacterBody3D>("../Player");
             UpdateRenderedChunks(CurrentPlayerChunk);
         }
 
+        MakeMap(true);
     }
 
     // Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -49,9 +49,9 @@ public partial class MapManager : Node {
         }
         // GD.Print($"World Pos: {Player.Position}, Chunk Pos: {NewPlayerChunk}");
     }
-    public override void _ExitTree() {
-        ClearChunks(true);
-    }
+    // public override void _ExitTree() {
+    //     ClearChunks(true);
+    // }
 
     public void _OnGeneratePressed() {
         MakeMap(true);
@@ -66,26 +66,40 @@ public partial class MapManager : Node {
 
         ClearChunks(IsGenrating);
 
+        // Make Noise
         Seed = (int)GD.Randi();
-        Noise = MakeNoise();
+        Noise = NoiseGenerator.MakeHillsNoise(Seed);
 
-        EmitSignal(SignalName.NoiseUpdate, Seed, Noise);
+        // Set Player Pos
+        if (!Engine.IsEditorHint()) {
+            Vector2I SpawnCoord2D = new(GD.RandRange(-1000, 1000), GD.RandRange(-1000, 1000));
+
+            float PixelData = -Noise.GetNoise2Dv(SpawnCoord2D);
+            int SpawnHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
+
+            Player.Position = new Vector3(SpawnCoord2D.X, SpawnHeight, SpawnCoord2D.Y);
+
+            Vector3 SpawnCoord = new(SpawnCoord2D.X, SpawnHeight, SpawnCoord2D.Y);
+            GD.PrintRich($"[color=Yellow]MapManager-[/color] Spawned Player at: [color=gold]{SpawnCoord}[/color]");
+        }
+
+        EmitSignal(SignalName.NoiseUpdate, Seed, Noise); // I forgor why I added this
 
         float PreChunkTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
         GD.PrintRich($"[color=Yellow]MapManager-[/color] Finished Pre Chunk Operations in [color=gold]{PreChunkTime}ms[/color]");
 
-        for (int x = 0; x < Consts.World.ChunkLength; x++) {
-            for (int z = 0; z < Consts.World.ChunkWidth; z++) {
-                for (int y = 0; y < Consts.World.ChunkHeight; y++) {
+        for (int x = -RenderDistance; x < RenderDistance; x++) {
+            for (int z = -RenderDistance; z < RenderDistance; z++) {
+                for (int y = -RenderDistance; y < RenderDistance; y++) {
                     Vector3I ChunkCoord = new(x, y, z);
 
-                    VoxelChunk Chunk = LoadChunk(ChunkCoord);
+                    LoadChunk(ChunkCoord);
                 }
             }
         }
 
         float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-        GD.PrintRich($"[color=Yellow]MapManager-[/color] Created Map of size [color=gold]{new Vector3I(Consts.World.ChunkLength, Consts.World.ChunkHeight, Consts.World.ChunkWidth)}[/color] in [color=gold]{EndTime}ms[/color]");
+        GD.PrintRich($"[color=Yellow]MapManager-[/color] Prerenderd Chunks in Render Distance of [color=gold]{RenderDistance}[/color] in [color=gold]{EndTime}ms[/color]");
     }
     public static Vector3I WorldPosToChunkCoord(Vector3 Position) {
         return new Vector3I(
@@ -127,15 +141,31 @@ public partial class MapManager : Node {
 
         GD.PrintRich($"[color=Yellow]MapManager-[/color] Deleted [color=gold]{ChunkAmount}[/color] children");
     }
-    private ChunkData GetChunkData(FastNoiseLite Noise, Vector3I ChunkCoord) {
-        ChunkData Data;
-        if (DataChunks.ContainsKey(ChunkCoord)) {
-            Data = DataChunks[ChunkCoord];
-        } else {
-            Data = ChunkGenerator.MakeChunkData(Noise, ChunkCoord);
-            DataChunks[ChunkCoord] = Data;
+    private void UpdateRenderedChunks(Vector3I CenterChunk) {
+        HashSet<Vector3I> ChunksInRenderDistance = [.. GetChunkRadius(CenterChunk, RenderDistance)];
+
+        // Mark Chunks out of RenderDistance as Idle
+        foreach (Vector3I ChunkCoord in VoxelChunks.Keys) {
+            if (!ChunksInRenderDistance.Contains(ChunkCoord)) {
+                MarkChunkIdle(ChunkCoord);
+            }
         }
-        return Data;
+
+        // Load Chunks in RenderDistance
+        foreach (Vector3I ChunkCoord in ChunksInRenderDistance) {
+            if (!VoxelChunks.ContainsKey(ChunkCoord)) {
+                LoadChunk(ChunkCoord);
+            }
+        }
+    }
+    private void MarkChunkIdle(Vector3I ChunkCoord) {
+        if (!VoxelChunks.ContainsKey(ChunkCoord)) {
+            GD.PrintErr($"ERROR UNLOADING CHUNK! Chunk {ChunkCoord} is not Loaded");
+        } else {
+            VoxelChunk Chunk = VoxelChunks[ChunkCoord];
+            VoxelChunks.Remove(ChunkCoord);
+            IdleChunks.Enqueue(Chunk);
+        }
     }
     private VoxelChunk LoadChunk(Vector3I ChunkCoord) {
         if (VoxelChunks.ContainsKey(ChunkCoord)) {
@@ -167,48 +197,15 @@ public partial class MapManager : Node {
             return Chunk;
         }
     }
-    private void UnloadChunk(Vector3I ChunkCoord) {
-        if (!VoxelChunks.ContainsKey(ChunkCoord)) {
-            GD.PrintErr($"ERROR UNLOADING CHUNK! Chunk {ChunkCoord} is not Loaded");
+    private ChunkData GetChunkData(FastNoiseLite Noise, Vector3I ChunkCoord) {
+        ChunkData Data;
+        if (DataChunks.ContainsKey(ChunkCoord)) {
+            Data = DataChunks[ChunkCoord];
         } else {
-            VoxelChunk Chunk = VoxelChunks[ChunkCoord];
-            // Chunk.Coord = Vector3I.Zero;
-            // Chunk.CubeMesh = new ArrayMesh();
-            // Chunk.Triangles = null;
-            // Chunk.HasFaces = false;
-            VoxelChunks.Remove(ChunkCoord);
-            IdleChunks.Enqueue(Chunk);
-            // Chunk.Reload();
+            Data = ChunkGenerator.MakeChunkData(Noise, ChunkCoord);
+            DataChunks[ChunkCoord] = Data;
         }
-    }
-    private void UpdateRenderedChunks(Vector3I CenterChunk) {
-        HashSet<Vector3I> ChunksInRenderDistance = [.. GetChunkRadius(CenterChunk, RenderDistance)];
-
-        // Unload Chunks out of RenderDistance
-        foreach (Vector3I ChunkCoord in VoxelChunks.Keys) {
-            if (!ChunksInRenderDistance.Contains(ChunkCoord)) {
-                UnloadChunk(ChunkCoord);
-            }
-        }
-
-        // Load Chunks in RenderDistance""
-        foreach (Vector3I ChunkCoord in ChunksInRenderDistance) {
-            if (!VoxelChunks.ContainsKey(ChunkCoord)) {
-                LoadChunk(ChunkCoord);
-            }
-        }
-    }
-
-    private FastNoiseLite MakeNoise() {
-        FastNoiseLite TmpNoise = new() {
-            NoiseType = FastNoiseLite.NoiseTypeEnum.SimplexSmooth,
-            FractalType = FastNoiseLite.FractalTypeEnum.Ridged,
-            FractalOctaves = 1,
-            Seed = Seed,
-            Frequency = 0.0025F
-        };
-
-        return TmpNoise;
+        return Data;
     }
 }
 
