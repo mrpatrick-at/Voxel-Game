@@ -3,289 +3,290 @@ using Godot.Collections;
 using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
+[GlobalClass]
 // enums
 public partial class Player : CharacterBody3D {
-	// signals
-	// Ground Movement Vars
-	[Export] public int WalkSpeed = 5;
-	[Export] public int SprintSpeed = 7;
-	[Export] public int JumpSpeed = 5;
-	[Export] public int GroundAcceleration = 14;
-	[Export] public int GroundDeceleration = 10;
-	[Export] public int GroundFriction = 2;
-	// Air Movement Vars
-	[Export] public float AirCap = 0.85F;
-	[Export] public int AirAccelaration = 800;
-	[Export] public int AirMoveSpeed = 500;
-	// Misc Movement Vars
-	public Vector3 WishDirection = Vector3.Zero;
-	public Vector2 RotationSpeed = Vector2.Zero;
-	public Vector3 CamAlignedWishDirection = Vector3.Zero;
-	public float NoclipSpeedMult = 3F;
-	public bool NoclipEnabled = false;
-	// Mouse Vars
-	[Export] public float MouseSensitivity = 0.5F;
-	// Animation Vars
-	[Export] public float HeadbobMoveAmount = 0.06F;
-	[Export] public float HeadbobFrequency = 2.4F;
-	public float HeadbobTime = 0F;
-	// private vars
-	private PackedScene DebugCubeScene = GD.Load<PackedScene>("res://scenes/debug/debug_cube.tscn");
-	// External Nodes
-	private CenterContainer EscMenu;
-	private Node3D DebugNode;
-	// Internal Nodes
-	private Node3D WorldModel;
-	private Node3D Head;
-	private Camera3D Cam;
-	private CollisionShape3D Collision;
-	// built-in override methods
-	public override void _Ready() {
-		// External Nodes
-		EscMenu = GetNode<CenterContainer>("../EscMenu");
-		DebugNode = GetNode<Node3D>("../DebugNode");
-		// Internal Nodes
-		WorldModel = GetNode<Node3D>("WorldModel");
-		Head = GetNode<Node3D>("Head");
-		Cam = GetNode<Camera3D>("Head/Camera3D");
-		Collision = GetNode<CollisionShape3D>("CollisionShape3D");
+    // signals
+    // Ground Movement Vars
+    [Export] public int WalkSpeed = 5;
+    [Export] public int SprintSpeed = 7;
+    [Export] public int JumpSpeed = 5;
+    [Export] public int GroundAcceleration = 14;
+    [Export] public int GroundDeceleration = 10;
+    [Export] public int GroundFriction = 2;
+    // Air Movement Vars
+    [Export] public float AirCap = 0.85F;
+    [Export] public int AirAccelaration = 800;
+    [Export] public int AirMoveSpeed = 500;
+    // Misc Movement Vars
+    public Vector3 WishDirection = Vector3.Zero;
+    public Vector2 RotationSpeed = Vector2.Zero;
+    public Vector3 CamAlignedWishDirection = Vector3.Zero;
+    public float NoclipSpeedMult = 3F;
+    public bool NoclipEnabled = false;
+    // Mouse Vars
+    [Export] public float MouseSensitivity = 4F;
+    // Animation Vars
+    [Export] public float HeadbobMoveAmount = 0.06F;
+    [Export] public float HeadbobFrequency = 2.4F;
+    public float HeadbobTime = 0F;
+    // private vars
+    private PackedScene DebugCubeScene = GD.Load<PackedScene>("res://scenes/debug/debug_cube.tscn");
+    // External Nodes
+    private CenterContainer EscMenu;
+    private Node3D DebugNode;
+    // Internal Nodes
+    private Node3D WorldModel;
+    private Node3D Head;
+    private Camera3D Cam;
+    private CollisionShape3D Collision;
+    // built-in override methods
+    public override void _Ready() {
+        // External Nodes
+        EscMenu = GetNode<CenterContainer>("../EscMenu");
+        DebugNode = GetNode<Node3D>("../DebugNode");
+        // Internal Nodes
+        WorldModel = GetNode<Node3D>("WorldModel");
+        Head = GetNode<Node3D>("Head");
+        Cam = GetNode<Camera3D>("Head/Camera3D");
+        Collision = GetNode<CollisionShape3D>("CollisionShape3D");
 
-		foreach (VisualInstance3D Child in WorldModel.FindChildren("*", "VisualInstance3D").Cast<VisualInstance3D>()) {
-			Child.SetLayerMaskValue(1, false);
-			Child.SetLayerMaskValue(2, true);
-		}
-	}
-	// Input Handling
-	public override void _Input(InputEvent @event) {
+        foreach (VisualInstance3D Child in WorldModel.FindChildren("*", "VisualInstance3D").Cast<VisualInstance3D>()) {
+            Child.SetLayerMaskValue(1, false);
+            Child.SetLayerMaskValue(2, true);
+        }
+    }
+    // Input Handling
+    public override void _Input(InputEvent @event) {
         base._Input(@event);
 
-		if (@event is InputEventMouse MouseEvent) {
-			HandleMouseInput(MouseEvent);
-		} else if (@event is InputEventKey KeyEvent) {
-			HandleKeyInput(KeyEvent);
-		}
+        if (@event is InputEventMouse MouseEvent) {
+            HandleMouseInput(MouseEvent);
+        } else if (@event is InputEventKey KeyEvent) {
+            HandleKeyInput(KeyEvent);
+        }
 
-		// Movement
-		Vector2 InputDirection = Input.GetVector("_input_move_left","_input_move_right","_input_move_up","_input_move_down").Normalized();
-		WishDirection = this.GlobalTransform.Basis * new Vector3(InputDirection.X, 0, InputDirection.Y);
-		CamAlignedWishDirection = Cam.GlobalTransform.Basis * new Vector3(InputDirection.X, 0, InputDirection.Y); // For Noclip
+        // Movement
+        Vector2 InputDirection = Input.GetVector("_input_move_left", "_input_move_right", "_input_move_up", "_input_move_down").Normalized();
+        WishDirection = this.GlobalTransform.Basis * new Vector3(InputDirection.X, 0, InputDirection.Y);
+        CamAlignedWishDirection = Cam.GlobalTransform.Basis * new Vector3(InputDirection.X, 0, InputDirection.Y); // For Noclip
     }
-	public void _OnDeleteDebugPressed() {
-		RigidBody3D[] Children = [.. DebugNode.GetChildren().OfType<RigidBody3D>()];
-		foreach (RigidBody3D Child in Children) {
-			DebugNode.RemoveChild(Child);
-			Child.QueueFree();
-		}
-		GD.PrintRich($"[color=lightblue]Player-[/color] Deleted [color=gold]{Children.Length}[/color] Debug Objects");
-		}
-	private void HandleMouseInput(InputEventMouse MouseEvent) {
-		// Mouse Motion
-		if (MouseEvent is InputEventMouseMotion MouseMotion) {
+    public void _OnDeleteDebugPressed() {
+        RigidBody3D[] Children = [.. DebugNode.GetChildren().OfType<RigidBody3D>()];
+        foreach (RigidBody3D Child in Children) {
+            DebugNode.RemoveChild(Child);
+            Child.QueueFree();
+        }
+        GD.PrintRich($"[color=lightblue]Player-[/color] Deleted [color=gold]{Children.Length}[/color] Debug Objects");
+    }
+    private void HandleMouseInput(InputEventMouse MouseEvent) {
+        // Mouse Motion
+        if (MouseEvent is InputEventMouseMotion MouseMotion) {
 
-			RotationSpeed = new(
-				-MouseMotion.Relative.Y * MouseSensitivity,
-				-MouseMotion.Relative.X * MouseSensitivity
-			);
-		}
-		// Mouse Buttons
-		if (MouseEvent is InputEventMouseButton MouseButtonEvent) {
+            RotationSpeed = new(
+                -MouseMotion.Relative.Y,
+                -MouseMotion.Relative.X
+            );
+        }
+        // Mouse Buttons
+        if (MouseEvent is InputEventMouseButton MouseButtonEvent) {
 
-			if (MouseButtonEvent.ButtonIndex == MouseButton.Left) {
-				GD.PrintRich("[color=lightblue]Player-[/color] LMB Pressed");
-			}
-			if (MouseButtonEvent.ButtonIndex == MouseButton.Right) {
-				GD.PrintRich("[color=lightblue]Player-[/color] RMB Pressed");
-			}
-			if (MouseButtonEvent.ButtonIndex == MouseButton.Middle) {
-				GD.PrintRich("[color=lightblue]Player-[/color] MMB Pressed");
-			}
-			// Mouse Scroll
-			if (MouseButtonEvent.ButtonIndex == MouseButton.WheelUp) {
-				NoclipSpeedMult = Mathf.Min(30F, NoclipSpeedMult * 1.1F);
-				// GD.Print("Increasing Noclip Speed");
-			} else if (MouseButtonEvent.ButtonIndex == MouseButton.WheelDown) {
-				NoclipSpeedMult = Mathf.Max(1F, NoclipSpeedMult * 0.9F);
-				// GD.Print("Decreasing Noclip Speed");
-			}
-		}
+            if (MouseButtonEvent.ButtonIndex == MouseButton.Left) {
+                GD.PrintRich("[color=lightblue]Player-[/color] LMB Pressed");
+            }
+            if (MouseButtonEvent.ButtonIndex == MouseButton.Right) {
+                GD.PrintRich("[color=lightblue]Player-[/color] RMB Pressed");
+            }
+            if (MouseButtonEvent.ButtonIndex == MouseButton.Middle) {
+                GD.PrintRich("[color=lightblue]Player-[/color] MMB Pressed");
+            }
+            // Mouse Scroll
+            if (MouseButtonEvent.ButtonIndex == MouseButton.WheelUp) {
+                NoclipSpeedMult = Mathf.Min(30F, NoclipSpeedMult * 1.1F);
+                // GD.Print("Increasing Noclip Speed");
+            } else if (MouseButtonEvent.ButtonIndex == MouseButton.WheelDown) {
+                NoclipSpeedMult = Mathf.Max(1F, NoclipSpeedMult * 0.9F);
+                // GD.Print("Decreasing Noclip Speed");
+            }
+        }
 
 
-	}
-	private void HandleKeyInput(InputEventKey KeyEvent) {
-		if (KeyEvent.IsActionReleased("_input_menu_esc")) {
-			ToggleEscMenu();
-		}
+    }
+    private void HandleKeyInput(InputEventKey KeyEvent) {
+        if (KeyEvent.IsActionReleased("_input_menu_esc")) {
+            ToggleEscMenu();
+        }
 
-		if (Input.IsActionPressed("_input_spawn_debug")) {
-			RigidBody3D DebugCube = (RigidBody3D)DebugCubeScene.Instantiate();
-			DebugNode.AddChild(DebugCube);
-			DebugCube.GlobalPosition = this.GlobalPosition;
-			GD.PrintRich($"[color=lightblue]Player-[/color] Created Debug Cube");
-		}
+        if (Input.IsActionPressed("_input_spawn_debug")) {
+            RigidBody3D DebugCube = (RigidBody3D)DebugCubeScene.Instantiate();
+            DebugNode.AddChild(DebugCube);
+            DebugCube.GlobalPosition = this.GlobalPosition;
+            GD.PrintRich($"[color=lightblue]Player-[/color] Created Debug Cube");
+        }
 
-		if (Input.IsActionPressed("_input_move_noclip")) {
-			NoclipEnabled = !NoclipEnabled;
-			Collision.Disabled = NoclipEnabled;
-			NoclipSpeedMult = 3F;
-			GD.PrintRich($"[color=lightblue]Player-[/color] Noclip Enabled: [color=gold]{NoclipEnabled}");
-		}
-	}
-	private int GetMoveSpeed() {
-		return Input.IsActionPressed("_input_move_sprint") ? SprintSpeed : WalkSpeed;
-	}
-	// Process
-	public override void _Process(double delta) { // Called for Every Frame
-		if (EscMenu.IsVisibleInTree()) {
-			return;
-		}
-		UpdateRoation((float)delta);
-	}
-	// Physics
+        if (Input.IsActionPressed("_input_move_noclip")) {
+            NoclipEnabled = !NoclipEnabled;
+            Collision.Disabled = NoclipEnabled;
+            NoclipSpeedMult = 3F;
+            GD.PrintRich($"[color=lightblue]Player-[/color] Noclip Enabled: [color=gold]{NoclipEnabled}");
+        }
+    }
+    private int GetMoveSpeed() {
+        return Input.IsActionPressed("_input_move_sprint") ? SprintSpeed : WalkSpeed;
+    }
+    // Process
+    public override void _Process(double delta) { // Called for Every Frame
+        if (EscMenu.IsVisibleInTree()) {
+            return;
+        }
+        UpdateRoation((float)delta);
+    }
+    // Physics
     public override void _PhysicsProcess(double delta) { // Called 60 times a sec
-		if (EscMenu.IsVisibleInTree()) {
-				return;
-			}
+        if (EscMenu.IsVisibleInTree()) {
+            return;
+        }
 
-		if (NoclipEnabled) {
-			HandeNoclip((float)delta);
-		} else {
-			if (this.IsOnFloor()) {
-			HandleGroundPhysics((float)delta);
-			} else {
-				HandleAirPhysics((float)delta);
-			}
-			MoveAndSlide();
-		}
-		
-		// GD.Print($"Velocity: {this.Velocity}");
+        if (NoclipEnabled) {
+            HandeNoclip((float)delta);
+        } else {
+            if (this.IsOnFloor()) {
+                HandleGroundPhysics((float)delta);
+            } else {
+                HandleAirPhysics((float)delta);
+            }
+            MoveAndSlide();
+        }
+
+        // GD.Print($"Velocity: {this.Velocity}");
     }
-	private void HandeNoclip(float delta) {
-		float Speed = GetMoveSpeed() * NoclipSpeedMult;
+    private void HandeNoclip(float delta) {
+        float Speed = GetMoveSpeed() * NoclipSpeedMult;
 
-		this.Velocity = CamAlignedWishDirection * Speed;
-		this.GlobalPosition += this.Velocity * delta;
-	}
-	private void HandleGroundPhysics(float delta) {
-		Vector3 NewVelocity = this.Velocity;
-		int MoveSpeed = GetMoveSpeed();
+        this.Velocity = CamAlignedWishDirection * Speed;
+        this.GlobalPosition += this.Velocity * delta;
+    }
+    private void HandleGroundPhysics(float delta) {
+        Vector3 NewVelocity = this.Velocity;
+        int MoveSpeed = GetMoveSpeed();
 
-		float SpeedInWishDirection = NewVelocity.Dot(WishDirection);
-		float SpeedLeftTillCap = MoveSpeed - SpeedInWishDirection;
+        float SpeedInWishDirection = NewVelocity.Dot(WishDirection);
+        float SpeedLeftTillCap = MoveSpeed - SpeedInWishDirection;
 
-		if (SpeedLeftTillCap > 0) {
-			float AccelarationSpeed = Mathf.Min(GroundAcceleration * MoveSpeed * delta, SpeedLeftTillCap);
-			// GD.Print($"AccelarationSpeed: {AccelarationSpeed} Is same as Cap? {AccelarationSpeed == SpeedLeftTillCap}");
-			NewVelocity += AccelarationSpeed * WishDirection;
-		}
-		
-		// Deceleration
-		float Control = Mathf.Max(NewVelocity.Length(), GroundDeceleration);
-		float Drop = Control * GroundFriction * delta;
-		float NewSpeed = Mathf.Max(NewVelocity.Length() - Drop, 0);
-		if (NewVelocity.Length() > 0) {
-			NewSpeed /= NewVelocity.Length();
-		}
-		NewVelocity *= NewSpeed;
+        if (SpeedLeftTillCap > 0) {
+            float AccelarationSpeed = Mathf.Min(GroundAcceleration * MoveSpeed * delta, SpeedLeftTillCap);
+            // GD.Print($"AccelarationSpeed: {AccelarationSpeed} Is same as Cap? {AccelarationSpeed == SpeedLeftTillCap}");
+            NewVelocity += AccelarationSpeed * WishDirection;
+        }
 
-		// Jumping
-		if (Input.IsActionPressed("_input_move_jump")) {
-			NewVelocity.Y += JumpSpeed;
-		}
+        // Deceleration
+        float Control = Mathf.Max(NewVelocity.Length(), GroundDeceleration);
+        float Drop = Control * GroundFriction * delta;
+        float NewSpeed = Mathf.Max(NewVelocity.Length() - Drop, 0);
+        if (NewVelocity.Length() > 0) {
+            NewSpeed /= NewVelocity.Length();
+        }
+        NewVelocity *= NewSpeed;
 
-		HeadbobEffect(delta);
+        // Jumping
+        if (Input.IsActionPressed("_input_move_jump")) {
+            NewVelocity.Y += JumpSpeed;
+        }
 
-		this.Velocity = NewVelocity;
-	}
-	private void HandleAirPhysics(float delta) {
-		Vector3 NewVelocity = this.Velocity;
+        HeadbobEffect(delta);
 
-		float Gravity = (float)ProjectSettings.GetSetting("physics/3d/default_gravity");
-       	NewVelocity.Y -= Gravity * (float)delta;
+        this.Velocity = NewVelocity;
+    }
+    private void HandleAirPhysics(float delta) {
+        Vector3 NewVelocity = this.Velocity;
 
-		float SpeedInWishDirection = NewVelocity.Dot(WishDirection);
-		float CappedSpeed = Mathf.Min(WishDirection.Length(), AirCap); // CappedSpeed = AirCap, Unless WishDir is 0 / cancels out.
-		float SpeedLeftTillCap = CappedSpeed - SpeedInWishDirection;
-		// GD.Print($"CurrentSpeedInWIshDirection: {SpeedInWishDirection}, CappedSpeed: {CappedSpeed}, SpeedLeftTillCap: {SpeedLeftTillCap}");
+        float Gravity = (float)ProjectSettings.GetSetting("physics/3d/default_gravity");
+        NewVelocity.Y -= Gravity * (float)delta;
 
-		if (SpeedLeftTillCap > 0) {
-			float AccelarationSpeed = Mathf.Min(AirAccelaration * AirMoveSpeed * delta, SpeedLeftTillCap); // Note: Adjust Later
-			GD.Print($"AccelarationSpeed: {AccelarationSpeed} Is same as Cap? {AccelarationSpeed == SpeedLeftTillCap}");
-			NewVelocity += AccelarationSpeed * WishDirection;
-		}
+        float SpeedInWishDirection = NewVelocity.Dot(WishDirection);
+        float CappedSpeed = Mathf.Min(WishDirection.Length(), AirCap); // CappedSpeed = AirCap, Unless WishDir is 0 / cancels out.
+        float SpeedLeftTillCap = CappedSpeed - SpeedInWishDirection;
+        // GD.Print($"CurrentSpeedInWIshDirection: {SpeedInWishDirection}, CappedSpeed: {CappedSpeed}, SpeedLeftTillCap: {SpeedLeftTillCap}");
 
-		if (this.IsOnWall()) {
-			Vector3 Normal = GetWallNormal();
-			if (IsSurfaceTooSteep(Normal)) this.MotionMode = CharacterBody3D.MotionModeEnum.Floating;
-			else this.MotionMode = CharacterBody3D.MotionModeEnum.Grounded;
-			
-			NewVelocity = ClipVelocity(Normal, 1, NewVelocity, delta);
-		}
-		this.Velocity = NewVelocity;
-	}
-	private Vector3 ClipVelocity(Vector3 Normal, float Overbounce, Vector3 NewVelocity, float delta) {
-		float Backoff = NewVelocity.Dot(Normal) * Overbounce;
+        if (SpeedLeftTillCap > 0) {
+            float AccelarationSpeed = Mathf.Min(AirAccelaration * AirMoveSpeed * delta, SpeedLeftTillCap); // Note: Adjust Later
+            GD.Print($"AccelarationSpeed: {AccelarationSpeed} Is same as Cap? {AccelarationSpeed == SpeedLeftTillCap}");
+            NewVelocity += AccelarationSpeed * WishDirection;
+        }
 
-		if (Backoff >= 0) return Vector3.Zero;
+        if (this.IsOnWall()) {
+            Vector3 Normal = GetWallNormal();
+            if (IsSurfaceTooSteep(Normal)) this.MotionMode = CharacterBody3D.MotionModeEnum.Floating;
+            else this.MotionMode = CharacterBody3D.MotionModeEnum.Grounded;
 
-		NewVelocity -= Normal * Backoff;
+            NewVelocity = ClipVelocity(Normal, 1, NewVelocity, delta);
+        }
+        this.Velocity = NewVelocity;
+    }
+    private Vector3 ClipVelocity(Vector3 Normal, float Overbounce, Vector3 NewVelocity, float delta) {
+        float Backoff = NewVelocity.Dot(Normal) * Overbounce;
 
-		// Second Iteration to make sure not clipping thru Plane. Not Sure why this is Necesarry, but it Was in the Original
-		float Adjust = NewVelocity.Dot(Normal);
-		if (Adjust < 0) {
-			NewVelocity -= Normal * Adjust;
-		}
-		return NewVelocity;
-	}
-	private bool IsSurfaceTooSteep(Vector3 Normal) {
-		float MaxSlopeAngleDot = Vector3.Up.Rotated(Vector3.Right, this.FloorMaxAngle).Dot(Vector3.Up);
-		if ((Normal.Dot(Vector3.Up)) < MaxSlopeAngleDot) return true;
-		return false;
-	}
-	// Animations
-	private void HeadbobEffect(float delta) {
-		HeadbobTime += delta * this.Velocity.Length();
+        if (Backoff >= 0) return Vector3.Zero;
 
-		Transform3D NewTransform = Cam.Transform;
-		NewTransform.Origin = new Vector3(
-			Mathf.Cos(HeadbobTime * HeadbobFrequency * 0.5F) * HeadbobMoveAmount,
-			Mathf.Cos(HeadbobTime * HeadbobFrequency) * HeadbobMoveAmount,
-			0
-		);
+        NewVelocity -= Normal * Backoff;
 
-		Cam.Transform = NewTransform;
-	}
-	// public methods
-	// private methods
-	private void UpdateRoation(float delta) {
-		float SmoothSpeed = 32f * delta;
+        // Second Iteration to make sure not clipping thru Plane. Not Sure why this is Necesarry, but it Was in the Original
+        float Adjust = NewVelocity.Dot(Normal);
+        if (Adjust < 0) {
+            NewVelocity -= Normal * Adjust;
+        }
+        return NewVelocity;
+    }
+    private bool IsSurfaceTooSteep(Vector3 Normal) {
+        float MaxSlopeAngleDot = Vector3.Up.Rotated(Vector3.Right, this.FloorMaxAngle).Dot(Vector3.Up);
+        if ((Normal.Dot(Vector3.Up)) < MaxSlopeAngleDot) return true;
+        return false;
+    }
+    // Animations
+    private void HeadbobEffect(float delta) {
+        HeadbobTime += delta * this.Velocity.Length();
 
-		float FrameRotationSpeedX = RotationSpeed.X * SmoothSpeed;
-		float FrameRotationSpeedY = RotationSpeed.Y * SmoothSpeed;
+        Transform3D NewTransform = Cam.Transform;
+        NewTransform.Origin = new Vector3(
+            Mathf.Cos(HeadbobTime * HeadbobFrequency * 0.5F) * HeadbobMoveAmount,
+            Mathf.Cos(HeadbobTime * HeadbobFrequency) * HeadbobMoveAmount,
+            0
+        );
 
-		float TargetRotationX = Mathf.Clamp(Head.Rotation.X + FrameRotationSpeedX, Mathf.DegToRad(-90f), Mathf.DegToRad(90f));
-		float TargetRotationY = this.Rotation.Y + FrameRotationSpeedY;
+        Cam.Transform = NewTransform;
+    }
+    // public methods
+    // private methods
+    private void UpdateRoation(float delta) {
+        float SmoothSpeed = MouseSensitivity * delta;
 
-		Head.Rotation = new Vector3(
-			TargetRotationX,
-			0,
-			0
-			);
-		
-		this.Rotation = new Vector3(
-			0,
-			TargetRotationY,
-			0
-		);
-		RotationSpeed = Vector2.Zero;
-	}
-	private void ToggleEscMenu() {
-		if (EscMenu.IsVisibleInTree()) {
-			EscMenu.Hide();
-			Input.MouseMode = Input.MouseModeEnum.Captured;
-		} else {
-			EscMenu.Show();
-			Input.MouseMode = Input.MouseModeEnum.Visible;
-		}
-	}
+        float FrameRotationSpeedX = RotationSpeed.X * SmoothSpeed;
+        float FrameRotationSpeedY = RotationSpeed.Y * SmoothSpeed;
+
+        float TargetRotationX = Mathf.Clamp(Head.Rotation.X + FrameRotationSpeedX, Mathf.DegToRad(-90f), Mathf.DegToRad(90f));
+        float TargetRotationY = this.Rotation.Y + FrameRotationSpeedY;
+
+        Head.Rotation = new Vector3(
+            TargetRotationX,
+            0,
+            0
+            );
+
+        this.Rotation = new Vector3(
+            0,
+            TargetRotationY,
+            0
+        );
+        RotationSpeed = Vector2.Zero;
+    }
+    private void ToggleEscMenu() {
+        if (EscMenu.IsVisibleInTree()) {
+            EscMenu.Hide();
+            Input.MouseMode = Input.MouseModeEnum.Captured;
+        } else {
+            EscMenu.Show();
+            Input.MouseMode = Input.MouseModeEnum.Visible;
+        }
+    }
 }
 

@@ -22,37 +22,35 @@ public partial class MapManager : Node {
     public System.Collections.Generic.Dictionary<Vector3I, ChunkData> DataChunks = [];
     public System.Collections.Generic.Dictionary<Vector3I, VoxelChunk> VoxelChunks = [];
     public Queue<VoxelChunk> IdleChunks = [];
+    // public PackedScene PlayerScene;
     public CharacterBody3D Player;
     public Vector3I CurrentPlayerChunk = Vector3I.Zero;
     // private vars
     // built-in override methods
-    // Called when the node enters the scene tree for the first time.
     public override void _Ready() {
         GD.Randomize();
         if (!Engine.IsEditorHint()) {
+            // PlayerScene = GD.Load<PackedScene>("res://scenes/player/Player.cs");
+            // Player = PlayerScene.Instantiate<CharacterBody3D>();
             Player = GetNode<CharacterBody3D>("../Player");
             UpdateRenderedChunks(CurrentPlayerChunk);
         }
 
         MakeMap(true);
     }
-
-    // Called every frame. 'delta' is the elapsed time since the previous frame.
     public override void _Process(double delta) {
         if (Engine.IsEditorHint()) {
             return;
         }
+
         Vector3I NewPlayerChunk = WorldPosToChunkCoord(Player.Position);
+
         if (NewPlayerChunk != CurrentPlayerChunk) {
             CurrentPlayerChunk = NewPlayerChunk;
             UpdateRenderedChunks(NewPlayerChunk);
         }
         // GD.Print($"World Pos: {Player.Position}, Chunk Pos: {NewPlayerChunk}");
     }
-    // public override void _ExitTree() {
-    //     ClearChunks(true);
-    // }
-
     public void _OnGeneratePressed() {
         MakeMap(true);
     }
@@ -70,8 +68,18 @@ public partial class MapManager : Node {
         Seed = (int)GD.Randi();
         Noise = NoiseGenerator.MakeHillsNoise(Seed);
 
-        // Set Player Pos
-        if (!Engine.IsEditorHint()) {
+        if (Engine.IsEditorHint()) {
+            for (int x = -RenderDistance; x < RenderDistance; x++) {
+                for (int z = -RenderDistance; z < RenderDistance; z++) {
+                    for (int y = -RenderDistance; y < RenderDistance; y++) {
+                        Vector3I ChunkCoord = new(x, y, z);
+
+                        LoadChunk(ChunkCoord);
+                    }
+                }
+            }
+        } else {
+            // Set Player Pos
             Vector2I SpawnCoord2D = new(GD.RandRange(-1000, 1000), GD.RandRange(-1000, 1000));
 
             float PixelData = -Noise.GetNoise2Dv(SpawnCoord2D);
@@ -85,21 +93,9 @@ public partial class MapManager : Node {
 
         EmitSignal(SignalName.NoiseUpdate, Seed, Noise); // I forgor why I added this
 
-        float PreChunkTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-        GD.PrintRich($"[color=Yellow]MapManager-[/color] Finished Pre Chunk Operations in [color=gold]{PreChunkTime}ms[/color]");
-
-        for (int x = -RenderDistance; x < RenderDistance; x++) {
-            for (int z = -RenderDistance; z < RenderDistance; z++) {
-                for (int y = -RenderDistance; y < RenderDistance; y++) {
-                    Vector3I ChunkCoord = new(x, y, z);
-
-                    LoadChunk(ChunkCoord);
-                }
-            }
-        }
 
         float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-        GD.PrintRich($"[color=Yellow]MapManager-[/color] Prerenderd Chunks in Render Distance of [color=gold]{RenderDistance}[/color] in [color=gold]{EndTime}ms[/color]");
+        GD.PrintRich($"[color=Yellow]MapManager-[/color] Made Map with Render Distance of [color=gold]{RenderDistance}[/color] in [color=gold]{EndTime}ms[/color]");
     }
     public static Vector3I WorldPosToChunkCoord(Vector3 Position) {
         return new Vector3I(
@@ -176,7 +172,6 @@ public partial class MapManager : Node {
         ChunkData Data = GetChunkData(Noise, ChunkCoord);
 
         if (IdleChunks.Count > 0) {
-            // Repurpose Unloaded Chunk Node
             VoxelChunk Chunk = IdleChunks.Dequeue();
 
             Chunk.SetChunkData(ChunkCoord, Data.CubeMesh, Data.Triangles, Data.HasFaces);
