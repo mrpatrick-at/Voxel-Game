@@ -187,7 +187,6 @@ public partial class MapManager : Node {
         // Unload Chunks out of RenderDistance
         foreach (Vector3I ChunkCoord in VoxelChunks.Keys) {
             if (!ChunksInRenderDistance.Contains(ChunkCoord)) {
-                GD.Print($"UNLOADING CHUNK: {ChunkCoord}");
                 UnloadChunk(ChunkCoord);
             }
         }
@@ -195,7 +194,6 @@ public partial class MapManager : Node {
         // Load Chunks in RenderDistance""
         foreach (Vector3I ChunkCoord in ChunksInRenderDistance) {
             if (!VoxelChunks.ContainsKey(ChunkCoord)) {
-                GD.Print($"LOADING CHUNK: {ChunkCoord}");
                 LoadChunk(ChunkCoord);
             }
         }

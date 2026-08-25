@@ -105,48 +105,48 @@ public static class ChunkGenerator {
         return x + Consts.Chunk.ExtendedSize * (y + Consts.Chunk.ExtendedSize * z);
     }
     private static bool CheckIfFaces(int[] Voxels) {
-        bool IsEmpty = CheckIfEmpty();
-        bool IsFull = CheckIfFull();
+        bool HasBlocks = CheckIfBlocks();
+        bool HasAir = CheckIfAir();
 
-        bool CheckIfEmpty() {
+        bool CheckIfBlocks() {
             for (int x = 1; x <= Consts.Chunk.Size; x++) {
                 for (int y = 1; y <= Consts.Chunk.Size; y++) {
                     for (int z = 1; z <= Consts.Chunk.Size; z++) {
-                        if (Voxels[GetVoxelIndex(x, y, z)] != 0) {
-                            return false;
+                        if (Voxels[GetVoxelIndex(x, y, z)] != 0) { // Block Found
+                            return true;
                         }
                     }
                 }
             }
-            return true;
+            return false;
         }
 
-        bool CheckIfFull() {
-            for (int x = 16; x >= 0; x--) {
-                bool IsBorderX = x is 0 or 18;
+        bool CheckIfAir() {
+            for (int x = 17; x >= 0; x--) {
+                bool IsEdgeX = x == 0 || x == 17;
 
-                for (int y = 16; y >= 0; y--) {
-                    bool IsBorderY = y is 0 or 18;
-                    if (IsBorderX && IsBorderY) {
+                for (int y = 17; y >= 0; y--) {
+                    bool IsEdgeY = y == 0 || y == 17;
+                    if (IsEdgeX && IsEdgeY) {
                         continue;
                     }
 
-                    for (int z = 16; z >= 0; z--) {
-                        bool IsBorderZ = z is 0 or 18;
-                        if (IsBorderX && IsBorderZ || IsBorderY && IsBorderZ) {
+                    for (int z = 17; z >= 0; z--) {
+                        bool IsEdgeZ = z == 0 || z == 17;
+                        if ((IsEdgeX && IsEdgeZ) || (IsEdgeY && IsEdgeZ)) {
                             continue;
                         }
 
-                        if (Voxels[GetVoxelIndex(x, y, z)] == 0) {
-                            return false;
+                        if (Voxels[GetVoxelIndex(x, y, z)] == 0) { // Air Found
+                            return true;
                         }
                     }
                 }
             }
-            return true;
+            return false;
         }
 
-        return !IsEmpty && !IsFull;
+        return HasBlocks && HasAir;
     }
     private static ulong[] MakeBitVoxels(int[] Voxels) {
         ulong[] BitVoxels = new ulong[Consts.Voxel.BitVoxelAmount];
@@ -219,7 +219,7 @@ public static class ChunkGenerator {
                             int NextI = StartingI + 1;
 
                             // Horizontal Greedy Expansion
-                            while (NextI < 16) {
+                            while (NextI < Consts.Chunk.Size) {
                                 ulong NextBitmask = BitMask << (NextI - StartingI);
 
                                 if ((VisibleFaces[LayerUlongIndex] & NextBitmask) == 0) {
@@ -238,7 +238,7 @@ public static class ChunkGenerator {
 
                             // Vertical Greedy Expansion
                             int NextN = StartingN + 1;
-                            while (NextN < 16) {
+                            while (NextN < Consts.Chunk.Size) {
                                 int LoopUlongIndex = NextN >> 2;
                                 int RowIndex = NextN & 3;
                                 ulong NextBitmask = CountedBits << (RowIndex << 4);
