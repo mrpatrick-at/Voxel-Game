@@ -20,17 +20,17 @@ public static class NoiseGenerator {
 
         return Noise;
     }
-    // public static FastNoiseLite MakeNoise(int Seed) {
-    //     FastNoiseLite Noise = new() {
-    //         NoiseType = FastNoiseLite.NoiseTypeEnum.SimplexSmooth,
-    //         FractalType = FastNoiseLite.FractalTypeEnum.Ridged,
-    //         FractalOctaves = 1,
-    //         Seed = Seed,
-    //         Frequency = 0.005F
-    //     };
+    public static FastNoiseLite MakeCaveNoise(int Seed) {
+        FastNoiseLite Noise = new() {
+            NoiseType = FastNoiseLite.NoiseTypeEnum.SimplexSmooth,
+            FractalType = FastNoiseLite.FractalTypeEnum.Ridged,
+            FractalOctaves = 1,
+            Seed = Seed,
+            Frequency = 0.005F
+        };
 
-    //     return Noise;
-    // }
+        return Noise;
+    }
     // private methods
 }
 

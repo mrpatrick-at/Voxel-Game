@@ -12,7 +12,7 @@ public partial class Player : CharacterBody3D {
     [Export] public int SprintSpeed = 7;
     [Export] public int JumpSpeed = 5;
     [Export] public int GroundAcceleration = 14;
-    [Export] public int GroundDeceleration = 10;
+    [Export] public int MinGroundDeceleration = 10;
     [Export] public int GroundFriction = 2;
     // Air Movement Vars
     [Export] public float AirCap = 0.85F;
@@ -20,8 +20,10 @@ public partial class Player : CharacterBody3D {
     [Export] public int AirMoveSpeed = 500;
     // Misc Movement Vars
     public Vector3 WishDirection = Vector3.Zero;
-    public Vector2 RotationSpeed = Vector2.Zero;
+    public Vector3 NoclipWishDirection = Vector3.Zero;
     public Vector3 CamAlignedWishDirection = Vector3.Zero;
+    public float WishSpeed = 0;
+    public Vector2 RotationSpeed = Vector2.Zero;
     public float NoclipSpeedMult = 3F;
     public bool NoclipEnabled = false;
     // Mouse Vars
@@ -56,7 +58,6 @@ public partial class Player : CharacterBody3D {
             Child.SetLayerMaskValue(2, true);
         }
     }
-    // Input Handling
     public override void _Input(InputEvent @event) {
         base._Input(@event);
 
@@ -67,9 +68,57 @@ public partial class Player : CharacterBody3D {
         }
 
         // Movement
-        Vector2 InputDirection = Input.GetVector("_input_move_left", "_input_move_right", "_input_move_up", "_input_move_down").Normalized();
-        WishDirection = this.GlobalTransform.Basis * new Vector3(InputDirection.X, 0, InputDirection.Y);
-        CamAlignedWishDirection = Cam.GlobalTransform.Basis * new Vector3(InputDirection.X, 0, InputDirection.Y); // For Noclip
+        Vector3 InputDirection = new(
+            Input.GetAxis("_input_move_left", "_input_move_right"),
+            Input.GetAxis("_input_move_down", "_input_move_up"),
+            Input.GetAxis("_input_move_forward", "_input_move_backward")
+        );
+
+        WishSpeed = InputDirection.Length() * AirMoveSpeed;
+
+        WishDirection = this.GlobalTransform.Basis * new Vector3(InputDirection.X, 0, InputDirection.Z).Normalized();
+        NoclipWishDirection = this.GlobalTransform.Basis * new Vector3(InputDirection.X, InputDirection.Y, InputDirection.Z).Normalized();
+        // CamAlignedWishDirection = Cam.GlobalTransform.Basis * new Vector3(InputDirection.X, 0, InputDirection.Y).Normalized();
+    }
+    public override void _Process(double delta) { // Called for Every Frame
+        if (EscMenu.IsVisibleInTree()) {
+            return;
+        }
+        UpdateRoation((float)delta);
+    }
+    public override void _PhysicsProcess(double delta) { // Called 60 times a sec
+        if (EscMenu.IsVisibleInTree()) {
+            return;
+        }
+
+        float Delta = (float)delta;
+
+        if (NoclipEnabled) {
+            HandeNoclip(Delta);
+        } else {
+            if (this.IsOnFloor()) {
+                HandleGroundPhysics(Delta);
+            } else {
+                HandleAirPhysics(Delta);
+            }
+
+            Vector3 HorizontalVelocity = new(this.Velocity.X, 0, this.Velocity.Z);
+
+            MoveAndSlide();
+
+            if (!IsOnFloor() && IsOnWall()) {
+                Vector3 Normal = GetWallNormal();
+                if (IsSurfaceTooSteep(Normal)) {
+                    if (!TryStepUp(Delta, HorizontalVelocity)) {
+                        this.MotionMode = CharacterBody3D.MotionModeEnum.Floating;
+                        this.Velocity = ClipVelocity(Normal, 1, this.Velocity, Delta);
+                    }
+                } else {
+                    this.MotionMode = CharacterBody3D.MotionModeEnum.Grounded;
+                    this.Velocity = ClipVelocity(Normal, 1, this.Velocity, Delta);
+                }
+            }
+        }
     }
     public void _OnDeleteDebugPressed() {
         RigidBody3D[] Children = [.. DebugNode.GetChildren().OfType<RigidBody3D>()];
@@ -79,6 +128,7 @@ public partial class Player : CharacterBody3D {
         }
         GD.PrintRich($"[color=lightblue]Player-[/color] Deleted [color=gold]{Children.Length}[/color] Debug Objects");
     }
+    // Input Handling
     private void HandleMouseInput(InputEventMouse MouseEvent) {
         // Mouse Motion
         if (MouseEvent is InputEventMouseMotion MouseMotion) {
@@ -103,10 +153,8 @@ public partial class Player : CharacterBody3D {
             // Mouse Scroll
             if (MouseButtonEvent.ButtonIndex == MouseButton.WheelUp) {
                 NoclipSpeedMult = Mathf.Min(30F, NoclipSpeedMult * 1.1F);
-                // GD.Print("Increasing Noclip Speed");
             } else if (MouseButtonEvent.ButtonIndex == MouseButton.WheelDown) {
                 NoclipSpeedMult = Mathf.Max(1F, NoclipSpeedMult * 0.9F);
-                // GD.Print("Decreasing Noclip Speed");
             }
         }
 
@@ -131,43 +179,35 @@ public partial class Player : CharacterBody3D {
             GD.PrintRich($"[color=lightblue]Player-[/color] Noclip Enabled: [color=gold]{NoclipEnabled}");
         }
     }
+    // Movement Handling
     private int GetMoveSpeed() {
         return Input.IsActionPressed("_input_move_sprint") ? SprintSpeed : WalkSpeed;
-    }
-    // Process
-    public override void _Process(double delta) { // Called for Every Frame
-        if (EscMenu.IsVisibleInTree()) {
-            return;
-        }
-        UpdateRoation((float)delta);
-    }
-    // Physics
-    public override void _PhysicsProcess(double delta) { // Called 60 times a sec
-        if (EscMenu.IsVisibleInTree()) {
-            return;
-        }
-
-        if (NoclipEnabled) {
-            HandeNoclip((float)delta);
-        } else {
-            if (this.IsOnFloor()) {
-                HandleGroundPhysics((float)delta);
-            } else {
-                HandleAirPhysics((float)delta);
-            }
-            MoveAndSlide();
-        }
-
-        // GD.Print($"Velocity: {this.Velocity}");
     }
     private void HandeNoclip(float delta) {
         float Speed = GetMoveSpeed() * NoclipSpeedMult;
 
-        this.Velocity = CamAlignedWishDirection * Speed;
+        this.Velocity = NoclipWishDirection * Speed;
         this.GlobalPosition += this.Velocity * delta;
     }
     private void HandleGroundPhysics(float delta) {
         Vector3 NewVelocity = this.Velocity;
+
+        // Apply Ground Friction
+        float VelocityLength = new Vector3(NewVelocity.X, 0, NewVelocity.Z).Length();
+
+        float Control = Mathf.Max(VelocityLength, MinGroundDeceleration);
+
+        float Drop = Control * GroundFriction * delta;
+
+        float SpeedScale = Mathf.Max(VelocityLength - Drop, 0);
+        if (VelocityLength > 0) {
+            SpeedScale /= VelocityLength;
+        }
+
+        NewVelocity.X *= SpeedScale;
+        NewVelocity.Z *= SpeedScale;
+
+        // Accelaration
         int MoveSpeed = GetMoveSpeed();
 
         float SpeedInWishDirection = NewVelocity.Dot(WishDirection);
@@ -179,17 +219,8 @@ public partial class Player : CharacterBody3D {
             NewVelocity += AccelarationSpeed * WishDirection;
         }
 
-        // Deceleration
-        float Control = Mathf.Max(NewVelocity.Length(), GroundDeceleration);
-        float Drop = Control * GroundFriction * delta;
-        float NewSpeed = Mathf.Max(NewVelocity.Length() - Drop, 0);
-        if (NewVelocity.Length() > 0) {
-            NewSpeed /= NewVelocity.Length();
-        }
-        NewVelocity *= NewSpeed;
-
         // Jumping
-        if (Input.IsActionPressed("_input_move_jump")) {
+        if (Input.IsActionPressed("_input_move_up")) {
             NewVelocity.Y += JumpSpeed;
         }
 
@@ -200,28 +231,81 @@ public partial class Player : CharacterBody3D {
     private void HandleAirPhysics(float delta) {
         Vector3 NewVelocity = this.Velocity;
 
+        // Apply Gravity
         float Gravity = (float)ProjectSettings.GetSetting("physics/3d/default_gravity");
-        NewVelocity.Y -= Gravity * (float)delta;
+        NewVelocity.Y -= Gravity * delta;
 
+        // Accelaration
         float SpeedInWishDirection = NewVelocity.Dot(WishDirection);
-        float CappedSpeed = Mathf.Min(WishDirection.Length(), AirCap); // CappedSpeed = AirCap, Unless WishDir is 0 / cancels out.
-        float SpeedLeftTillCap = CappedSpeed - SpeedInWishDirection;
-        // GD.Print($"CurrentSpeedInWIshDirection: {SpeedInWishDirection}, CappedSpeed: {CappedSpeed}, SpeedLeftTillCap: {SpeedLeftTillCap}");
+        float SpeedCap = Mathf.Min(WishSpeed, AirCap);
+        float SpeedLeftTillCap = SpeedCap - SpeedInWishDirection;
 
         if (SpeedLeftTillCap > 0) {
-            float AccelarationSpeed = Mathf.Min(AirAccelaration * AirMoveSpeed * delta, SpeedLeftTillCap); // Note: Adjust Later
-            GD.Print($"AccelarationSpeed: {AccelarationSpeed} Is same as Cap? {AccelarationSpeed == SpeedLeftTillCap}");
-            NewVelocity += AccelarationSpeed * WishDirection;
-        }
+            float AccelarationSpeed = Mathf.Min(AirAccelaration * AirMoveSpeed * delta, SpeedLeftTillCap);
+            // GD.Print($"AccelarationSpeed: {AccelarationSpeed} Is same as Cap? {AccelarationSpeed == SpeedLeftTillCap}");
 
-        if (this.IsOnWall()) {
-            Vector3 Normal = GetWallNormal();
-            if (IsSurfaceTooSteep(Normal)) this.MotionMode = CharacterBody3D.MotionModeEnum.Floating;
-            else this.MotionMode = CharacterBody3D.MotionModeEnum.Grounded;
-
-            NewVelocity = ClipVelocity(Normal, 1, NewVelocity, delta);
+            NewVelocity += WishDirection * AccelarationSpeed;
         }
         this.Velocity = NewVelocity;
+    }
+    private bool TryStepUp(float delta, Vector3 HorizontalVelocity) {
+        if (HorizontalVelocity.LengthSquared() < 0.001f) {
+            return false;
+        }
+
+        float StepHeight = 0.5F;
+        Vector3 StartingPosition = this.GlobalPosition;
+
+        // Move Up
+        Vector3 UpMotion = Vector3.Up * StepHeight;
+
+        if (TestMove(GlobalTransform, UpMotion)) {
+            GlobalPosition = StartingPosition;
+            GD.Print("Couldn't move up");
+            return false;
+        }
+
+        this.GlobalPosition += UpMotion;
+
+        // Move Horizontally
+        Vector3 HorizontalMotion = HorizontalVelocity * StepHeight;
+
+        if (TestMove(GlobalTransform, HorizontalMotion)) {
+            GlobalPosition = StartingPosition;
+            GD.Print("Couldn't move forward");
+            return false;
+        }
+
+        Vector3 HorizontalMove = HorizontalVelocity * delta;
+
+        GlobalPosition += HorizontalMove;
+
+        // Move Down
+        float DownStep = 0.05F;
+        bool FoundGround = false;
+        for (float DownDistance = 0F; DownDistance < StepHeight; DownDistance += DownStep) {
+            float MoveAmount = Mathf.Min(DownStep, StepHeight - DownDistance);
+
+            if (TestMove(GlobalTransform, Vector3.Down * MoveAmount)) {
+                FoundGround = true;
+                break;
+            }
+
+            GlobalPosition += Vector3.Down * MoveAmount;
+        }
+
+        if (!FoundGround) {
+            GlobalPosition = StartingPosition;
+            GD.Print("Couldn't find ground");
+            return false;
+        }
+
+        // Succesfull Step
+        Vector3 NewVelocity = new(HorizontalVelocity.X, this.Velocity.Y, HorizontalVelocity.Z);
+
+        this.Velocity = NewVelocity;
+
+        return true;
     }
     private Vector3 ClipVelocity(Vector3 Normal, float Overbounce, Vector3 NewVelocity, float delta) {
         float Backoff = NewVelocity.Dot(Normal) * Overbounce;
@@ -238,8 +322,7 @@ public partial class Player : CharacterBody3D {
         return NewVelocity;
     }
     private bool IsSurfaceTooSteep(Vector3 Normal) {
-        float MaxSlopeAngleDot = Vector3.Up.Rotated(Vector3.Right, this.FloorMaxAngle).Dot(Vector3.Up);
-        if ((Normal.Dot(Vector3.Up)) < MaxSlopeAngleDot) return true;
+        if (Normal.Dot(Vector3.Up) < Mathf.Cos(FloorMaxAngle)) return true;
         return false;
     }
     // Animations

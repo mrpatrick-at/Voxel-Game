@@ -23,7 +23,7 @@ directional_shadow_mode = 0
 directional_shadow_max_distance = 200.0
 
 [node name="Player" parent="." unique_id=465443365 instance=ExtResource("2_a8run")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 7, 2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 80, 2)
 
 [node name="IngameUi" parent="." unique_id=1629074791 instance=ExtResource("4_l3cfh")]
 
