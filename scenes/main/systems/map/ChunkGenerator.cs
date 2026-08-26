@@ -10,8 +10,8 @@ using VoxelGame.Consts;
 // enums
 public static class ChunkGenerator {
     public static ChunkData MakeChunkData(FastNoiseLite Noise, Vector3I Coord) {
-        ulong StartTime = Time.GetTicksUsec();
-        GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Chunk [color=gold]{Coord}[/color] Starting Creation");
+        // ulong StartTime = Time.GetTicksUsec();
+        // GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Chunk [color=gold]{Coord}[/color] Starting Creation");
 
         Godot.ArrayMesh CubeMesh = new();
         Vector3[] Triangles = [];
@@ -71,8 +71,8 @@ public static class ChunkGenerator {
 
         ChunkData Data = new(Voxels, CubeMesh, Triangles, HasFaces);
 
-        float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-        GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Chunk Data in [color=gold]{EndTime}ms[/color]");
+        // float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+        // GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Chunk Data in [color=gold]{EndTime}ms[/color]");
 
         return Data;
     }

@@ -8,20 +8,26 @@ using VoxelGame.Consts;
 using VoxelGame.Chunk;
 using VoxelGame.ChunkGenerator;
 using VoxelGame.NoiseGenerator;
+using System.Threading.Tasks;
+using System.Collections.Concurrent;
+using System.Threading;
+
 [Tool]
 // enums
 public partial class MapManager : Node {
     // Signals
     [Signal] public delegate void NoiseUpdateEventHandler(int Seed, FastNoiseLite Noise);
     // exports
-    [Export] public int RenderDistance = 4;
+    [Export] public int RenderDistance = 8;
     // consts
     // public vars
     public int Seed = 0;
     public FastNoiseLite Noise = new();
-    public System.Collections.Generic.Dictionary<Vector3I, ChunkData> DataChunks = [];
+    // public System.Collections.Generic.Dictionary<Vector3I, ChunkData> DataChunks = [];
+    private readonly ConcurrentDictionary<Vector3I, Lazy<ChunkData>> DataChunks = new();
     public System.Collections.Generic.Dictionary<Vector3I, VoxelChunk> VoxelChunks = [];
     public Queue<VoxelChunk> IdleChunks = [];
+    private readonly ConcurrentQueue<(Vector3I Coord, ChunkData Data)> PendingChunks = new();
     // public PackedScene PlayerScene;
     public CharacterBody3D Player;
     public Vector3I CurrentPlayerChunk = Vector3I.Zero;
@@ -33,9 +39,7 @@ public partial class MapManager : Node {
             // PlayerScene = GD.Load<PackedScene>("res://scenes/player/Player.cs");
             // Player = PlayerScene.Instantiate<CharacterBody3D>();
             Player = GetNode<CharacterBody3D>("../Player");
-            UpdateRenderedChunks(CurrentPlayerChunk);
         }
-
         MakeMap(true);
     }
     public override void _Process(double delta) {
@@ -45,11 +49,19 @@ public partial class MapManager : Node {
 
         Vector3I NewPlayerChunk = WorldPosToChunkCoord(Player.Position);
 
-        if (NewPlayerChunk != CurrentPlayerChunk) {
+        if (NewPlayerChunk != CurrentPlayerChunk) { // NOTE: If Player Spawns In Chunk (0, 0, 0) Map Wont Load. FIX LATER
             CurrentPlayerChunk = NewPlayerChunk;
             UpdateRenderedChunks(NewPlayerChunk);
         }
+
+        // Process Pending Chunks
+        while (PendingChunks.TryDequeue(out var Result)) {
+            ApplyChunkData(Result.Coord, Result.Data);
+        }
         // GD.Print($"World Pos: {Player.Position}, Chunk Pos: {NewPlayerChunk}");
+    }
+    public override void _ExitTree() {
+        ClearChunks(false);
     }
     public void _OnGeneratePressed() {
         MakeMap(true);
@@ -74,7 +86,8 @@ public partial class MapManager : Node {
                     for (int y = -RenderDistance; y < RenderDistance; y++) {
                         Vector3I ChunkCoord = new(x, y, z);
 
-                        LoadChunk(ChunkCoord);
+                        ChunkData Data = GetChunkData(Noise, ChunkCoord);
+                        ApplyChunkData(ChunkCoord, Data);
                     }
                 }
             }
@@ -115,7 +128,7 @@ public partial class MapManager : Node {
     }
     // private methods
     private void ClearChunks(bool IsGenrating) {
-        int ChunkAmount = VoxelChunks.Values.Count;
+        int ChunkAmount = VoxelChunks.Values.Count + IdleChunks.Count;
         if (IsGenrating) {
             DataChunks.Clear();
         }
@@ -127,7 +140,9 @@ public partial class MapManager : Node {
 
         if (IdleChunks.Count > 0) {
             foreach (VoxelChunk Chunk in IdleChunks) {
-                this.RemoveChild(Chunk);
+                if (Chunk.GetParent() == this) {
+                    RemoveChild(Chunk);
+                }
                 Chunk.QueueFree();
             }
             IdleChunks.Clear();
@@ -135,9 +150,10 @@ public partial class MapManager : Node {
 
         VoxelChunks.Clear();
 
-        GD.PrintRich($"[color=Yellow]MapManager-[/color] Deleted [color=gold]{ChunkAmount}[/color] children");
+        GD.PrintRich($"[color=Yellow]MapManager-[/color] Deleted [color=gold]{ChunkAmount}[/color] Chunks");
     }
     private void UpdateRenderedChunks(Vector3I CenterChunk) {
+        ulong StartTime = Time.GetTicksUsec();
         HashSet<Vector3I> ChunksInRenderDistance = [.. GetChunkRadius(CenterChunk, RenderDistance)];
 
         // Mark Chunks out of RenderDistance as Idle
@@ -150,57 +166,76 @@ public partial class MapManager : Node {
         // Load Chunks in RenderDistance
         foreach (Vector3I ChunkCoord in ChunksInRenderDistance) {
             if (!VoxelChunks.ContainsKey(ChunkCoord)) {
-                LoadChunk(ChunkCoord);
+                WorkerThreadPool.AddTask(
+                    Callable.From(() => LoadChunk(ChunkCoord))
+                );
             }
         }
+
+        foreach (Vector3I ChunkCoord in DataChunks.Keys) {
+            if (!ChunksInRenderDistance.Contains(ChunkCoord)) {
+                DataChunks.TryRemove(ChunkCoord, out _);
+            }
+        }
+        float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+        GD.PrintRich($"[color=Yellow]MapManager-[/color] UpdateRenderedChunks took [color=gold]{EndTime}[/color]s");
     }
     private void MarkChunkIdle(Vector3I ChunkCoord) {
-        if (!VoxelChunks.ContainsKey(ChunkCoord)) {
+        if (!VoxelChunks.TryGetValue(ChunkCoord, out VoxelChunk Chunk)) {
             GD.PrintErr($"ERROR UNLOADING CHUNK! Chunk {ChunkCoord} is not Loaded");
         } else {
-            VoxelChunk Chunk = VoxelChunks[ChunkCoord];
             VoxelChunks.Remove(ChunkCoord);
             IdleChunks.Enqueue(Chunk);
+            this.RemoveChild(Chunk);
         }
     }
-    private VoxelChunk LoadChunk(Vector3I ChunkCoord) {
+    private void LoadChunk(Vector3I ChunkCoord) {
+        try {
+            ChunkData Data = GetChunkData(Noise, ChunkCoord);
+
+            PendingChunks.Enqueue((ChunkCoord, Data));
+        }
+        catch (Exception err) {
+            GD.PrintErr($"Failed generating chunk {ChunkCoord}: {err}");
+        }
+    }
+    private void ApplyChunkData(Vector3I ChunkCoord, ChunkData Data) {
         if (VoxelChunks.ContainsKey(ChunkCoord)) {
             GD.PrintErr($"ERROR LOADING CHUNK! Chunk {ChunkCoord} is already loaded");
-            return VoxelChunks[ChunkCoord];
+            return;
         }
 
-        ChunkData Data = GetChunkData(Noise, ChunkCoord);
+        if (Data.HasFaces) {
+            VoxelChunk Chunk;
 
-        if (IdleChunks.Count > 0) {
-            VoxelChunk Chunk = IdleChunks.Dequeue();
+            if (IdleChunks.Count > 0) {
+                Chunk = IdleChunks.Dequeue();
 
-            Chunk.SetChunkData(ChunkCoord, Data.CubeMesh, Data.Triangles, Data.HasFaces);
+                Chunk.SetChunkData(ChunkCoord, Data.CubeMesh, Data.Triangles, Data.HasFaces);
 
-            VoxelChunks[ChunkCoord] = Chunk;
-            Chunk.Reload();
-            return Chunk;
-        } else {
-            VoxelChunk Chunk = new() {
-                Coord = ChunkCoord,
-                CubeMesh = Data.CubeMesh,
-                Triangles = Data.Triangles,
-                HasFaces = Data.HasFaces,
-            };
-            VoxelChunks[ChunkCoord] = Chunk;
+            } else {
+                Chunk = new() {
+                    Coord = ChunkCoord,
+                    CubeMesh = Data.CubeMesh,
+                    Triangles = Data.Triangles,
+                    HasFaces = Data.HasFaces,
+                };
+            }
             this.AddChild(Chunk);
+            VoxelChunks[ChunkCoord] = Chunk;
             Chunk.Reload();
-            return Chunk;
         }
     }
     private ChunkData GetChunkData(FastNoiseLite Noise, Vector3I ChunkCoord) {
-        ChunkData Data;
-        if (DataChunks.ContainsKey(ChunkCoord)) {
-            Data = DataChunks[ChunkCoord];
-        } else {
-            Data = ChunkGenerator.MakeChunkData(Noise, ChunkCoord);
-            DataChunks[ChunkCoord] = Data;
-        }
-        return Data;
+        Lazy<ChunkData> lazyData = DataChunks.GetOrAdd(
+            ChunkCoord,
+            Coord => new Lazy<ChunkData>(
+                () => ChunkGenerator.MakeChunkData(Noise, Coord),
+                LazyThreadSafetyMode.ExecutionAndPublication
+            )
+        );
+
+        return lazyData.Value;
     }
 }
 

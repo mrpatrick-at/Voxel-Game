@@ -57,8 +57,6 @@ public partial class VoxelChunk : MeshInstance3D {
         CubeMesh = NewCubeMesh;
         Triangles = NewTriangles;
         HasFaces = NewHasFaces;
-
-        Reload();
     }
     public void Reload() {
         this.GlobalPosition = new Godot.Vector3(Coord.X << 4, Coord.Y << 4, Coord.Z << 4);
