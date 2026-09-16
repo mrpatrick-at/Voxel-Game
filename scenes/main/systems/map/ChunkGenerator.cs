@@ -125,13 +125,13 @@ public static class ChunkGenerator {
       ulong[] BitVoxels = new ulong[Consts.Voxel.BitVoxelAmount];
 
       for (int LayerIndex = 0; LayerIndex < Consts.Chunk.ExtendedSize; LayerIndex++) {
-         for (int TriangleOffset = 0; TriangleOffset < 256; TriangleOffset++) {
-            int I = TriangleOffset & 15;
-            int N = TriangleOffset >> 4;
+         for (int IndicesOffset = 0; IndicesOffset < 256; IndicesOffset++) {
+            int I = IndicesOffset & 15;
+            int N = IndicesOffset >> 4;
 
-            int UlongIndex = (TriangleOffset >> 6) + (LayerIndex << 2);
+            int UlongIndex = (IndicesOffset >> 6) + (LayerIndex << 2);
 
-            int BitIndex = TriangleOffset & 63;
+            int BitIndex = IndicesOffset & 63;
             ulong Bitmask = 1UL << BitIndex;
 
             int J = I + 1;
@@ -183,10 +183,10 @@ public static class ChunkGenerator {
                      int BitIndex = System.Numerics.BitOperations.TrailingZeroCount(VisibleFaces[LayerUlongIndex]);
                      ulong BitMask = 1UL << BitIndex;
 
-                     int TriangleOffset = (LayerUlongIndex << 6) + BitIndex;
+                     int IndicesOffset = (LayerUlongIndex << 6) + BitIndex;
 
-                     int StartingI = TriangleOffset & 15;
-                     int StartingN = TriangleOffset >> 4;
+                     int StartingI = IndicesOffset & 15;
+                     int StartingN = IndicesOffset >> 4;
                      Vector3I StartingPosition = GetPosition(StartingI, LayerIndex, StartingN, Axis);
 
                      int NextI = StartingI + 1;
@@ -239,6 +239,8 @@ public static class ChunkGenerator {
       return FaceList;
    }
    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+
+   // Gets Data Tiling Data for Shader
    private static Vector2I GetTilingData(int Direction, Vector3I StartingPos, Vector3I EndingPos) {
       Vector2I GetFaceDimensions(Vector3I FaceStart, Vector3I FaceEnd) => (Direction / 2) switch {
          0 => new Vector2I(FaceEnd.Z - FaceStart.Z + 1, FaceEnd.Y - FaceStart.Y + 1),
@@ -263,6 +265,7 @@ public static class ChunkGenerator {
 
       int FaceAmount = FaceList.Count;
 
+      // Set Array Sizes
       int VertexSize = FaceAmount * 4;
       Godot.Vector3[] VertexArray = new Godot.Vector3[VertexSize];
       Godot.Vector3[] NormalArray = new Godot.Vector3[VertexSize];
@@ -271,26 +274,31 @@ public static class ChunkGenerator {
 
       int IndicesSize = FaceAmount * 6;
       int[] IndicesArray = new int[IndicesSize];
-      Vector3[] Triangles = new Vector3[FaceAmount * 6];
+      Vector3[] Triangles = new Vector3[IndicesSize];
 
+      // TODO: Make Better or smthin idk
       Godot.Vector2[] TmpUvs = [new(0, 0), new(1, 0), new(1, 1), new(0, 1)];
 
+      // For every Face in Chunk
       for (int Index = 0; Index < FaceAmount; Index++) {
          FaceData Face = FaceList[Index];
 
+         // Get Face Data
          (Godot.Vector3[] FaceVertexArray, Godot.Vector3[] FaceNormalArray) = CreateFace(Face.Direction, Face.StartingPos, Face.EndingPos);
-         // Vector2I FaceLength = FaceLengths[Dir][StartingPos];
+         // Get Face Tiling Data for Shader
          Vector2I FaceLength = GetTilingData(Face.Direction, Face.StartingPos, Face.EndingPos);
 
-         int VertexOffset = Index * 4;
-         int TriangleOffset = Index * 6;
+         int VertexOffset = Index * 4; // For every Corner of the Face
+         int IndicesOffset = Index * 6; // For Every Point of the Face
 
          for (int i = 0; i < 4; i++) {
-            int ArrayIndex = i + VertexOffset;
+            // Write Vertices, Normals and UV's for the Face
+            int ArrayIndex = VertexOffset + i;
             VertexArray[ArrayIndex] = FaceVertexArray[i];
             NormalArray[ArrayIndex] = FaceNormalArray[i];
             UvArray[ArrayIndex] = TmpUvs[i];
 
+            // Write Tiling Data for Shader
             int CustomArrayIndex = ArrayIndex * 4;
             Custom0Array[CustomArrayIndex] = (float)Face.VoxelType - 1;
             Custom0Array[CustomArrayIndex + 1] = (float)FaceLength.X; // Face Length X
@@ -298,20 +306,23 @@ public static class ChunkGenerator {
                                                                       // Custom0Array[CustomArrayIndex + 3] = (float)VoxelType; // placeholder
          }
 
-         IndicesArray[TriangleOffset] = VertexOffset;
-         IndicesArray[TriangleOffset + 1] = VertexOffset + 1;
-         IndicesArray[TriangleOffset + 2] = VertexOffset + 2;
-         IndicesArray[TriangleOffset + 3] = VertexOffset;
-         IndicesArray[TriangleOffset + 4] = VertexOffset + 2;
-         IndicesArray[TriangleOffset + 5] = VertexOffset + 3;
+         // Write Indices for the Face
+         IndicesArray[IndicesOffset] = VertexOffset;
+         IndicesArray[IndicesOffset + 1] = VertexOffset + 1;
+         IndicesArray[IndicesOffset + 2] = VertexOffset + 2;
+         IndicesArray[IndicesOffset + 3] = VertexOffset;
+         IndicesArray[IndicesOffset + 4] = VertexOffset + 2;
+         IndicesArray[IndicesOffset + 5] = VertexOffset + 3;
 
-         Triangles[TriangleOffset] = VertexArray[VertexOffset];
-         Triangles[TriangleOffset + 1] = VertexArray[VertexOffset + 1];
-         Triangles[TriangleOffset + 2] = VertexArray[VertexOffset + 2];
-         Triangles[TriangleOffset + 3] = VertexArray[VertexOffset];
-         Triangles[TriangleOffset + 4] = VertexArray[VertexOffset + 2];
-         Triangles[TriangleOffset + 5] = VertexArray[VertexOffset + 3];
+         // Write Triangles for the Face
+         Triangles[IndicesOffset] = VertexArray[VertexOffset];
+         Triangles[IndicesOffset + 1] = VertexArray[VertexOffset + 1];
+         Triangles[IndicesOffset + 2] = VertexArray[VertexOffset + 2];
+         Triangles[IndicesOffset + 3] = VertexArray[VertexOffset];
+         Triangles[IndicesOffset + 4] = VertexArray[VertexOffset + 2];
+         Triangles[IndicesOffset + 5] = VertexArray[VertexOffset + 3];
       }
+      // Combine all Data into 1 Array
       Godot.Collections.Array MeshArray = [];
       MeshArray.Resize((int)Mesh.ArrayType.Max);
       MeshArray[(int)Mesh.ArrayType.Vertex] = VertexArray;

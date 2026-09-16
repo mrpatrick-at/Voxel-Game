@@ -35,7 +35,7 @@ public partial class MapManager : Node {
    private ChunkRenderer Renderer = new();
    // Chunk Storage
    private readonly ConcurrentDictionary<Vector3I, Lazy<ChunkData>> DataChunks = new();
-   private readonly ConcurrentDictionary<Vector3I, ChunkState> ChunkStates = new(); // bool rn does nothing :)
+   private readonly ConcurrentDictionary<Vector3I, ChunkState> ChunkStates = new();
    private readonly ConcurrentQueue<(Vector3I Coord, ChunkData Data)> PendingChunks = new();
    private readonly ConcurrentQueue<Vector3I> ChunksForRemoval = new();
    // public PackedScene PlayerScene;
@@ -67,11 +67,11 @@ public partial class MapManager : Node {
          GD.Print($"World Pos: {Player.Position}, Chunk Pos: {NewPlayerChunk}");
       }
 
-      // // Process Chunks Queued for Removal
-      // while (ChunksForRemoval.TryDequeue(out var Result)) {
-      //    Renderer.RemoveChunk(Result);
-      //    ChunkStates.Remove(Result, out _);
-      // }
+      // Process Chunks Queued for Removal
+      while (ChunksForRemoval.TryDequeue(out var Result)) {
+         Renderer.RemoveChunk(Result);
+         ChunkStates.Remove(Result, out _);
+      }
 
       // Process Chunks Queued for Generation
       while (PendingChunks.TryDequeue(out var Result)) {
@@ -165,22 +165,25 @@ public partial class MapManager : Node {
       ulong StartTime = Time.GetTicksUsec();
       HashSet<Vector3I> ChunksInRenderDistance = [.. GetChunkRadius(CenterChunk, RenderDistance)];
 
-      // Queue Chunk Removal for Chunks outside RenderDistance
-      foreach (Vector3I ChunkCoord in Renderer.RenderedChunks.Keys) {
+      // Queue Chunks for Removal that are outside RenderDistance
+      foreach (Vector3I ChunkCoord in ChunkStates
+      .Where(x => x.Value == ChunkState.Rendered)
+      .Select(x => x.Key)
+      .ToList()) {
          if (!ChunksInRenderDistance.Contains(ChunkCoord)) {
-            // WorkerThreadPool.AddTask(
-            // Callable.From(() => QueueChunkRemoval(ChunkCoord))
-            // );
-            Renderer.RemoveChunk(ChunkCoord);
-            ChunkStates.Remove(ChunkCoord, out _);
+
+            QueueChunkRemoval(ChunkCoord);
+
+            // Renderer.RemoveChunk(ChunkCoord);
+            // ChunkStates.Remove(ChunkCoord, out _);
          }
       }
 
       // Queue Chunk Generation for Chunks in RenderDistance
-      foreach (Vector3I ChunkCoord in ChunksInRenderDistance) {
-         if (!ChunkStates.ContainsKey(ChunkCoord)) {
+      foreach (Vector3I ChunkCoord in ChunksInRenderDistance) { // IMPORTANT: MEMORY LEAK FOUND HERE
+         if (ChunkStates.TryAdd(ChunkCoord, ChunkState.Generating)) {
             WorkerThreadPool.AddTask(
-            Callable.From(() => QueueChunkGeneration(ChunkCoord))
+                Callable.From(() => QueueChunkGeneration(ChunkCoord))
             );
          }
       }
@@ -208,23 +211,18 @@ public partial class MapManager : Node {
    }
    // Async shi
    private void QueueChunkRemoval(Vector3I ChunkCoord) {
-      try {
-         ChunkStates[ChunkCoord] = ChunkState.Removing;
-         ChunksForRemoval.Enqueue(ChunkCoord);
-      }
-      catch (Exception err) {
-         GD.PrintErr($"Failed to Queue Chunk Removal for {ChunkCoord}: {err}");
-      }
+      ChunkStates[ChunkCoord] = ChunkState.Removing;
+      ChunksForRemoval.Enqueue(ChunkCoord);
    }
    private void QueueChunkGeneration(Vector3I ChunkCoord) {
       try {
-         ChunkStates[ChunkCoord] = ChunkState.Generating;
-         // GD.Print($"Coord: {ChunkCoord} ChunkState: {ChunkStates[ChunkCoord]}");
          ChunkData Data = GetChunkData(ChunkCoord, Noise);
 
          if (Data.HasFaces) {
-            ChunkStates[ChunkCoord] = ChunkState.Generated;
             PendingChunks.Enqueue((ChunkCoord, Data));
+            ChunkStates[ChunkCoord] = ChunkState.Generated;
+         } else {
+            ChunkStates[ChunkCoord] = ChunkState.Rendered;
          }
       }
       catch (Exception err) {
