@@ -67,15 +67,16 @@ public partial class MapManager : Node {
          GD.Print($"World Pos: {Player.Position}, Chunk Pos: {NewPlayerChunk}");
       }
 
-      // Process Chunks Queued for Removal
-      while (ChunksForRemoval.TryDequeue(out var Result)) {
-         Renderer.RemoveChunk(Result);
-         ChunkStates.Remove(Result, out _);
-      }
+      // // Process Chunks Queued for Removal
+      // while (ChunksForRemoval.TryDequeue(out var Result)) {
+      //    Renderer.RemoveChunk(Result);
+      //    ChunkStates.Remove(Result, out _);
+      // }
 
       // Process Chunks Queued for Generation
       while (PendingChunks.TryDequeue(out var Result)) {
-         Renderer.CreateChunk(Result.Coord, Result.Data.CubeMesh);
+         ArrayMesh CubeMesh = ChunkGenerator.MakeCubeMesh(Result.Data.MeshArray);
+         Renderer.CreateChunk(Result.Coord, CubeMesh);
          ChunkStates[Result.Coord] = ChunkState.Rendered;
       }
    }
@@ -110,7 +111,8 @@ public partial class MapManager : Node {
                   Vector3I ChunkCoord = new(x, y, z);
 
                   ChunkData Data = GetChunkData(ChunkCoord, Noise);
-                  Renderer.CreateChunk(ChunkCoord, Data.CubeMesh);
+                  ArrayMesh CubeMesh = ChunkGenerator.MakeCubeMesh(Data.MeshArray);
+                  Renderer.CreateChunk(ChunkCoord, CubeMesh);
                }
             }
          }
@@ -166,9 +168,11 @@ public partial class MapManager : Node {
       // Queue Chunk Removal for Chunks outside RenderDistance
       foreach (Vector3I ChunkCoord in Renderer.RenderedChunks.Keys) {
          if (!ChunksInRenderDistance.Contains(ChunkCoord)) {
-            WorkerThreadPool.AddTask(
-            Callable.From(() => QueueChunkRemoval(ChunkCoord))
-            );
+            // WorkerThreadPool.AddTask(
+            // Callable.From(() => QueueChunkRemoval(ChunkCoord))
+            // );
+            Renderer.RemoveChunk(ChunkCoord);
+            ChunkStates.Remove(ChunkCoord, out _);
          }
       }
 
@@ -218,8 +222,10 @@ public partial class MapManager : Node {
          // GD.Print($"Coord: {ChunkCoord} ChunkState: {ChunkStates[ChunkCoord]}");
          ChunkData Data = GetChunkData(ChunkCoord, Noise);
 
-         ChunkStates[ChunkCoord] = ChunkState.Generated;
-         PendingChunks.Enqueue((ChunkCoord, Data));
+         if (Data.HasFaces) {
+            ChunkStates[ChunkCoord] = ChunkState.Generated;
+            PendingChunks.Enqueue((ChunkCoord, Data));
+         }
       }
       catch (Exception err) {
          ChunkStates.TryRemove(ChunkCoord, out _);

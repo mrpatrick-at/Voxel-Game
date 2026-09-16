@@ -12,6 +12,7 @@ public partial class ChunkRenderer : Node3D {
    // public vars
    // private vars
    private Rid Scenario;
+   private readonly Dictionary<Vector3I, ArrayMesh> ChunkMeshes = [];
    public readonly Dictionary<Vector3I, Rid> RenderedChunks = [];
 
    // built-in override methods
@@ -45,15 +46,16 @@ public partial class ChunkRenderer : Node3D {
       RenderingServer.InstanceSetTransform(Instance, transform);
 
       // Store Chunk RID
+      ChunkMeshes[ChunkCoord] = Mesh;
       RenderedChunks[ChunkCoord] = Instance;
    }
    public void RemoveChunk(Vector3I ChunkCoord) {
-      if (!RenderedChunks.TryGetValue(ChunkCoord, out Rid Instance)) {
-         return;
+      if (RenderedChunks.TryGetValue(ChunkCoord, out Rid Instance)) {
+         RenderingServer.FreeRid(Instance);
+         RenderedChunks.Remove(ChunkCoord);
       }
 
-      RenderingServer.FreeRid(Instance);
-      RenderedChunks.Remove(ChunkCoord);
+      ChunkMeshes.Remove(ChunkCoord);
    }
    public void SetChunkVisible(Vector3I ChunkCoord, bool Visible) {
       if (RenderedChunks.TryGetValue(ChunkCoord, out Rid Instance))

@@ -9,70 +9,43 @@ using System.Runtime.InteropServices;
 using VoxelGame.Consts;
 // enums
 public static class ChunkGenerator {
-   public static ChunkData MakeChunkData(Vector3I Coord, FastNoiseLite Noise) {
-      // ulong StartTime = Time.GetTicksUsec();
-      // GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Chunk [color=gold]{Coord}[/color] Starting Creation");
+   public static ArrayMesh MakeCubeMesh(Godot.Collections.Array MeshArray) {
+      Mesh.ArrayFormat FormatFlags = Mesh.ArrayFormat.FormatVertex
+                                  | Mesh.ArrayFormat.FormatNormal
+                                  | Mesh.ArrayFormat.FormatTexUV
+                                  | Mesh.ArrayFormat.FormatIndex
+                                  // | Mesh.ArrayFormat.FormatColor
+                                  | Mesh.ArrayFormat.FormatCustom0;
 
-      Godot.ArrayMesh CubeMesh = new();
-      Vector3[] Triangles = [];
+      int Custom0FormatShift = (int)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift;
+      FormatFlags |= (Mesh.ArrayFormat)Custom0FormatShift;
+
+      // float EndTime6 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+      // GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Mesh in [color=gold]{EndTime6 - EndTime5}ms[/color]");
+
+      ArrayMesh CubeMesh = new();
+      CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
+      return CubeMesh;
+   }
+   public static ChunkData MakeChunkData(Vector3I Coord, FastNoiseLite Noise) {
 
       int[] Voxels = MakeVoxelData(Noise, Coord);
 
-      // float EndTime2 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-      // GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Voxel Data in [color=gold]{EndTime2}ms[/color]");
-
       bool HasFaces = CheckIfFaces(Voxels);
 
-      // float EndTime3 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-      // GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Checked for Faces in [color=gold]{EndTime3 - EndTime2}ms[/color]");
+      Godot.Collections.Array MeshArray = [];
+      Vector3[] Triangles = [];
 
       if (HasFaces) {
 
          ulong[] BitVoxels = MakeBitVoxels(Voxels);
 
-         // float EndTime4 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-         // GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created BitVoxels in [color=gold]{EndTime4 - EndTime3}ms[/color]");
-
          List<FaceData> FaceList = MakeGreedyFaces(BitVoxels);
 
-         // float EndTime5 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-         // GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Greedy Faces in [color=gold]{EndTime5 - EndTime4}ms[/color]");
-
-         Godot.Collections.Array MeshArray = MakeMesh(FaceList);
-         Mesh.ArrayFormat FormatFlags = Mesh.ArrayFormat.FormatVertex
-                                     | Mesh.ArrayFormat.FormatNormal
-                                     | Mesh.ArrayFormat.FormatTexUV
-                                     | Mesh.ArrayFormat.FormatIndex
-                                     // | Mesh.ArrayFormat.FormatColor
-                                     | Mesh.ArrayFormat.FormatCustom0;
-
-         int Custom0FormatShift = (int)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift;
-         FormatFlags |= (Mesh.ArrayFormat)Custom0FormatShift;
-
-         // float EndTime6 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-         // GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Mesh in [color=gold]{EndTime6 - EndTime5}ms[/color]");
-
-         CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
-
-         int FaceAmount = FaceList.Count;
-
-         Vector3[] Vertices = (Vector3[])MeshArray[(int)Mesh.ArrayType.Vertex];
-         Triangles = new Vector3[FaceAmount * 6];
-
-         for (int FaceIndex = 0; FaceIndex < FaceAmount; FaceIndex++) {
-            Triangles[FaceIndex * 6] = Vertices[FaceIndex * 4];
-            Triangles[FaceIndex * 6 + 1] = Vertices[FaceIndex * 4 + 1];
-            Triangles[FaceIndex * 6 + 2] = Vertices[FaceIndex * 4 + 2];
-            Triangles[FaceIndex * 6 + 3] = Vertices[FaceIndex * 4];
-            Triangles[FaceIndex * 6 + 4] = Vertices[FaceIndex * 4 + 2];
-            Triangles[FaceIndex * 6 + 5] = Vertices[FaceIndex * 4 + 3];
-         }
+         (MeshArray, Triangles) = MakeMesh(FaceList);
       }
 
-      ChunkData Data = new(Voxels, CubeMesh, Triangles, HasFaces);
-
-      // float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-      // GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Chunk Data in [color=gold]{EndTime}ms[/color]");
+      ChunkData Data = new(Voxels, MeshArray, Triangles, HasFaces);
 
       return Data;
    }
@@ -152,13 +125,13 @@ public static class ChunkGenerator {
       ulong[] BitVoxels = new ulong[Consts.Voxel.BitVoxelAmount];
 
       for (int LayerIndex = 0; LayerIndex < Consts.Chunk.ExtendedSize; LayerIndex++) {
-         for (int FaceIndex = 0; FaceIndex < 256; FaceIndex++) {
-            int I = FaceIndex & 15;
-            int N = FaceIndex >> 4;
+         for (int TriangleOffset = 0; TriangleOffset < 256; TriangleOffset++) {
+            int I = TriangleOffset & 15;
+            int N = TriangleOffset >> 4;
 
-            int UlongIndex = (FaceIndex >> 6) + (LayerIndex << 2);
+            int UlongIndex = (TriangleOffset >> 6) + (LayerIndex << 2);
 
-            int BitIndex = FaceIndex & 63;
+            int BitIndex = TriangleOffset & 63;
             ulong Bitmask = 1UL << BitIndex;
 
             int J = I + 1;
@@ -210,10 +183,10 @@ public static class ChunkGenerator {
                      int BitIndex = System.Numerics.BitOperations.TrailingZeroCount(VisibleFaces[LayerUlongIndex]);
                      ulong BitMask = 1UL << BitIndex;
 
-                     int FaceIndex = (LayerUlongIndex << 6) + BitIndex;
+                     int TriangleOffset = (LayerUlongIndex << 6) + BitIndex;
 
-                     int StartingI = FaceIndex & 15;
-                     int StartingN = FaceIndex >> 4;
+                     int StartingI = TriangleOffset & 15;
+                     int StartingN = TriangleOffset >> 4;
                      Vector3I StartingPosition = GetPosition(StartingI, LayerIndex, StartingN, Axis);
 
                      int NextI = StartingI + 1;
@@ -286,7 +259,7 @@ public static class ChunkGenerator {
          _ => new(StartingN, StartingI, LayerIndex),
       };
    }
-   private static Godot.Collections.Array MakeMesh(List<FaceData> FaceList) {
+   private static (Godot.Collections.Array MeshArray, Vector3[] Triangles) MakeMesh(List<FaceData> FaceList) {
 
       int FaceAmount = FaceList.Count;
 
@@ -298,23 +271,24 @@ public static class ChunkGenerator {
 
       int IndicesSize = FaceAmount * 6;
       int[] IndicesArray = new int[IndicesSize];
+      Vector3[] Triangles = new Vector3[FaceAmount * 6];
 
       Godot.Vector2[] TmpUvs = [new(0, 0), new(1, 0), new(1, 1), new(0, 1)];
 
       for (int Index = 0; Index < FaceAmount; Index++) {
          FaceData Face = FaceList[Index];
 
-         Godot.Vector3[][] MeshFace = CreateFace(Face.Direction, Face.StartingPos, Face.EndingPos);
+         (Godot.Vector3[] FaceVertexArray, Godot.Vector3[] FaceNormalArray) = CreateFace(Face.Direction, Face.StartingPos, Face.EndingPos);
          // Vector2I FaceLength = FaceLengths[Dir][StartingPos];
          Vector2I FaceLength = GetTilingData(Face.Direction, Face.StartingPos, Face.EndingPos);
 
-         int IndexOffset = Index * 4;
-         int IndicesIndex = Index * 6;
+         int VertexOffset = Index * 4;
+         int TriangleOffset = Index * 6;
 
          for (int i = 0; i < 4; i++) {
-            int ArrayIndex = i + IndexOffset;
-            VertexArray[ArrayIndex] = MeshFace[(int)MESH.VERTICES][i];
-            NormalArray[ArrayIndex] = MeshFace[(int)MESH.Normals][i];
+            int ArrayIndex = i + VertexOffset;
+            VertexArray[ArrayIndex] = FaceVertexArray[i];
+            NormalArray[ArrayIndex] = FaceNormalArray[i];
             UvArray[ArrayIndex] = TmpUvs[i];
 
             int CustomArrayIndex = ArrayIndex * 4;
@@ -324,12 +298,19 @@ public static class ChunkGenerator {
                                                                       // Custom0Array[CustomArrayIndex + 3] = (float)VoxelType; // placeholder
          }
 
-         IndicesArray[IndicesIndex] = IndexOffset;
-         IndicesArray[IndicesIndex + 1] = IndexOffset + 1;
-         IndicesArray[IndicesIndex + 2] = IndexOffset + 2;
-         IndicesArray[IndicesIndex + 3] = IndexOffset;
-         IndicesArray[IndicesIndex + 4] = IndexOffset + 2;
-         IndicesArray[IndicesIndex + 5] = IndexOffset + 3;
+         IndicesArray[TriangleOffset] = VertexOffset;
+         IndicesArray[TriangleOffset + 1] = VertexOffset + 1;
+         IndicesArray[TriangleOffset + 2] = VertexOffset + 2;
+         IndicesArray[TriangleOffset + 3] = VertexOffset;
+         IndicesArray[TriangleOffset + 4] = VertexOffset + 2;
+         IndicesArray[TriangleOffset + 5] = VertexOffset + 3;
+
+         Triangles[TriangleOffset] = VertexArray[VertexOffset];
+         Triangles[TriangleOffset + 1] = VertexArray[VertexOffset + 1];
+         Triangles[TriangleOffset + 2] = VertexArray[VertexOffset + 2];
+         Triangles[TriangleOffset + 3] = VertexArray[VertexOffset];
+         Triangles[TriangleOffset + 4] = VertexArray[VertexOffset + 2];
+         Triangles[TriangleOffset + 5] = VertexArray[VertexOffset + 3];
       }
       Godot.Collections.Array MeshArray = [];
       MeshArray.Resize((int)Mesh.ArrayType.Max);
@@ -340,10 +321,10 @@ public static class ChunkGenerator {
       // MeshArray[(int)Mesh.ArrayType.Color] = ColorArray;
       MeshArray[(int)Mesh.ArrayType.Custom0] = Custom0Array;
 
-      return MeshArray;
+      return (MeshArray, Triangles);
    }
 
-   private static Godot.Vector3[][] CreateFace(int dir, Godot.Vector3 StartingPosition, Godot.Vector3 EndingPosition) {
+   private static (Godot.Vector3[] VertexArray, Godot.Vector3[] NormalArray) CreateFace(int dir, Godot.Vector3 StartingPosition, Godot.Vector3 EndingPosition) {
       Godot.Vector3[] DirectionArray = [
           Godot.Vector3.Right,
             Godot.Vector3.Left,
@@ -390,38 +371,14 @@ public static class ChunkGenerator {
 				new Godot.Vector3(StartingPosition.X,EndingPosition.Y,StartingPosition.Z) + new Godot.Vector3(-0.5F,  0.5F, -0.5F) * Consts.Voxel.Size, // Top Left
 			]
       ];
-      Godot.Vector3[] Vertices = VerticesArray[dir];
+      Godot.Vector3[] VertexArray = VerticesArray[dir];
       Godot.Vector3 Direction = DirectionArray[dir];
-      Godot.Vector3[] normals = [
+      Godot.Vector3[] NormalArray = [
           Direction, Direction, Direction, Direction
       ];
 
-      Godot.Vector3[][] MeshFace = [
-          [
-                Vertices[0], Vertices[1], Vertices[2], Vertices[3]
-            ],
-            [
-                normals[0], normals[1], normals[2], normals[3]
-            ],
-        ];
-      return MeshFace;
+      return (VertexArray, NormalArray);
    }
-   // public static StaticBody3D MakeStaticBody(ArrayMesh CubeMesh) {
-   //  	ConcavePolygonShape3D ChunkCollison = CubeMesh.CreateTrimeshShape();
-
-   //     CollisionShape3D CollisionShape = new() {
-   //         Shape = ChunkCollison
-   //     };
-
-   //     StaticBody3D StaticBody = new() {
-   //         CollisionLayer = 1,
-   //         CollisionMask = 1
-   //     };
-
-   //     StaticBody.AddChild(CollisionShape);
-
-   // 	return StaticBody;
-   // }
 }
 public readonly struct FaceData(int VoxelType, int direction, Vector3I startingPos, Vector3I endingPos) {
    public int VoxelType { get; } = VoxelType;
@@ -429,9 +386,9 @@ public readonly struct FaceData(int VoxelType, int direction, Vector3I startingP
    public Vector3I StartingPos { get; } = startingPos;
    public Vector3I EndingPos { get; } = endingPos;
 }
-public readonly struct ChunkData(int[] voxels, ArrayMesh cubeMesh, Vector3[] triangles, bool hasFaces) {
+public readonly struct ChunkData(int[] voxels, Godot.Collections.Array meshArray, Vector3[] triangles, bool hasFaces) {
    public int[] Voxels { get; } = voxels;
-   public ArrayMesh CubeMesh { get; } = cubeMesh;
+   public Godot.Collections.Array MeshArray { get; } = meshArray;
    public Vector3[] Triangles { get; } = triangles;
    public bool HasFaces { get; } = hasFaces;
 }
