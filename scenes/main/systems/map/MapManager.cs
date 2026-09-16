@@ -75,8 +75,7 @@ public partial class MapManager : Node {
 
       // Process Chunks Queued for Generation
       while (PendingChunks.TryDequeue(out var Result)) {
-         ArrayMesh CubeMesh = ChunkGenerator.MakeCubeMesh(Result.Data.MeshArray);
-         Renderer.CreateChunk(Result.Coord, CubeMesh);
+         Renderer.CreateChunk(Result.Coord, Result.Data.MeshArray);
          ChunkStates[Result.Coord] = ChunkState.Rendered;
       }
    }
@@ -111,8 +110,7 @@ public partial class MapManager : Node {
                   Vector3I ChunkCoord = new(x, y, z);
 
                   ChunkData Data = GetChunkData(ChunkCoord, Noise);
-                  ArrayMesh CubeMesh = ChunkGenerator.MakeCubeMesh(Data.MeshArray);
-                  Renderer.CreateChunk(ChunkCoord, CubeMesh);
+                  Renderer.CreateChunk(ChunkCoord, Data.MeshArray);
                }
             }
          }

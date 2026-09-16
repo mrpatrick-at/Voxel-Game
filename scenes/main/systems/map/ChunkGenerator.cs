@@ -9,24 +9,6 @@ using System.Runtime.InteropServices;
 using VoxelGame.Consts;
 // enums
 public static class ChunkGenerator {
-   public static ArrayMesh MakeCubeMesh(Godot.Collections.Array MeshArray) {
-      Mesh.ArrayFormat FormatFlags = Mesh.ArrayFormat.FormatVertex
-                                  | Mesh.ArrayFormat.FormatNormal
-                                  | Mesh.ArrayFormat.FormatTexUV
-                                  | Mesh.ArrayFormat.FormatIndex
-                                  // | Mesh.ArrayFormat.FormatColor
-                                  | Mesh.ArrayFormat.FormatCustom0;
-
-      int Custom0FormatShift = (int)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift;
-      FormatFlags |= (Mesh.ArrayFormat)Custom0FormatShift;
-
-      // float EndTime6 = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
-      // GD.PrintRich($"[color=Springgreen]DataChunk-[/color] Created Mesh in [color=gold]{EndTime6 - EndTime5}ms[/color]");
-
-      ArrayMesh CubeMesh = new();
-      CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
-      return CubeMesh;
-   }
    public static ChunkData MakeChunkData(Vector3I Coord, FastNoiseLite Noise) {
 
       int[] Voxels = MakeVoxelData(Noise, Coord);

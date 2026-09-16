@@ -13,11 +13,19 @@ public partial class ChunkRenderer : Node3D {
    // private vars
    private Rid Scenario;
    private readonly Dictionary<Vector3I, ArrayMesh> ChunkMeshes = [];
-   public readonly Dictionary<Vector3I, Rid> RenderedChunks = [];
+   private readonly Dictionary<Vector3I, Rid> RenderedChunks = [];
+   private readonly ShaderMaterial ChunkMaterial = new();
 
    // built-in override methods
    public override void _Ready() {
       Scenario = GetWorld3D().Scenario;
+
+      Shader Shader = GD.Load<Shader>("res://scenes/main/systems/map/shader/VoxelChunk.gdshader");
+
+      ChunkMaterial.Shader = Shader;
+
+      Texture2D Atlas = GD.Load<Texture2D>("res://assets/textures/TextureAtlas.png");
+      ChunkMaterial.SetShaderParameter("TextureAtlas", Atlas);
    }
    public override void _Process(double delta) {
 
@@ -26,9 +34,12 @@ public partial class ChunkRenderer : Node3D {
       Clear();
    }
    // public methods
-   public void CreateChunk(Vector3I ChunkCoord, ArrayMesh Mesh) {
+   public void CreateChunk(Vector3I ChunkCoord, Godot.Collections.Array MeshArray) {
       // Try to Remove Chunk, Incase it already exists
       RemoveChunk(ChunkCoord);
+
+      // Make the Mesh
+      ArrayMesh Mesh = MakeCubeMesh(MeshArray);
 
       // Make new RenderingServer Instance
       Rid Instance = RenderingServer.InstanceCreate();
@@ -68,5 +79,24 @@ public partial class ChunkRenderer : Node3D {
       RenderedChunks.Clear();
    }
    // private methods
+   private ArrayMesh MakeCubeMesh(Godot.Collections.Array MeshArray) {
+      ArrayMesh CubeMesh = new();
+
+      Mesh.ArrayFormat FormatFlags = Mesh.ArrayFormat.FormatVertex
+                                  | Mesh.ArrayFormat.FormatNormal
+                                  | Mesh.ArrayFormat.FormatTexUV
+                                  | Mesh.ArrayFormat.FormatIndex
+                                  // | Mesh.ArrayFormat.FormatColor
+                                  | Mesh.ArrayFormat.FormatCustom0;
+
+      int Custom0FormatShift = (int)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift;
+      FormatFlags |= (Mesh.ArrayFormat)Custom0FormatShift;
+
+      CubeMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, MeshArray, flags: FormatFlags);
+
+      CubeMesh.SurfaceSetMaterial(0, ChunkMaterial);
+
+      return CubeMesh;
+   }
 }
 
