@@ -38,7 +38,13 @@ public partial class MapManager : Node {
    private readonly ConcurrentDictionary<Vector3I, ChunkState> ChunkStates = new();
    private readonly ConcurrentQueue<(Vector3I Coord, ChunkData Data)> PendingChunks = new();
    private readonly ConcurrentQueue<Vector3I> ChunksForRemoval = new();
-   // public PackedScene PlayerScene;
+   // Multithreading (pain)
+   private readonly ConcurrentQueue<Vector3I> GenerationQueue = new();
+   private readonly List<Thread> GenerationWorkers = [];
+   private readonly CancellationTokenSource Cancellation = new();
+   private readonly SemaphoreSlim GenerationSignal = new(0);
+   int WorkerCount = Math.Max(1, System.Environment.ProcessorCount - 2);
+   // Player Shi
    public CharacterBody3D Player;
    public Vector3I CurrentPlayerChunk = Vector3I.Zero;
    // private vars
@@ -49,7 +55,14 @@ public partial class MapManager : Node {
          // PlayerScene = GD.Load<PackedScene>("res://scenes/player/Player.cs");
          // Player = PlayerScene.Instantiate<CharacterBody3D>();
          Player = GetNode<CharacterBody3D>("../Player");
+
+         for (int i = 0; i < WorkerCount; i++) {
+            Thread Worker = new(GenerationWorker);
+            GenerationWorkers.Add(Worker);
+            Worker.Start();
+         }
       }
+
       this.AddChild(Renderer);
       MakeMap(true);
    }
@@ -81,6 +94,17 @@ public partial class MapManager : Node {
    }
 
    public override void _ExitTree() {
+      Cancellation.Cancel();
+
+      // Wake every worker so they can observe cancellation.
+      for (int i = 0; i < GenerationWorkers.Count; i++)
+         GenerationSignal.Release();
+
+      foreach (Thread Worker in GenerationWorkers)
+         Worker.Join();
+
+      GenerationWorkers.Clear();
+
       ClearChunks(false);
    }
 
@@ -180,9 +204,8 @@ public partial class MapManager : Node {
       // Queue Chunk Generation for Chunks in RenderDistance
       foreach (Vector3I ChunkCoord in ChunksInRenderDistance) { // IMPORTANT: MEMORY LEAK FOUND HERE
          if (ChunkStates.TryAdd(ChunkCoord, ChunkState.Generating)) {
-            WorkerThreadPool.AddTask(
-                Callable.From(() => QueueChunkGeneration(ChunkCoord))
-            );
+            GenerationQueue.Enqueue(ChunkCoord);
+            GenerationSignal.Release();
          }
       }
 
@@ -218,15 +241,30 @@ public partial class MapManager : Node {
 
          if (Data.HasFaces) {
             PendingChunks.Enqueue((ChunkCoord, Data));
-            ChunkStates[ChunkCoord] = ChunkState.Generated;
-         } else {
-            ChunkStates[ChunkCoord] = ChunkState.Rendered;
          }
+
+         ChunkStates[ChunkCoord] = ChunkState.Generated;
+
       }
       catch (Exception err) {
          ChunkStates.TryRemove(ChunkCoord, out _);
 
          GD.PrintErr($"Failed to Queue Chunk Generation for {ChunkCoord}: {err}");
+      }
+   }
+   private void GenerationWorker() {
+      try {
+         while (true) {
+            GenerationSignal.Wait(Cancellation.Token);
+
+            if (!GenerationQueue.TryDequeue(out Vector3I Coord))
+               continue;
+
+            QueueChunkGeneration(Coord);
+         }
+      }
+      catch (OperationCanceledException) {
+         // Normal shutdown.
       }
    }
 }

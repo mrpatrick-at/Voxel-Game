@@ -73,10 +73,12 @@ public partial class ChunkRenderer : Node3D {
          RenderingServer.InstanceSetVisible(Instance, Visible);
    }
    public void Clear() {
-      foreach (Rid Instance in RenderedChunks.Values)
+      foreach (Rid Instance in RenderedChunks.Values) {
          RenderingServer.FreeRid(Instance);
+      }
 
       RenderedChunks.Clear();
+      ChunkMeshes.Clear();
    }
    // private methods
    private ArrayMesh MakeCubeMesh(Godot.Collections.Array MeshArray) {
