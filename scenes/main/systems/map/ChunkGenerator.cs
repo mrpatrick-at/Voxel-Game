@@ -1,12 +1,10 @@
 using Godot;
-using Godot.Collections;
 using System;
 using System.Runtime.CompilerServices;
-namespace VoxelGame.ChunkGenerator;
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using VoxelGame.Consts;
+
+namespace VoxelGame.scenes.main.systems.map;
+
 // enums
 public static class ChunkGenerator {
    public static ChunkData MakeChunkData(Vector3I Coord, FastNoiseLite Noise) {

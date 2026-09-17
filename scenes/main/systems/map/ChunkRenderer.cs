@@ -1,8 +1,7 @@
 using Godot;
 using Godot.Collections;
-using System;
-namespace VoxelGame.ChunkRenderer;
-using VoxelGame.Consts;
+
+namespace VoxelGame.scenes.main.systems.map;
 [GlobalClass]
 // enums
 public partial class ChunkRenderer : Node3D {
