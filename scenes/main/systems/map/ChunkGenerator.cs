@@ -7,9 +7,9 @@ namespace VoxelGame.scenes.main.systems.map;
 
 // enums
 public static class ChunkGenerator {
-   public static ChunkData MakeChunkData(Vector3I Coord, FastNoiseLite Noise) {
+   public static ChunkData MakeChunkData(Vector3I Coord, int[] Heightmap) {
 
-      int[] Voxels = MakeVoxelData(Noise, Coord);
+      int[] Voxels = MakeVoxelData(Coord, Heightmap);
 
       bool HasFaces = CheckIfFaces(Voxels);
 
@@ -30,14 +30,15 @@ public static class ChunkGenerator {
       return Data;
    }
    // private methods
-   private static int[] MakeVoxelData(FastNoiseLite Noise, Vector3I Coord) {
+   private static int[] MakeVoxelData(Vector3I Coord, int[] Heightmap) {
       int[] Voxels = new int[Consts.Chunk.CubExtendedSize];
 
       for (int x = 0; x < Consts.Chunk.ExtendedSize; x++) {
          for (int z = 0; z < Consts.Chunk.ExtendedSize; z++) {
-            float PixelData = -Noise.GetNoise2D(x + Coord.X * Consts.Chunk.Size, z + Coord.Z * Consts.Chunk.Size);
+            // float PixelData = -Noise.GetNoise2D(x + Coord.X * Consts.Chunk.Size, z + Coord.Z * Consts.Chunk.Size);
 
-            int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
+            // int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
+            int TileHeight = Heightmap[x + Consts.Chunk.ExtendedSize * z];
 
             int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.Size, 17);
 

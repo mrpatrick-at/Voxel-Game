@@ -8,10 +8,9 @@
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_l3cfh"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_1eur2"]
-frequency = 0.0025
-fractal_type = 2
-fractal_octaves = 1
-domain_warp_fractal_octaves = 10
+frequency = 0.001
+fractal_octaves = 2
+domain_warp_enabled = true
 
 [sub_resource type="NoiseTexture2D" id="NoiseTexture2D_6q06x"]
 width = 640

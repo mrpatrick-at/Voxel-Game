@@ -23,14 +23,16 @@ public partial class MapManager : Node {
    // Signals
    [Signal] public delegate void NoiseUpdateEventHandler(int Seed, FastNoiseLite Noise);
    // exports
-   [Export] public int RenderDistance = 8;
    // consts
    // public vars
+   public int RenderDistance = 8;
    public int Seed = 0;
-   public FastNoiseLite Noise = new();
+   public NoiseGenerator Noise;
    private ChunkRenderer Renderer = new();
    // Chunk Storage
+   private readonly ConcurrentDictionary<Vector2I, Lazy<int[]>> Heightmaps = new();
    private readonly ConcurrentDictionary<Vector3I, Lazy<ChunkData>> DataChunks = new();
+
    private readonly ConcurrentDictionary<Vector3I, ChunkState> ChunkStates = new();
    private readonly ConcurrentQueue<(Vector3I Coord, ChunkData Data)> PendingChunks = new();
    private readonly ConcurrentQueue<Vector3I> ChunksForRemoval = new();
@@ -103,33 +105,36 @@ public partial class MapManager : Node {
 
       // Make Noise
       Seed = (int)GD.Randi();
-      Noise = NoiseGenerator.MakeHillsNoise(Seed);
+      Noise = new NoiseGenerator(Seed);
+      // Noise = NoiseGenerator.MakeContinentsNoise(Seed);
 
       if (Engine.IsEditorHint()) {
          for (int x = -RenderDistance; x < RenderDistance; x++) {
             for (int z = -RenderDistance; z < RenderDistance; z++) {
+               int[] Heightmap = Noise.MakeChunkHeightMap(new(x, z));
+
                for (int y = -RenderDistance; y < RenderDistance; y++) {
                   Vector3I ChunkCoord = new(x, y, z);
 
-                  ChunkData Data = GetChunkData(ChunkCoord, Noise);
+                  ChunkData Data = GetChunkData(ChunkCoord, Heightmap);
                   Renderer.CreateChunk(ChunkCoord, Data.MeshArray);
                }
             }
          }
       } else {
-         // Set Player Pos
-         Vector2I SpawnCoord2D = new(GD.RandRange(-1000, 1000), GD.RandRange(-1000, 1000));
+         // // Set Player Pos
+         // Vector2I SpawnCoord2D = new(GD.RandRange(-1000, 1000), GD.RandRange(-1000, 1000));
 
-         float PixelData = -Noise.GetNoise2Dv(SpawnCoord2D);
-         int SpawnHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
+         // float PixelData = -Noise.GetNoise2Dv(SpawnCoord2D);
+         // int SpawnHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
 
-         Player.Position = new Vector3(SpawnCoord2D.X, SpawnHeight, SpawnCoord2D.Y);
+         // Player.Position = new Vector3(SpawnCoord2D.X, SpawnHeight, SpawnCoord2D.Y);
 
-         Vector3 SpawnCoord = new(SpawnCoord2D.X, SpawnHeight, SpawnCoord2D.Y);
-         GD.PrintRich($"[color=Yellow]MapManager-[/color] Spawned Player at: [color=gold]{SpawnCoord}[/color]");
+         // Vector3 SpawnCoord = new(SpawnCoord2D.X, SpawnHeight, SpawnCoord2D.Y);
+         // GD.PrintRich($"[color=Yellow]MapManager-[/color] Spawned Player at: [color=gold]{SpawnCoord}[/color]");
       }
 
-      EmitSignal(SignalName.NoiseUpdate, Seed, Noise); // For Debug Noise UI
+      // EmitSignal(SignalName.NoiseUpdate, Seed, Noise); // For Debug Noise UI
 
 
       float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
@@ -180,7 +185,7 @@ public partial class MapManager : Node {
       }
 
       // Queue Chunk Generation for Chunks in RenderDistance
-      foreach (Vector3I ChunkCoord in ChunksInRenderDistance) { // IMPORTANT: MEMORY LEAK FOUND HERE
+      foreach (Vector3I ChunkCoord in ChunksInRenderDistance) {
          if (ChunkStates.TryAdd(ChunkCoord, ChunkState.Generating)) {
             Workers.Enqueue(
                () => QueueChunkGeneration(ChunkCoord)
@@ -199,11 +204,22 @@ public partial class MapManager : Node {
       GD.PrintRich($"[color=Yellow]MapManager-[/color] UpdateRenderedChunks took [color=gold]{EndTime}[/color]s");
    }
 
-   private ChunkData GetChunkData(Vector3I ChunkCoord, FastNoiseLite Noise) {
+   // Chunk Storage Management
+   private int[] GetChunkHeightmap(Vector2I SliceCoord) {
+      Lazy<int[]> LazyData = Heightmaps.GetOrAdd(
+         SliceCoord,
+         Coord => new Lazy<int[]>(
+           () => Noise.MakeChunkHeightMap(SliceCoord),
+           LazyThreadSafetyMode.ExecutionAndPublication
+         ));
+
+      return LazyData.Value;
+   }
+   private ChunkData GetChunkData(Vector3I ChunkCoord, int[] Heightmap) {
       Lazy<ChunkData> LazyData = DataChunks.GetOrAdd(
          ChunkCoord,
          Coord => new Lazy<ChunkData>(
-           () => ChunkGenerator.MakeChunkData(Coord, Noise),
+           () => ChunkGenerator.MakeChunkData(Coord, Heightmap),
            LazyThreadSafetyMode.ExecutionAndPublication
          ));
 
@@ -216,7 +232,9 @@ public partial class MapManager : Node {
    }
    private void QueueChunkGeneration(Vector3I ChunkCoord) {
       try {
-         ChunkData Data = GetChunkData(ChunkCoord, Noise);
+         int[] Heightmap = GetChunkHeightmap(new(ChunkCoord.X, ChunkCoord.Z));
+
+         ChunkData Data = GetChunkData(ChunkCoord, Heightmap);
 
          if (Data.HasFaces) {
             PendingChunks.Enqueue((ChunkCoord, Data));
