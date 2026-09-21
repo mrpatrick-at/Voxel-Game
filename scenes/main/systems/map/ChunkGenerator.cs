@@ -7,11 +7,11 @@ namespace VoxelGame.scenes.main.systems.map;
 
 // enums
 public static class ChunkGenerator {
-   public static ChunkData MakeChunkData(Vector3I Coord, int[] Heightmap) {
+   public static ChunkData MakeChunkData(Vector3I ChunkCoord, int[] Heightmap) {
+      // ulong StartTime = Time.GetTicksUsec();
+      // GD.PrintRich($"[color=Lime]ChunkGenerator-[/color] Started generating Chunk: [color=Gold]{ChunkCoord}");
 
-      int[] Voxels = MakeVoxelData(Coord, Heightmap);
-
-      bool HasFaces = CheckIfFaces(Voxels);
+      (int[] Voxels, bool HasFaces) = MakeVoxelData(ChunkCoord, Heightmap);
 
       Godot.Collections.Array MeshArray = [];
       Vector3[] Triangles = [];
@@ -27,78 +27,65 @@ public static class ChunkGenerator {
 
       ChunkData Data = new(Voxels, MeshArray, Triangles, HasFaces);
 
+      // float EndTime = (Godot.Time.GetTicksUsec() - StartTime) / 1000f;
+      // GD.PrintRich($"[color=Lime]ChunkGenerator-[/color] Generated Chunk [color=gold]{ChunkCoord}[/color] in [color=gold]{EndTime}ms[/color]");
+
       return Data;
    }
+
    // private methods
-   private static int[] MakeVoxelData(Vector3I Coord, int[] Heightmap) {
+   private static (int[], bool) MakeVoxelData(Vector3I ChunkCoord, int[] Heightmap) {
       int[] Voxels = new int[Consts.Chunk.CubExtendedSize];
+      bool HasBlocks = false;
+      bool HasAir = false;
 
-      for (int x = 0; x < Consts.Chunk.ExtendedSize; x++) {
-         for (int z = 0; z < Consts.Chunk.ExtendedSize; z++) {
-            int TileHeight = Heightmap[x + Consts.Chunk.ExtendedSize * z];
+      int ChunkBaseY = ChunkCoord.Y * Consts.Chunk.Size;
 
-            int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.Size, 17);
+      for (int z = 0; z < Consts.Chunk.ExtendedSize; z++) {
+         int HeightmapOffset = z * Consts.Chunk.ExtendedSize;
+         for (int x = 0; x < Consts.Chunk.ExtendedSize; x++) {
+            // Get Local Tile Height
+            int Height = Heightmap[x + HeightmapOffset];
 
-            for (int y = 0; y <= LocalTileHeight; y++) {
-               int Block = (LocalTileHeight - y) switch {
-                  0 => (int)Consts.Voxel.Type.Grass,
-                  < 3 => (int)Consts.Voxel.Type.Dirt,
-                  _ => (int)Consts.Voxel.Type.Stone,
-               };
-               Voxels[GetVoxelIndex(x, y, z)] = Block;
+            int LocalHeight = Math.Min(Height - ChunkBaseY, 17);
+
+            // No Blocks in Tile
+            if (LocalHeight < 0) {
+               HasAir = true;
+               continue;
+            }
+
+            // Check if Blocks
+            if (x > 0 && x < 17 && z > 0 && z < 17) {
+               HasBlocks |= LocalHeight > 0;
+               HasAir |= LocalHeight < 17;
+            }
+
+            int Index = GetVoxelIndex(x, 0, z);
+
+            // Write Voxel Data
+            for (int y = 0; y <= LocalHeight; y++) {
+               int Depth = LocalHeight - y;
+
+               int Voxel =
+                  Depth == 0 ?
+                  (int)Consts.Voxel.Type.Grass
+                     : Depth < 3 ?
+                        (int)Consts.Voxel.Type.Dirt :
+                        (int)Consts.Voxel.Type.Stone;
+
+               Voxels[Index + y] = Voxel;
             }
          }
       }
-      return Voxels;
+      return (Voxels, HasBlocks && HasAir);
    }
+
    [MethodImpl(MethodImplOptions.AggressiveInlining)]
    private static int GetVoxelIndex(int x, int y, int z) {
-      return x + Consts.Chunk.ExtendedSize * (y + Consts.Chunk.ExtendedSize * z);
+      return y + Consts.Chunk.ExtendedSize * (x + Consts.Chunk.ExtendedSize * z);
    }
-   private static bool CheckIfFaces(int[] Voxels) {
-      bool HasBlocks = CheckIfBlocks();
-      bool HasAir = CheckIfAir();
 
-      bool CheckIfBlocks() {
-         for (int x = 1; x <= Consts.Chunk.Size; x++) {
-            for (int y = 1; y <= Consts.Chunk.Size; y++) {
-               for (int z = 1; z <= Consts.Chunk.Size; z++) {
-                  if (Voxels[GetVoxelIndex(x, y, z)] != 0) { // Block Found
-                     return true;
-                  }
-               }
-            }
-         }
-         return false;
-      }
-
-      bool CheckIfAir() {
-         for (int x = 17; x >= 0; x--) {
-            bool IsEdgeX = x == 0 || x == 17;
-
-            for (int y = 17; y >= 0; y--) {
-               bool IsEdgeY = y == 0 || y == 17;
-               if (IsEdgeX && IsEdgeY) {
-                  continue;
-               }
-
-               for (int z = 17; z >= 0; z--) {
-                  bool IsEdgeZ = z == 0 || z == 17;
-                  if ((IsEdgeX && IsEdgeZ) || (IsEdgeY && IsEdgeZ)) {
-                     continue;
-                  }
-
-                  if (Voxels[GetVoxelIndex(x, y, z)] == 0) { // Air Found
-                     return true;
-                  }
-               }
-            }
-         }
-         return false;
-      }
-
-      return HasBlocks && HasAir;
-   }
    private static ulong[] MakeBitVoxels(int[] Voxels) {
       ulong[] BitVoxels = new ulong[Consts.Voxel.BitVoxelAmount];
 
@@ -130,10 +117,12 @@ public static class ChunkGenerator {
       }
       return BitVoxels;
    }
+
    [MethodImpl(MethodImplOptions.AggressiveInlining)]
    private static int GetBitVoxelIndex(int VoxelType, int Axis, int UlongIndex) {
-      return (VoxelType * 216) + (Axis * 72) + UlongIndex;
+      return VoxelType * 216 + Axis * 72 + UlongIndex;
    }
+
    private static List<FaceData> MakeGreedyFaces(ulong[] BitVoxels) {
       List<FaceData> FaceList = [];
 
@@ -216,20 +205,7 @@ public static class ChunkGenerator {
 
       return FaceList;
    }
-   [MethodImpl(MethodImplOptions.AggressiveInlining)]
 
-   // Gets Data Tiling Data for Shader
-   private static Vector2I GetTilingData(int Direction, Vector3I StartingPos, Vector3I EndingPos) {
-      Vector2I GetFaceDimensions(Vector3I FaceStart, Vector3I FaceEnd) => (Direction / 2) switch {
-         0 => new Vector2I(FaceEnd.Z - FaceStart.Z + 1, FaceEnd.Y - FaceStart.Y + 1),
-         1 => new Vector2I(FaceEnd.X - FaceStart.X + 1, FaceEnd.Z - FaceStart.Z + 1),
-         _ => new Vector2I(FaceEnd.Y - FaceStart.Y + 1, FaceEnd.X - FaceStart.X + 1)
-      };
-
-      Vector2I FaceDimensions = GetFaceDimensions(StartingPos, EndingPos);
-
-      return (Direction & 1) == 0 ? FaceDimensions : new(FaceDimensions.Y, FaceDimensions.X);
-   }
    [MethodImpl(MethodImplOptions.AggressiveInlining)]
    private static Vector3I GetPosition(int StartingI, int LayerIndex, int StartingN, int Axis) {
       return Axis switch {
@@ -239,6 +215,7 @@ public static class ChunkGenerator {
          _ => new(StartingN, StartingI, LayerIndex),
       };
    }
+
    private static (Godot.Collections.Array MeshArray, Vector3[] Triangles) MakeMesh(List<FaceData> FaceList) {
 
       int FaceAmount = FaceList.Count;
@@ -311,6 +288,19 @@ public static class ChunkGenerator {
       MeshArray[(int)Mesh.ArrayType.Custom0] = Custom0Array;
 
       return (MeshArray, Triangles);
+   }
+
+   [MethodImpl(MethodImplOptions.AggressiveInlining)]
+   private static Vector2I GetTilingData(int Direction, Vector3I StartingPos, Vector3I EndingPos) {
+      Vector2I GetFaceDimensions(Vector3I FaceStart, Vector3I FaceEnd) => (Direction / 2) switch {
+         0 => new Vector2I(FaceEnd.Z - FaceStart.Z + 1, FaceEnd.Y - FaceStart.Y + 1),
+         1 => new Vector2I(FaceEnd.X - FaceStart.X + 1, FaceEnd.Z - FaceStart.Z + 1),
+         _ => new Vector2I(FaceEnd.Y - FaceStart.Y + 1, FaceEnd.X - FaceStart.X + 1)
+      };
+
+      Vector2I FaceDimensions = GetFaceDimensions(StartingPos, EndingPos);
+
+      return (Direction & 1) == 0 ? FaceDimensions : new(FaceDimensions.Y, FaceDimensions.X);
    }
 
    private static (Godot.Vector3[] VertexArray, Godot.Vector3[] NormalArray) CreateFace(int dir, Godot.Vector3 StartingPosition, Godot.Vector3 EndingPosition) {

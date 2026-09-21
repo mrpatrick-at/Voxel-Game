@@ -35,9 +35,9 @@ public sealed class Worker {
             WorkSignal.Wait(Cancellation);
 
             if (WorkQueue.TryDequeue(out WorkItem Work)) {
-               Console.WriteLine(
-                  $"{Thread.CurrentThread.Name} executing work"
-               );
+               // Console.WriteLine(
+               //    $"{Thread.CurrentThread.Name} executing work"
+               // );
 
                try {
                   Work.Execute();
