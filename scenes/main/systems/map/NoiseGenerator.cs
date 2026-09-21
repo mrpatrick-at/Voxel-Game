@@ -7,33 +7,26 @@ public sealed class NoiseGenerator(int Seed) {
    private readonly FastNoiseLite HillsNoise = MakeHillsNoise(Seed);
 
    // Public Funcs
-   public int[] MakeChunkHeightMap(Vector2I Coord) {
+   public int[] MakeChunkHeightMap(Vector2I SliceCoord) {
       int[] Heightmap = new int[Consts.Chunk.SqExtendedSize];
 
       for (int x = 0; x < Consts.Chunk.ExtendedSize; x++) {
          for (int y = 0; y < Consts.Chunk.ExtendedSize; y++) {
+            Vector2I BlockCoord = new(x + SliceCoord.X * Consts.Chunk.Size, y + SliceCoord.Y * Consts.Chunk.Size);
 
-            float PixelData = -HillsNoise.GetNoise2D(x + Coord.X * Consts.Chunk.Size, y + Coord.Y * Consts.Chunk.Size);
-
-            int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
-
-            Heightmap[GetHeightmapIndex(x, y)] = TileHeight;
-
-            // int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.Size, 17);
-
-            // for (int y = 0; y <= LocalTileHeight; y++) {
-            //    int Block = (LocalTileHeight - y) switch {
-            //       0 => (int)Consts.Voxel.Type.Grass,
-            //       < 3 => (int)Consts.Voxel.Type.Dirt,
-            //       _ => (int)Consts.Voxel.Type.Stone,
-            //    };
-
-            //    Heightmap[GetVoxelIndex(x, y, z)] = Block;
-            // }
+            Heightmap[GetHeightmapIndex(x, y)] = GetBlockHeight(BlockCoord); ;
          }
       }
 
       return Heightmap;
+   }
+
+   public int GetBlockHeight(Vector2I Coord) {
+      float PixelData = -HillsNoise.GetNoise2Dv(Coord);
+
+      int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
+
+      return TileHeight;
    }
 
    // Helpers

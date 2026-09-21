@@ -122,16 +122,16 @@ public partial class MapManager : Node {
             }
          }
       } else {
-         // // Set Player Pos
-         // Vector2I SpawnCoord2D = new(GD.RandRange(-1000, 1000), GD.RandRange(-1000, 1000));
+         // Set Player Pos
+         Vector2I SpawnCoord2D = new(GD.RandRange(-1000, 1000), GD.RandRange(-1000, 1000));
 
-         // float PixelData = -Noise.GetNoise2Dv(SpawnCoord2D);
-         // int SpawnHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
+         int SpawnHeight = Noise.GetBlockHeight(SpawnCoord2D);
 
-         // Player.Position = new Vector3(SpawnCoord2D.X, SpawnHeight, SpawnCoord2D.Y);
+         Vector3 SpawnCoord = new(SpawnCoord2D.X, SpawnHeight, SpawnCoord2D.Y);
 
-         // Vector3 SpawnCoord = new(SpawnCoord2D.X, SpawnHeight, SpawnCoord2D.Y);
-         // GD.PrintRich($"[color=Yellow]MapManager-[/color] Spawned Player at: [color=gold]{SpawnCoord}[/color]");
+         Player.Position = SpawnCoord;
+
+         GD.PrintRich($"[color=Yellow]MapManager-[/color] Spawned Player at: [color=gold]{SpawnCoord}[/color]");
       }
 
       // EmitSignal(SignalName.NoiseUpdate, Seed, Noise); // For Debug Noise UI
