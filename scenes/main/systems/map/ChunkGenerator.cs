@@ -35,9 +35,6 @@ public static class ChunkGenerator {
 
       for (int x = 0; x < Consts.Chunk.ExtendedSize; x++) {
          for (int z = 0; z < Consts.Chunk.ExtendedSize; z++) {
-            // float PixelData = -Noise.GetNoise2D(x + Coord.X * Consts.Chunk.Size, z + Coord.Z * Consts.Chunk.Size);
-
-            // int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
             int TileHeight = Heightmap[x + Consts.Chunk.ExtendedSize * z];
 
             int LocalTileHeight = Math.Min(TileHeight - Coord.Y * Consts.Chunk.Size, 17);

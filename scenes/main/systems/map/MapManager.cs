@@ -106,12 +106,11 @@ public partial class MapManager : Node {
       // Make Noise
       Seed = (int)GD.Randi();
       Noise = new NoiseGenerator(Seed);
-      // Noise = NoiseGenerator.MakeContinentsNoise(Seed);
 
       if (Engine.IsEditorHint()) {
          for (int x = -RenderDistance; x < RenderDistance; x++) {
             for (int z = -RenderDistance; z < RenderDistance; z++) {
-               int[] Heightmap = Noise.MakeChunkHeightMap(new(x, z));
+               int[] Heightmap = Noise.MakeChunkHeightmap(new(x, z));
 
                for (int y = -RenderDistance; y < RenderDistance; y++) {
                   Vector3I ChunkCoord = new(x, y, z);
@@ -209,7 +208,7 @@ public partial class MapManager : Node {
       Lazy<int[]> LazyData = Heightmaps.GetOrAdd(
          SliceCoord,
          Coord => new Lazy<int[]>(
-           () => Noise.MakeChunkHeightMap(SliceCoord),
+           () => Noise.MakeChunkHeightmap(SliceCoord),
            LazyThreadSafetyMode.ExecutionAndPublication
          ));
 

@@ -7,7 +7,7 @@ public sealed class NoiseGenerator(int Seed) {
    private readonly FastNoiseLite HillsNoise = MakeHillsNoise(Seed);
 
    // Public Funcs
-   public int[] MakeChunkHeightMap(Vector2I SliceCoord) {
+   public int[] MakeChunkHeightmap(Vector2I SliceCoord) {
       int[] Heightmap = new int[Consts.Chunk.SqExtendedSize];
 
       for (int x = 0; x < Consts.Chunk.ExtendedSize; x++) {
@@ -22,9 +22,15 @@ public sealed class NoiseGenerator(int Seed) {
    }
 
    public int GetBlockHeight(Vector2I Coord) {
+      float ContinentPixelData = -ContinentsNoise.GetNoise2Dv(Coord);
+
+
+      // int IsContinent = (int)(ContinentPixelData + 1) & 1;
+
+
       float PixelData = -HillsNoise.GetNoise2Dv(Coord);
 
-      int TileHeight = (int)((PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
+      int TileHeight = (int)(ContinentPixelData * (PixelData + 1) * 0.5 * (Consts.World.Height - 1) + 1);
 
       return TileHeight;
    }
