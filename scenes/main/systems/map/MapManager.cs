@@ -7,6 +7,7 @@ using System.Threading;
 
 using VoxelGame.scenes.main.systems.threading;
 using System.Diagnostics;
+using System.Collections.Immutable;
 
 namespace VoxelGame.scenes.main.systems.map;
 
@@ -36,6 +37,7 @@ public sealed partial class MapManager : Node {
    private readonly ConcurrentDictionary<Vector3I, ChunkState> ChunkStates = new();
    private readonly ConcurrentQueue<(Vector3I Coord, ChunkData Data)> PendingChunks = new();
    private readonly ConcurrentQueue<Vector3I> ChunksForRemoval = new();
+   private ImmutableHashSet<Vector3I> ChunksInRenderDistance;
    // Multithreading (pain)
    private WorkerPool Workers;
    private StreamingWorker<Vector3I> ChunkStreamer;
@@ -81,21 +83,24 @@ public sealed partial class MapManager : Node {
          GD.Print($"World Pos: {Player.Position}, Chunk Pos: {PlayerChunk}");
       }
 
-      const int MaxRemovalsPerFrame = 2;
-      const int MaxGenerationsPerFrame = 1;
+      const double ChunkBudgetMs = 2.0;
 
-      for (int i = 0; i < MaxRemovalsPerFrame; i++) {
-         if (!ChunksForRemoval.TryDequeue(out var result))
-            break;
+      long ChunkBudgetTicks =
+          (long)(Stopwatch.Frequency * ChunkBudgetMs * 0.001);
 
+      long deadline = Stopwatch.GetTimestamp() + ChunkBudgetTicks;
+
+      while (Stopwatch.GetTimestamp() < deadline &&
+             ChunksForRemoval.TryDequeue(out var result)) {
          Renderer.RemoveChunk(result);
          ChunkStates.Remove(result, out _);
       }
 
-      for (int i = 0; i < MaxGenerationsPerFrame; i++) {
-         if (!PendingChunks.TryDequeue(out var result))
-            break;
-
+      while (Stopwatch.GetTimestamp() < deadline &&
+             PendingChunks.TryDequeue(out var result)) {
+         if (!ChunksInRenderDistance.Contains(result.Coord)) {
+            continue;
+         }
          Renderer.CreateChunk(result.Coord, result.Data.MeshArray);
          ChunkStates[result.Coord] = ChunkState.Rendered;
       }
@@ -193,7 +198,7 @@ public sealed partial class MapManager : Node {
    // Chunk Management
    private void UpdateRenderedChunks(Vector3I CenterChunk) {
       // ulong StartTime = Time.GetTicksUsec();
-      HashSet<Vector3I> ChunksInRenderDistance = [.. GetChunkRadius(CenterChunk, RenderDistance)];
+      ChunksInRenderDistance = [.. GetChunkRadius(CenterChunk, RenderDistance)];
 
       // int epoch = Interlocked.Increment(ref _renderEpoch);
 
@@ -210,9 +215,6 @@ public sealed partial class MapManager : Node {
          return dx * dx + dy * dy + dz * dz;
       })) {
          QueueChunkRemoval(ChunkCoord);
-
-         // Renderer.RemoveChunk(ChunkCoord);
-         // ChunkStates.Remove(ChunkCoord, out _);
       }
 
       // Queue Chunk Generation for Chunks in RenderDistance
